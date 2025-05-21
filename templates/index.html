@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
+    <title>nieTTS - 文字转语音</title>
+    <style>
+        :root {
+            --primary-color: #ffb6c1;
+            --secondary-color: #fff5f7;
+            --text-color: #5a5c69;
+            --border-radius: 1rem;
+            --box-shadow: 0 0.25rem 1.5rem rgba(255, 182, 193, 0.2);
+            --transition: all 0.3s ease;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            padding: 1rem;
+            background-color: #f8f9fc;
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+        
+        h1 {
+            color: var(--primary-color);
+            font-weight: 700;
+            margin: 1.5rem 0;
+            text-align: center;
+        }
+        
+        .card {
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            border: none;
+            background: white;
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+            transition: var(--transition);
+        }
+        
+        .card-header {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 600;
+            padding: 1rem;
+            border-radius: var(--border-radius) var(--border-radius) 0 0;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-control, .form-select {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border: 1px solid #d1d3e2;
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+            outline: none;
+        }
+        
+        .btn-primary {
+            display: inline-block;
+            width: 100%;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 1rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        .btn-primary:hover {
+            background-color: #fd7194;
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 12px rgba(255, 182, 193, 0.3);
+        }
+        
+        .mt-3 {
+            margin-top: 1rem !important;
+        }
+        
+        .mt-4 {
+            margin-top: 1rem !important;
+        }
+
+        .card {
+            margin-bottom: 1rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        details {
+            margin-bottom: 0.75rem;
+        }
+
+        .settings-content {
+            padding: 0 0.75rem 0.75rem;
+        }
+        
+        footer {
+            padding: 0.75rem;
+            margin-top: 1.5rem;
+        }
+
+        details {
+            background: white;
+            border-radius: var(--border-radius);
+            margin-bottom: 1rem;
+            box-shadow: var(--box-shadow);
+        }
+
+        summary {
+            padding: 1rem;
+            cursor: pointer;
+            background-color: var(--secondary-color);
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        details[open] summary {
+            border-bottom: 1px solid #e3e6f0;
+            margin-bottom: 1rem;
+        }
+
+        .settings-content {
+            padding: 0 1rem 1rem;
+        }
+        
+        #logArea {
+            height: 200px;
+            overflow-y: auto;
+            background-color: var(--secondary-color);
+            border-radius: 0 0 0.35rem 0.35rem;
+            padding: 1rem;
+        }
+        
+        #logArea div {
+            padding: 0.5rem;
+            border-bottom: 1px solid #e3e6f0;
+        }
+        
+        #logArea div:last-child {
+            border-bottom: none;
+        }
+        
+        @media (max-width: 768px) {
+            .row {
+                flex-direction: column;
+            }
+            
+            .col-md-8, .col-md-4 {
+                width: 100%;
+                margin-bottom: 1.5rem;
+            }
+        }
+        footer {
+            text-align: center;
+            padding: 1rem;
+            margin-top: 2rem;
+            color: var(--text-color);
+            font-size: 0.9rem;
+        }
+
+        footer a {
+            color: var(--primary-color);
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        footer a:hover {
+            color: #fd7194;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mb-4">nieTTS</h1>
+        
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">日志记录喵</div>
+                    <div class="card-body" id="logArea"></div>
+                </div>
+            </div>
+
+            <div class="col-md-12">
+                <div class="form-group">
+                    <label for="textInput" class="form-label">输入文本</label>
+                    <input type="text" class="form-control" id="textInput" placeholder="请输入要转换的文本">
+                </div>
+
+                <button class="btn btn-primary mt-3" onclick="convertToSpeech()">
+                    <i class="bi bi-soundwave me-2"></i>发送并提交osc
+                </button>
+
+                <details class="mt-4">
+                    <summary>高级设置</summary>
+                    <div class="settings-content">
+                        <div class="form-group">
+                            <label for="deviceSelect" class="form-label">输出设备</label>
+                            <select class="form-select" id="deviceSelect">
+                                {% for device in audio_devices %}
+                                <option value="{{ device }}" {% if device == user_config.device %}selected{% endif %}>{{ device }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="providerSelect" class="form-label">TTS服务商</label>
+                            <select class="form-select" id="providerSelect">
+                                {% for provider in providers %}
+                                <option value="{{ provider }}" {% if device == user_config.provider %}selected{% endif %}>{{ provider }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-group"id="voiceSelectGroup">
+                            <label for="voiceSelect" class="form-label">语音选择</label>
+                            <select class="form-select" id="voiceSelect">
+                                {% for voice in edge_tts_voices %}
+                                <option value="{{ voice }}" {% if device == user_config.edge_tts_voice %}selected{% endif %}>{{ voice }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group"id="aliApiKeyGroup">
+                            <label for="aliApiKey" class="form-label">api_key</label>
+                            <input type="text" class="form-select" id="aliApiKey" placeholder="请输入api_key" value="{{user_config.ali_api_key}}">
+                        </div>
+                        <div class="form-group"id="ali_voiceSelectGroup">
+                            <label for="ali_voiceSelect" class="form-label">语音选择</label>
+                            <select class="form-select" id="ali_voiceSelect">
+                                {% for voice in ali_tts_voices %}
+                                <option value="{{ voice }}" {% if device == user_config.ali_tts_voice %}selected{% endif %}>{{ voice }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group"id="sambert_voiceSelectGroup">
+                            <label for="sambert_voiceSelect" class="form-label">语音选择</label>
+                            <select class="form-select" id="sambert_voiceSelect">
+                                {% for voice in sambert_tts_voices %}
+                                <option value="{{ voice }}" {% if device == user_config.sambert_tts_voice %}selected{% endif %}>{{ voice }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                </details>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p><a href="https://github.com/machinad/nieTTS/tree/web%E5%AE%9E%E7%8E%B0" target="_blank">nieTTS</a>由<a href="https://github.com/machinad" target="_blank">machinad</a>构建 | <a href="https://github.com/machinad/nieTTS/tree/web%E5%AE%9E%E7%8E%B0" target="_blank">GitHub</a>源代码遵循 <a href="https://opensource.org/licenses/MIT" target="_blank">MIT 协议</a></p>
+    </footer>
+
+    <script>
+        function convertToSpeech() {
+            const text = document.getElementById('textInput').value.trim();
+            if (!text) {
+                alert('请输入要转换的文本');
+                return;
+            }
+
+            const data = {
+                text: text,
+                device: document.getElementById('deviceSelect').value,
+                provider: document.getElementById('providerSelect').value,
+                edge_tts_voice: document.getElementById('voiceSelect').value,
+                ali_api_key: document.getElementById('aliApiKey').value,
+                ali_tts_voice: document.getElementById('ali_voiceSelect').value,
+                sambert_tts_voice: document.getElementById('sambert_voiceSelect').value
+            };
+
+            // 添加到日志
+            const logArea = document.getElementById('logArea');
+            logArea.innerHTML += `<div>${text}</div>`;
+            logArea.scrollTop = logArea.scrollHeight;
+
+            // 清空输入框
+            document.getElementById('textInput').value = '';
+
+            // 发送到服务器
+            fetch('/tts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('转换失败，请查看控制台获取详细信息');
+            });
+        }
+
+        // 支持按回车键提交
+        document.getElementById('textInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                convertToSpeech();
+            }
+        });
+        document.addEventListener('DOMContentLoaded',function() {
+                const providerSelect = document.getElementById('providerSelect');
+                const voiceSelectGroup = document.getElementById('voiceSelectGroup');
+                const aliApiKeyGroup = document.getElementById('aliApiKeyGroup');
+                const ali_voiceSelectGroup = document.getElementById('ali_voiceSelectGroup');
+                const sambert_voiceSelectGroup = document.getElementById('sambert_voiceSelectGroup');
+                function toggleProviderSettings(){
+                    voiceSelectGroup.style.display = "none";
+                    aliApiKeyGroup.style.display = "none";
+                    ali_voiceSelectGroup.style.display = "none";
+                    sambert_voiceSelectGroup.style.display = "none";
+                    if(providerSelect.value ==='Edge TTS'){
+                        voiceSelectGroup.style.display = "block";
+                    }
+                    else if(providerSelect.value ==='阿里百炼cosyvice'){
+                        aliApiKeyGroup.style.display = "block";
+                        ali_voiceSelectGroup.style.display = "block";
+                    }
+                    else if(providerSelect.value ==='阿里百炼sambert'){
+                        aliApiKeyGroup.style.display = "block";
+                        sambert_voiceSelectGroup.style.display = "block";
+                    }
+                }
+                toggleProviderSettings();
+                providerSelect.addEventListener('change',toggleProviderSettings);
+        }
+        );
+    </script>
+</body>
+</html>
