@@ -1,8 +1,12 @@
 {
     "provider": "GPTvts本地推理",
     "edge_tts_voice": "zh-CN-XiaoxiaoNeural",
-    "device": "CABLE Input (VB-Audio Virtual Cable)",
+    "device": "耳机 (High Definition Audio Device)",
     "ali_tts_voice": "龙婉-普通话-语音助手、导航播报、聊天数字人",
     "sambert_tts_voice": "知琪-温柔女声-通用场景",
-    "ali_api_key": "sk-63faf5681b274971980db19b2def3589"
+    "ali_api_key": "",
+    "GPTvts_character": "温迪",
+    "GPTvts_emotion": "中立_neutral",
+    "GPTvts_sample": "【中立_neutral】不过，并不是琴的问题，而是琴弦——.wav",
+    "GPTvts_speed_factor": "1"
 }

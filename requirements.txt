@@ -4,3 +4,5 @@ comtypes
 edge-tts
 python-osc
 quart
+httpx
+dashscope

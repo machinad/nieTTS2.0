@@ -1,16 +1,12 @@
 from quart import Quart,render_template,request,jsonify
 import os
-import asyncio
 import win32com.client
 import edge_tts
 import uuid
 import pygame
 import json
-import time
-import requests
 import httpx
 import subprocess
-import threading
 from pythonosc import udp_client
 from pathlib import Path
 import dashscope 
@@ -99,19 +95,23 @@ class TTSWebApp:
             "Waan-泰语女声-通用场景":"sambert-waan-v1"
         }
         self.local_tts_process = None
-        local_interpreter_path = r'e:\GPT-SoVITS-v4-20250422fix\runtime\python.exe'
-        local_script_path = r'e:\GPT-SoVITS-v4-20250422fix\api_v2.py'
-        local_script_cwd = r'e:\GPT-SoVITS-v4-20250422fix'
+        self.GPTvts_voices_path = Path("./GPTvts_voices").resolve()
+        self.GPTvts_path = Path("./GPTvts").resolve()
+        self.GPTvts_path.parent.mkdir(parents=True, exist_ok=True)#
+        self.GPTvts_voices_path.parent.mkdir(parents=True, exist_ok=True)
+        self.local_interpreter_path = os.path.join(self.GPTvts_path, "GPT-SoVITS-v4-20250422fix",'runtime', 'python.exe')
+        self.local_script_path = os.path.join(self.GPTvts_path, "GPT-SoVITS-v4-20250422fix",'api_v2.py')
+        self.local_script_cwd = os.path.join(self.GPTvts_path, "GPT-SoVITS-v4-20250422fix")
         try:
             self.local_tts_process = subprocess.Popen(
                 [
-                    local_interpreter_path,
-                    local_script_path,
+                    self.local_interpreter_path,
+                    self.local_script_path,
                     '-a', '127.0.0.1',
                     '-p', '9880',
                     '-c', 'GPT_SoVITS/configs/tts_infer.yaml'
                 ],
-                cwd=local_script_cwd,
+                cwd=self.local_script_cwd,
                 creationflags=subprocess.CREATE_NEW_CONSOLE if os.name == 'nt' else 0,
             )
             if self.local_tts_process.poll() is not None:
@@ -122,19 +122,6 @@ class TTSWebApp:
                 self.local_tts_process = None
             else:
                 print("本地 TTS 服务脚本已启动。")
-                def monitor_output(process):
-                    while process and process.poll() is None:
-                        try:
-                            output = process.stdout.readline()
-                            if output:
-                                print(f"[GPTvts] {output.strip()}")
-                            error = process.stderr.readline()
-                            if error:
-                                print(f"[GPTvts Error] {error.strip()}")
-                        except Exception as e:
-                            print(f"监控输出时出错: {e}")
-                            break
-                threading.Thread(target=monitor_output, args=(self.local_tts_process,), daemon=True).start()
         except Exception as e:
             print(f"启动本地TTS服务失败: {e}")
             self.local_tts_process = None
@@ -152,19 +139,6 @@ class TTSWebApp:
         self.setup_routes()
         self.osc_client = udp_client.SimpleUDPClient("127.0.0.1", 9000)
     os.makedirs('templates', exist_ok=True) 
-    def cleanup(self):
-        """
-        清理
-        """
-        if self.local_tts_process and self.local_tts_process.poll() is None:
-            print("正在终止本地 TTS 服务脚本...")
-            self.local_tts_process.terminate()
-            try:
-                self.local_tts_process.wait(timeout=5) # 等待子进程终止
-                print("本地 TTS 服务脚本已终止。")
-            except subprocess.TimeoutExpired:
-                print("本地 TTS 服务脚本未在规定时间内终止，强制杀死。")
-                self.local_tts_process.kill()
     def load_config(self):
         """
         加载配置
@@ -175,7 +149,11 @@ class TTSWebApp:
             "device":"默认设备",
             "ali_tts_voice":"龙婉-普通话-语音助手、导航播报、聊天数字人",
             "sambert_tts_voice":"知婧-严厉女声-通用场景",
-            "ali_api_key":""
+            "ali_api_key":"",
+            "GPTvts_character": "",
+            "GPTvts_emotion": "",
+            "GPTvts_sample": "",
+            "GPTvts_speed_factor":1
         }
         if self.config_file.exists():
             try:
@@ -203,6 +181,7 @@ class TTSWebApp:
         """
         self.app.route('/')(self.index)
         self.app.route('/tts', methods=['POST'])(self.tts_endpoint)
+        self.app.route("/get_voice_list")(self.get_voice_list)
     async def index(self):
         """
         /,主页
@@ -226,7 +205,11 @@ class TTSWebApp:
                 "edge_tts_voice":"zh-CN-XiaoxiaoNeural",
                 "ali_api_key":"sk-xxxxxxxxxxxxxxx",
                 "ali_tts_voice":"龙婉-普通话-语音助手、导航播报、聊天数字人",
-                "sambert_tts_voice":"知婧-严厉女声-通用场景"
+                "sambert_tts_voice":"知婧-严厉女声-通用场景",
+                "GPTvts_character": "温迪",
+                "GPTvts_emotion": "开心_happy",
+                "GPTvts_sample": "【开心_happy】…凯亚是个不好应付的人啊，不过免费的酒真好喝。.wav"
+                "GPTvts_speed_factor":1
             };
     """
     async def tts_endpoint(self):
@@ -242,7 +225,11 @@ class TTSWebApp:
             "device":data.get("device",self.user_config.get("device")),
             "ali_tts_voice":data.get("ali_tts_voice",self.user_config.get("ali_tts_voice")),
             "sambert_tts_voice":data.get("sambert_tts_voice",self.user_config.get("sambert_tts_voice")),
-            "ali_api_key":data.get("ali_api_key",self.user_config.get("ali_api_key"))
+            "ali_api_key":data.get("ali_api_key",self.user_config.get("ali_api_key")),
+            "GPTvts_character": data.get("GPTvts_character", "温迪"),
+            "GPTvts_emotion": data.get("GPTvts_emotion", "开心_happy"),
+            "GPTvts_sample": data.get("GPTvts_sample", ""),
+            "GPTvts_speed_factor":data.get("GPTvts_speed_factor", 1.0)
         }
         self.save_config(config_to_save)
         self.user_config = config_to_save
@@ -326,6 +313,9 @@ class TTSWebApp:
                 os.remove(temp_file)
                 print(f"已清理临时文件: {temp_file}")
                 return jsonify({'status':'success','message': '转换并播放完成'})
+    async def get_voice_list(self):
+        voice_list = self.scan_voice_folders(self.GPTvts_voices_path)
+        return jsonify(voice_list)
     async def play_audio(self, audio_file):
         """
         播放音频文件
@@ -402,12 +392,18 @@ class TTSWebApp:
             return False
     async def use_GPTvts(self,data,temp_file):
         url = "http://127.0.0.1:9880/tts"
+        ref_audio_path = os.path.join(self.GPTvts_voices_path, data.get("GPTvts_character"),data.get("GPTvts_emotion"),data.get("GPTvts_sample"))
+        ref_audio = data.get("GPTvts_sample")
+        start_index = ref_audio.find("】")+1
+        end_index = ref_audio.find(".wav")
+        extracted_text = ref_audio[start_index:end_index]
+        print("使用GPTvts模型服务转换文本，当前模型为"+ref_audio_path)
         json = {
             "text": data.get("text",""),
             "text_lang": "zh",
-            "ref_audio_path": r"E:\GPT-SoVITS-v4-20250422fix\ck\【开心_happy】…我也随便吃点就好，吃完还得继续赶路。.wav",
+            "ref_audio_path": ref_audio_path,
             "aux_ref_audio_paths": [],
-            "prompt_text": "我也随便吃点就好，吃完还得继续赶路。",
+            "prompt_text": extracted_text,
             "prompt_lang": "zh",
             "top_k": 5,
             "top_p": 1,
@@ -416,7 +412,7 @@ class TTSWebApp:
             "batch_size": 1,
             "batch_threshold": 0.75,
             "split_bucket": True,
-            "speed_factor":1.0,
+            "speed_factor":data.get("GPTvts_speed_factor",1),
             "streaming_mode": False,
             "seed": -1,
             "parallel_infer": True,
@@ -427,7 +423,7 @@ class TTSWebApp:
         headers = {"Content-Type": "application/json"}
         async with httpx.AsyncClient() as client:
             try:
-                response = await client.post(url, json=json, headers=headers)
+                response = await client.post(url, json=json, headers=headers,timeout=120)
             except Exception as e:
                 print(f"请求GPTvts服务失败: {e}")
                 return False
@@ -453,6 +449,47 @@ class TTSWebApp:
         设置音频输出设备
         """
         self.current_device = device
+    def scan_voice_folders(self,path):
+        """
+        扫描语音文件夹
+        """
+        voices_path = path
+        voices_list = []
+        for character_dir in voices_path.iterdir():
+            if character_dir.is_dir():
+                character_name = character_dir.name
+                emotions = []
+            
+            # 遍历第二层目录（情感文件夹）
+            for emotion_dir in character_dir.iterdir():
+                if emotion_dir.is_dir():
+                    emotion_name = emotion_dir.name
+                    # 获取情感文件夹中的音频文件
+                    audio_files = [f.name for f in emotion_dir.iterdir() if f.suffix.lower() in ('.wav', '.mp3')]
+                    if audio_files:
+                        emotions.append({
+                            "emotion": emotion_name,
+                            "samples": audio_files
+                        })
+            if emotions:
+                voices_list.append({
+                    "character": character_name,
+                    "emotions": emotions
+                })
+        return voices_list
+    def cleanup(self):
+        """
+        清理
+        """
+        if self.local_tts_process and self.local_tts_process.poll() is None:
+            print("正在终止本地 TTS 服务脚本...")
+            self.local_tts_process.terminate()
+            try:
+                self.local_tts_process.wait(timeout=5) # 等待子进程终止
+                print("本地 TTS 服务脚本已终止。")
+            except subprocess.TimeoutExpired:
+                print("本地 TTS 服务脚本未在规定时间内终止，强制杀死。")
+                self.local_tts_process.kill()
     def run(self,host,port):
         try:
             self.app.run(host=host,port=port)

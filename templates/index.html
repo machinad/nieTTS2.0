@@ -272,6 +272,29 @@
                                 {% endfor %}
                             </select>
                         </div>
+                        <div class="form-group" id="characterSelectGroup">
+                            <label for="characterSelect" class="form-label">角色选择</label>
+                            <select id="characterSelect" class="form-select" onchange="updateEmotions()">
+                                <option value="">选择角色</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="emotionSelectGroup">
+                            <label for="emotionSelect" class="form-label">语气</label>
+                            <select id="emotionSelect" class="form-select" onchange="updateSamples()">
+                                <option value="">选择情感</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="sampleSelectGroup">
+                            <label for="sampleSelect" class="form-label">声音样本</label>
+                            <select id="sampleSelect" class="form-select">
+                                <option value="">选择音频样本</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="speedFactorSliderGroup">
+                            <label for="speedFactorSlider" class="form-label">语速因子 (0-1):</label>
+                            <input type="range" class="form-range" id="speedFactorSlider" min="0" max="1" step="0.01" value={{user_config.GPTvts_speed_factor}}>
+                            <span id="speedFactorValue">1.0</span> <!-- 用于显示当前数值 -->
+                        </div>
                 </details>
             </div>
         </div>
@@ -282,6 +305,9 @@
     </footer>
 
     <script>
+        document.getElementById('speedFactorSlider').addEventListener('input', function() {
+        document.getElementById('speedFactorValue').textContent = this.value;
+        });
         function convertToSpeech() {
             const text = document.getElementById('textInput').value.trim();
             if (!text) {
@@ -296,7 +322,11 @@
                 edge_tts_voice: document.getElementById('voiceSelect').value,
                 ali_api_key: document.getElementById('aliApiKey').value,
                 ali_tts_voice: document.getElementById('ali_voiceSelect').value,
-                sambert_tts_voice: document.getElementById('sambert_voiceSelect').value
+                sambert_tts_voice: document.getElementById('sambert_voiceSelect').value,
+                GPTvts_character: document.getElementById('characterSelect').value,
+                GPTvts_emotion: document.getElementById('emotionSelect').value,
+                GPTvts_sample: document.getElementById('sampleSelect').value,
+                GPTvts_speed_factor:document.getElementById('speedFactorSlider').value
             };
 
             // 添加到日志
@@ -334,17 +364,75 @@
                 convertToSpeech();
             }
         });
+        let voiceData = [];
+        async function loadVoiceList() {
+            try{
+                const response = await fetch('/get_voice_list');
+                voiceData = await response.json();
+                const characterSelect = document.getElementById('characterSelect');
+                characterSelect.innerHTML = '<option value="">选择角色</option>';
+                voiceData.forEach(charcter => {
+                    characterSelect.innerHTML += `<option value="${charcter.character}">${charcter.character}</option>`;
+                });
+            }
+            catch(error){
+                console.error('获取角色列表失败', error);
+            }
+        }
+        function updateEmotions() {
+                const characterSelect = document.getElementById('characterSelect');
+                const emotionSelect = document.getElementById('emotionSelect');
+                const selectedCharacter = characterSelect.value;
+                emotionSelect.innerHTML = '<option value="">选择情感</option>';
+                document.getElementById('sampleSelect').innerHTML = '<option value="">选择音频样本</option>';
+                if (selectedCharacter){
+                    const character = voiceData.find(c => c.character === selectedCharacter);
+                    if(character){
+                        character.emotions.forEach(emotion =>{
+                            emotionSelect.innerHTML += `<option value="${emotion.emotion}">${emotion.emotion}</option>`;
+                        })
+                    }
+                }
+        }
+        function updateSamples() {
+            const characterSelect = document.getElementById('characterSelect');
+            const emotionSelect = document.getElementById('emotionSelect');
+            const sampleSelect = document.getElementById('sampleSelect');
+            const selectedCharacter = characterSelect.value;
+            const selectedEmotion = emotionSelect.value;
+            sampleSelect.innerHTML = '<option value="">选择音频样本</option>';
+            if (selectedCharacter && selectedEmotion) {
+                const character = voiceData.find(c => c.character === selectedCharacter);
+                if (character) {
+                    const emotion = character.emotions.find(e => e.emotion === selectedEmotion);
+                    if (emotion) {
+                        emotion.samples.forEach(sample => {
+                        sampleSelect.innerHTML += `<option value="${sample}">${sample}</option>`;
+                        });
+                     } 
+                }  
+            }
+        }
         document.addEventListener('DOMContentLoaded',function() {
                 const providerSelect = document.getElementById('providerSelect');
                 const voiceSelectGroup = document.getElementById('voiceSelectGroup');
                 const aliApiKeyGroup = document.getElementById('aliApiKeyGroup');
                 const ali_voiceSelectGroup = document.getElementById('ali_voiceSelectGroup');
                 const sambert_voiceSelectGroup = document.getElementById('sambert_voiceSelectGroup');
+                const characterSelectGroup = document.getElementById('characterSelectGroup');
+                const emotionSelectGroup = document.getElementById('emotionSelectGroup');
+                const sampleSelectGroup = document.getElementById('sampleSelectGroup');
+                const speedFactorSliderGroup = document.getElementById('speedFactorSliderGroup');
+                loadVoiceList()
                 function toggleProviderSettings(){
                     voiceSelectGroup.style.display = "none";
                     aliApiKeyGroup.style.display = "none";
                     ali_voiceSelectGroup.style.display = "none";
                     sambert_voiceSelectGroup.style.display = "none";
+                    characterSelectGroup.style.display = "none";
+                    emotionSelectGroup.style.display = "none";
+                    sampleSelectGroup.style.display = "none";
+                    speedFactorSliderGroup.style.display = "none";
                     if(providerSelect.value ==='Edge TTS'){
                         voiceSelectGroup.style.display = "block";
                     }
@@ -355,6 +443,12 @@
                     else if(providerSelect.value ==='阿里百炼sambert'){
                         aliApiKeyGroup.style.display = "block";
                         sambert_voiceSelectGroup.style.display = "block";
+                    }
+                    else if(providerSelect.value ==='GPTvts本地推理'){
+                        characterSelectGroup.style.display = "block";
+                        emotionSelectGroup.style.display = "block";
+                        sampleSelectGroup.style.display = "block";
+                        speedFactorSliderGroup.style.display = "block";
                     }
                 }
                 toggleProviderSettings();
