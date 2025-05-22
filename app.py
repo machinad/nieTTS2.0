@@ -15,6 +15,14 @@ from dashscope.audio.tts_v2 import SpeechSynthesizer as SpeechSynthesizerV2
 from dashscope.audio.tts import SpeechSynthesizer as SpeechSynthesizerV1
 class TTSWebApp:
     def __init__(self):
+        self.text_split_method = {
+            "不切":"cut0",
+            "凑四句一切":"cut1",
+            "凑50字一切":"cut2",
+            "按中文句号。切":"cut3",
+            "按英文句号.切":"cut4",
+            "按标点符号切":"cut5"
+        }
         self.Edge_TTS_voices = [
             # 女声
             "zh-CN-XiaoxiaoNeural",  # Female, News/Novel, Warm
@@ -171,7 +179,9 @@ class TTSWebApp:
             "GPTvts_character": "",
             "GPTvts_emotion": "",
             "GPTvts_sample": "",
-            "GPTvts_speed_factor":1
+            "GPTvts_speed_factor":1,
+            "GPTvts_temperature_factor":1,
+            "GPTvts_text_split_method":"按中文句号。切"
         }
         if self.config_file.exists():
             try:
@@ -212,7 +222,8 @@ class TTSWebApp:
                                     audio_devices=audio_devices,
                                     ali_tts_voices=list(self.ali_tts_voices.keys()),
                                     sambert_tts_voices=list(self.sambert_tts_voices.keys()),
-                                    user_config = self.user_config
+                                    user_config = self.user_config,
+                                    text_split_method = list(self.text_split_method.keys())
                                     )
     """
     返回格式
@@ -228,6 +239,8 @@ class TTSWebApp:
                 "GPTvts_emotion": "开心_happy",
                 "GPTvts_sample": "【开心_happy】…凯亚是个不好应付的人啊，不过免费的酒真好喝。.wav"
                 "GPTvts_speed_factor":1
+                "GPTvts_temperature_factor":1
+                "GPTvts_text_split_method":"按中文句号。切"
             };
     """
     async def tts_endpoint(self):
@@ -247,7 +260,9 @@ class TTSWebApp:
             "GPTvts_character": data.get("GPTvts_character", "温迪"),
             "GPTvts_emotion": data.get("GPTvts_emotion", "开心_happy"),
             "GPTvts_sample": data.get("GPTvts_sample", ""),
-            "GPTvts_speed_factor":data.get("GPTvts_speed_factor", 1.0)
+            "GPTvts_speed_factor":data.get("GPTvts_speed_factor", 1.0),
+            "GPTvts_temperature_factor":data.get("GPTvts_temperature_factor", 1.0),
+            "GPTvts_text_split_method":data.get("GPTvts_text_split_method", "按中文句号。切")
         }
         self.save_config(config_to_save)
         self.user_config = config_to_save
@@ -414,6 +429,7 @@ class TTSWebApp:
         ref_audio = data.get("GPTvts_sample")
         start_index = ref_audio.find("】")+1
         end_index = ref_audio.find(".wav")
+        text_split_method = self.text_split_method.get(data.get("GPTvts_text_split_method","按中文句号。切"))
         extracted_text = ref_audio[start_index:end_index]
         print("使用GPTvts模型服务转换文本，当前模型为"+ref_audio_path)
         json = {
@@ -423,14 +439,14 @@ class TTSWebApp:
             "aux_ref_audio_paths": [],
             "prompt_text": extracted_text,
             "prompt_lang": "zh",
-            "top_k": 5,
-            "top_p": 1,
-            "temperature": 1,
-            "text_split_method": "cut3",
+            "top_k":5,
+            "top_p":1,
+            "temperature":float(data.get("GPTvts_temperature_factor",1)),
+            "text_split_method":text_split_method,
             "batch_size": 1,
             "batch_threshold": 0.75,
             "split_bucket": True,
-            "speed_factor":data.get("GPTvts_speed_factor",1),
+            "speed_factor":float(data.get("GPTvts_speed_factor",1)),
             "streaming_mode": False,
             "seed": -1,
             "parallel_infer": True,
@@ -441,6 +457,7 @@ class TTSWebApp:
         headers = {"Content-Type": "application/json"}
         async with httpx.AsyncClient() as client:
             try:
+                print(f"正在请求GPTvts服务{json}")
                 response = await client.post(url, json=json, headers=headers,timeout=120)
             except Exception as e:
                 print(f"请求GPTvts服务失败: {e}")

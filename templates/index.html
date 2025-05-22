@@ -67,6 +67,14 @@
         }
         
         .form-control, .form-select {
+            width: 100%;/* 宽度设置为100% */
+            padding: 0.8rem 1rem;/* 内边距设置为0.8rem 1rem */
+            border: 1px solid #d1d3e2;/* 边框设置为1px的实线 */
+            border-radius: var(--border-radius);/* 圆角设置为var(--border-radius) */
+            font-size: 1rem;/* 字体大小设置为1rem */
+            transition: var(--transition);/* 过渡效果设置为var(--transition) */
+        }
+        .form-rang {
             width: 100%;
             padding: 0.8rem 1rem;
             border: 1px solid #d1d3e2;
@@ -291,9 +299,35 @@
                             </select>
                         </div>
                         <div class="form-group" id="speedFactorSliderGroup">
-                            <label for="speedFactorSlider" class="form-label">语速因子 (0-1):</label>
-                            <input type="range" class="form-range" id="speedFactorSlider" min="0" max="1" step="0.01" value={{user_config.GPTvts_speed_factor}}>
-                            <span id="speedFactorValue">1.0</span> <!-- 用于显示当前数值 -->
+                            <div style="display: flex; justify-content: space-between; gap: 20px;">
+                                <div class="form-group" style="display: inline; width: 100%;" >
+                                    <div style="display: block; align-items: center; margin-bottom: 8px;">
+                                        <label for="speedFactorSlider" class="form-label">语速因子</label>
+                                        <span id="speedFactorValue">{{user_config.GPTvts_speed_factor}}</span>
+                                    </div>
+                                    <input type="range" class="form-rang" id="speedFactorSlider" min="0.6" max="1.65" step="0.05" value={{user_config.GPTvts_speed_factor}}>
+                                </div>
+                                <div class="form-group" style="display: inline; width: 100%">
+                                    <div style="display: block; align-items: center; margin-bottom: 8px;">
+                                        <label for="temperatureFactorSlider" class="form-label">温度</label>
+                                        <span id="temperatureFactorValue">{{user_config.GPTvts_temperature_factor}}</span>
+                                    </div>
+                                    <input type="range" class="form-rang" id="temperatureFactorSlider" min="0" max="1" step="0.05" value={{user_config.GPTvts_temperature_factor}}>
+                                </div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; gap: 20px;">
+                                <div class="form-group" style="display: inline; width: 100%;" >
+                                        <label for="text_split_methodSelect" class="form-label">文字切片类型选择</label>
+                                        <select class="form-select" id="text_split_methodSelect">
+                                            {% for type in text_split_method %}
+                                            <option value="{{ type }}" {% if type == user_config.GPTvts_text_split_method %}selected{% endif %}>{{ type }}</option>
+                                            {% endfor %}
+                                        </select>
+                                </div>
+                                <div class="form-group" style="display: inline; width: 100%">
+                                    
+                                </div>
+                            </div>
                         </div>
                 </details>
             </div>
@@ -307,6 +341,9 @@
     <script>
         document.getElementById('speedFactorSlider').addEventListener('input', function() {
         document.getElementById('speedFactorValue').textContent = this.value;
+        });
+        document.getElementById('temperatureFactorSlider').addEventListener('input', function() {
+        document.getElementById('temperatureFactorValue').textContent = this.value;
         });
         function convertToSpeech() {
             const text = document.getElementById('textInput').value.trim();
@@ -326,7 +363,9 @@
                 GPTvts_character: document.getElementById('characterSelect').value,
                 GPTvts_emotion: document.getElementById('emotionSelect').value,
                 GPTvts_sample: document.getElementById('sampleSelect').value,
-                GPTvts_speed_factor:document.getElementById('speedFactorSlider').value
+                GPTvts_speed_factor:document.getElementById('speedFactorSlider').value,
+                GPTvts_temperature_factor:document.getElementById('temperatureFactorSlider').value,
+                GPTvts_text_split_method:document.getElementById('text_split_methodSelect').value
             };
 
             // 添加到日志
