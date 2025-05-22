@@ -7,6 +7,7 @@ import pygame
 import json
 import httpx
 import subprocess
+import socket
 from pythonosc import udp_client
 from pathlib import Path
 import dashscope 
@@ -95,13 +96,30 @@ class TTSWebApp:
             "Waan-泰语女声-通用场景":"sambert-waan-v1"
         }
         self.local_tts_process = None
+        base_path = Path(__file__).parent.resolve()
         self.GPTvts_voices_path = Path("./GPTvts_voices").resolve()
         self.GPTvts_path = Path("./GPTvts").resolve()
-        self.GPTvts_path.parent.mkdir(parents=True, exist_ok=True)#
-        self.GPTvts_voices_path.parent.mkdir(parents=True, exist_ok=True)
+        self.savePath = Path("./save").resolve()
         self.local_interpreter_path = os.path.join(self.GPTvts_path, "GPT-SoVITS-v4-20250422fix",'runtime', 'python.exe')
         self.local_script_path = os.path.join(self.GPTvts_path, "GPT-SoVITS-v4-20250422fix",'api_v2.py')
         self.local_script_cwd = os.path.join(self.GPTvts_path, "GPT-SoVITS-v4-20250422fix")
+        print(f"尝试创建目录{self.GPTvts_path}")
+        try:
+            self.GPTvts_path.mkdir(parents=True, exist_ok=True)
+            print(f"目录{self.GPTvts_path}已创建或已存在")
+        except Exception as e:
+            print(f"创建目录{self.GPTvts_path}失败: {e}")
+        print(f"尝试创建目录{self.GPTvts_voices_path}")
+        try:
+            self.GPTvts_voices_path.mkdir(parents=True, exist_ok=True)
+            print(f"目录{self.GPTvts_voices_path}已创建或已存在")
+        except Exception as e:
+            print(f"创建目录{self.GPTvts_voices_path}失败: {e}")
+        try:
+            self.savePath.mkdir(parents=True, exist_ok=True)
+            print(f"目录{self.savePath}已创建或已存在")
+        except Exception as e:
+            print(f"创建目录{self.savePath}失败: {e}")
         try:
             self.local_tts_process = subprocess.Popen(
                 [
@@ -135,7 +153,7 @@ class TTSWebApp:
             "阿里百炼sambert",
             "GPTvts本地推理"
         ]
-        self.savePath = Path("./save")
+        
         self.setup_routes()
         self.osc_client = udp_client.SimpleUDPClient("127.0.0.1", 9000)
     os.makedirs('templates', exist_ok=True) 
@@ -408,7 +426,7 @@ class TTSWebApp:
             "top_k": 5,
             "top_p": 1,
             "temperature": 1,
-            "text_split_method": "cut0",
+            "text_split_method": "cut3",
             "batch_size": 1,
             "batch_threshold": 0.75,
             "split_bucket": True,
@@ -496,5 +514,18 @@ class TTSWebApp:
         finally:
             self.cleanup()
 if __name__ == '__main__': 
+    host = os.environ.get('APP_HOST', '0.0.0.0') # 默认绑定到所有接口
+    port = int(os.environ.get('APP_PORT', 1145)) # 默认端口 1145
     app = TTSWebApp()
-    app.run(host='0.0.0.0', port=1145)
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80)) # 连接到一个外部地址以获取本机IP
+        local_ip = s.getsockname()[0]
+        s.close()
+        print(f"本机局域网 IP 地址: {local_ip}:{port}")
+    except Exception as e:
+        print(f"无法获取本机局域网 IP 地址: {e}")
+        local_ip = "未知"
+
+    print(f"正在启动应用，监听地址: {host}:{port}")
+    app.run(host=host, port=port)

@@ -239,7 +239,7 @@
                             <label for="providerSelect" class="form-label">TTS服务商</label>
                             <select class="form-select" id="providerSelect">
                                 {% for provider in providers %}
-                                <option value="{{ provider }}" {% if device == user_config.provider %}selected{% endif %}>{{ provider }}</option>
+                                <option value="{{ provider }}" {% if provider == user_config.provider %}selected{% endif %}>{{ provider }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -248,7 +248,7 @@
                             <label for="voiceSelect" class="form-label">语音选择</label>
                             <select class="form-select" id="voiceSelect">
                                 {% for voice in edge_tts_voices %}
-                                <option value="{{ voice }}" {% if device == user_config.edge_tts_voice %}selected{% endif %}>{{ voice }}</option>
+                                <option value="{{ voice }}" {% if voice == user_config.edge_tts_voice %}selected{% endif %}>{{ voice }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -260,7 +260,7 @@
                             <label for="ali_voiceSelect" class="form-label">语音选择</label>
                             <select class="form-select" id="ali_voiceSelect">
                                 {% for voice in ali_tts_voices %}
-                                <option value="{{ voice }}" {% if device == user_config.ali_tts_voice %}selected{% endif %}>{{ voice }}</option>
+                                <option value="{{ voice }}" {% if voice == user_config.ali_tts_voice %}selected{% endif %}>{{ voice }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -268,7 +268,7 @@
                             <label for="sambert_voiceSelect" class="form-label">语音选择</label>
                             <select class="form-select" id="sambert_voiceSelect">
                                 {% for voice in sambert_tts_voices %}
-                                <option value="{{ voice }}" {% if device == user_config.sambert_tts_voice %}selected{% endif %}>{{ voice }}</option>
+                                <option value="{{ voice }}" {% if voice == user_config.sambert_tts_voice %}selected{% endif %}>{{ voice }}</option>
                                 {% endfor %}
                             </select>
                         </div>
