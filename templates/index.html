@@ -90,17 +90,17 @@
         }
         
         .btn-primary {
-            display: inline-block;
-            width: 100%;
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 1rem;
-            font-size: 1rem;
-            font-weight: 600;
-            border-radius: var(--border-radius);
-            cursor: pointer;
-            transition: var(--transition);
+            display: inline-block;/* 内联块元素 */
+            width: 100%;/* 宽度设置为100% */
+            background-color: var(--primary-color);/* 背景颜色设置为var(--primary-color) */
+            color: white;/* 文字颜色设置为white */
+            border: none;/* 边框设置为none */
+            padding: 1rem;/* 内边距设置为1rem */
+            font-size: 1rem;/* 字体大小设置为1rem */
+            font-weight: 600;/* 字体加粗 */
+            border-radius: var(--border-radius);/* 圆角设置为var(--border-radius) */
+            cursor: pointer;/* 鼠标指针设置为pointer */
+            transition: var(--transition);/* 过渡效果设置为var(--transition) */
         }
         
         .btn-primary:hover {
@@ -108,7 +108,26 @@
             transform: translateY(-2px) scale(1.02);
             box-shadow: 0 6px 12px rgba(255, 182, 193, 0.3);
         }
+        .btn-tts-start  {
+            display: inline-block;/* 内联块元素 */
+            width: 100%;/* 宽度设置为100% */
+            height: 100%;/* 高度设置为100% */;
+            background-color: #ff3636;/* 背景颜色设置为var(--primary-color) */
+            color: white;/* 文字颜色设置为white */
+            border: none;/* 边框设置为none */
+            padding: 1rem;/* 内边距设置为1rem */
+            font-size: 1rem;/* 字体大小设置为1rem */
+            font-weight: 600;/* 字体加粗 */
+            border-radius: var(--border-radius);/* 圆角设置为var(--border-radius) */
+            cursor: pointer;/* 鼠标指针设置为pointer */
+            transition: var(--transition);/* 过渡效果设置为var(--transition) */
+        }
         
+        .btn-tts-start:hover {
+            background-color: #fd7194;
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 12px rgba(255, 182, 193, 0.3);
+        }
         .mt-3 {
             margin-top: 1rem !important;
         }
@@ -301,18 +320,28 @@
                         <div class="form-group" id="speedFactorSliderGroup">
                             <div style="display: flex; justify-content: space-between; gap: 20px;">
                                 <div class="form-group" style="display: inline; width: 100%;" >
-                                    <div style="display: block; align-items: center; margin-bottom: 8px;">
-                                        <label for="speedFactorSlider" class="form-label">语速因子</label>
-                                        <span id="speedFactorValue">{{user_config.GPTvts_speed_factor}}</span>
+                                    <div style="display: flex; align-items: center;height: 15%;">启动本地推理服务</div>
+                                    <div style="height: 80%; display: flex; align-items: center;">
+                                        <button id="btn_tts_start" class="btn btn-tts-start" onclick="onTtsStart()">
+                                            <i class="bi bi-soundwave me-2"></i>本地推理，启动！
+                                        </button>
                                     </div>
-                                    <input type="range" class="form-rang" id="speedFactorSlider" min="0.6" max="1.65" step="0.05" value={{user_config.GPTvts_speed_factor}}>
                                 </div>
-                                <div class="form-group" style="display: inline; width: 100%">
-                                    <div style="display: block; align-items: center; margin-bottom: 8px;">
-                                        <label for="temperatureFactorSlider" class="form-label">温度</label>
-                                        <span id="temperatureFactorValue">{{user_config.GPTvts_temperature_factor}}</span>
+                                <div class="form-group" style="display: inline; width: 100%;" >
+                                    <div class="form-group" style="display: block; width: 100%;" >
+                                        <div style="display: block; align-items: center; margin-bottom: 8px;">
+                                            <label for="speedFactorSlider" class="form-label">语速因子</label>
+                                            <span id="speedFactorValue">{{user_config.GPTvts_speed_factor}}</span>
+                                        </div>
+                                        <input type="range" class="form-rang" id="speedFactorSlider" min="0.6" max="1.65" step="0.05" value={{user_config.GPTvts_speed_factor}}>
                                     </div>
-                                    <input type="range" class="form-rang" id="temperatureFactorSlider" min="0" max="1" step="0.05" value={{user_config.GPTvts_temperature_factor}}>
+                                    <div class="form-group" style="display: block; width: 100%">
+                                        <div style="display: block; align-items: center; margin-bottom: 8px;">
+                                            <label for="temperatureFactorSlider" class="form-label">温度</label>
+                                            <span id="temperatureFactorValue">{{user_config.GPTvts_temperature_factor}}</span>
+                                        </div>
+                                        <input type="range" class="form-rang" id="temperatureFactorSlider" min="0" max="1" step="0.05" value={{user_config.GPTvts_temperature_factor}}>
+                                    </div>
                                 </div>
                             </div>
                             <div style="display: flex; justify-content: space-between; gap: 20px;">
@@ -325,7 +354,6 @@
                                         </select>
                                 </div>
                                 <div class="form-group" style="display: inline; width: 100%">
-                                    
                                 </div>
                             </div>
                         </div>
@@ -345,6 +373,66 @@
         document.getElementById('temperatureFactorSlider').addEventListener('input', function() {
         document.getElementById('temperatureFactorValue').textContent = this.value;
         });
+        function check_GPTvts_is_open() {
+                fetch('/check_GPTvts_is_open')
+                  .then(response => response.json())
+                  .then(data => {
+                        if (data.status === 'tts_open') {
+                            const btn = document.getElementById('btn_tts_start');
+                            btn.innerHTML = '运行中';
+                            btn.style.backgroundColor = '#3baf05';
+                        }
+                        else if (data.status === 'tts_close') {
+                            const btn = document.getElementById('btn_tts_start');
+                            btn.innerHTML = '本地推理，启动！';
+                            btn.style.backgroundColor = '#ff3636';
+                        }
+                  })
+        }
+        function onTtsStart() {
+                const btn = document.getElementById('btn_tts_start');
+                btn.disabled = true;
+
+                //btn.style.backgroundColor = '#0076d6';
+                //btn.innerHTML = '启动中...';
+                fetch('/check_GPTvts_is_open')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'tts_close') {
+                            btn.innerHTML = '启动中';
+                            btn.style.backgroundColor = '#0076d6';
+                            fetch('/GPTvts_tts_start')
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.status === 'tts_open') {
+                                        btn.innerHTML = '运行中';
+                                        btn.style.backgroundColor = '#3baf05';
+                                        btn.disabled = false;
+                                    } else {
+                                        alert('本地推理服务启动失败');
+                                    }
+                                })
+                        } 
+                        else if (data.status === 'tts_open') {
+                            btn.innerHTML = '关闭中';
+                            btn.style.backgroundColor = '#0076d6';
+                            fetch('/GPTvts_tts_start')
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.status === 'tts_close') {
+                                        btn.innerHTML = '已关闭';
+                                        btn.style.backgroundColor = '#ff3636';
+                                        btn.disabled = false;
+                                    } else {
+                                        alert('本地推理服务启动失败');
+                                    }
+                                })
+                        }
+                        else {
+                            alert('本地推理服务启动失败');
+                        }
+                    }) 
+        }
         function convertToSpeech() {
             const text = document.getElementById('textInput').value.trim();
             if (!text) {
@@ -463,6 +551,7 @@
                 const sampleSelectGroup = document.getElementById('sampleSelectGroup');
                 const speedFactorSliderGroup = document.getElementById('speedFactorSliderGroup');
                 loadVoiceList()
+                check_GPTvts_is_open()
                 function toggleProviderSettings(){
                     voiceSelectGroup.style.display = "none";
                     aliApiKeyGroup.style.display = "none";

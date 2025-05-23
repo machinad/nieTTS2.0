@@ -5,14 +5,18 @@ import edge_tts
 import uuid
 import pygame
 import json
+import queue
+import threading
 import httpx
 import subprocess
 import socket
+import atexit
 from pythonosc import udp_client
 from pathlib import Path
 import dashscope 
 from dashscope.audio.tts_v2 import SpeechSynthesizer as SpeechSynthesizerV2
 from dashscope.audio.tts import SpeechSynthesizer as SpeechSynthesizerV1
+import time
 class TTSWebApp:
     def __init__(self):
         self.text_split_method = {
@@ -104,20 +108,18 @@ class TTSWebApp:
             "Waan-泰语女声-通用场景":"sambert-waan-v1"
         }
         self.local_tts_process = None
-        base_path = Path(__file__).parent.resolve()
         self.GPTvts_voices_path = Path("./GPTvts_voices").resolve()
         self.GPTvts_path = Path("./GPTvts").resolve()
         self.savePath = Path("./save").resolve()
+        self.GPTvts_modelPath = Path("./models").resolve()
         self.local_interpreter_path = os.path.join(self.GPTvts_path, "GPT-SoVITS-v4-20250422fix",'runtime', 'python.exe')
         self.local_script_path = os.path.join(self.GPTvts_path, "GPT-SoVITS-v4-20250422fix",'api_v2.py')
         self.local_script_cwd = os.path.join(self.GPTvts_path, "GPT-SoVITS-v4-20250422fix")
-        print(f"尝试创建目录{self.GPTvts_path}")
         try:
             self.GPTvts_path.mkdir(parents=True, exist_ok=True)
             print(f"目录{self.GPTvts_path}已创建或已存在")
         except Exception as e:
             print(f"创建目录{self.GPTvts_path}失败: {e}")
-        print(f"尝试创建目录{self.GPTvts_voices_path}")
         try:
             self.GPTvts_voices_path.mkdir(parents=True, exist_ok=True)
             print(f"目录{self.GPTvts_voices_path}已创建或已存在")
@@ -129,28 +131,10 @@ class TTSWebApp:
         except Exception as e:
             print(f"创建目录{self.savePath}失败: {e}")
         try:
-            self.local_tts_process = subprocess.Popen(
-                [
-                    self.local_interpreter_path,
-                    self.local_script_path,
-                    '-a', '127.0.0.1',
-                    '-p', '9880',
-                    '-c', 'GPT_SoVITS/configs/tts_infer.yaml'
-                ],
-                cwd=self.local_script_cwd,
-                creationflags=subprocess.CREATE_NEW_CONSOLE if os.name == 'nt' else 0,
-            )
-            if self.local_tts_process.poll() is not None:
-                print(f"启动失败，进程返回码：{self.local_tts_process.poll()}")
-                stderr_output = self.local_tts_process.stderr.read()
-                if stderr_output:
-                    print(f"错误输出：{stderr_output}")
-                self.local_tts_process = None
-            else:
-                print("本地 TTS 服务脚本已启动。")
+            self.GPTvts_modelPath.mkdir(parents=True, exist_ok=True)
+            print(f"目录{self.GPTvts_modelPath}已创建或已存在")
         except Exception as e:
-            print(f"启动本地TTS服务失败: {e}")
-            self.local_tts_process = None
+            print(f"创建目录{self.GPTvts_modelPath}失败: {e}")
         self.config_file = Path("./config.json")
         self.user_config = self.load_config()
         self.app = Quart(__name__)
@@ -164,6 +148,7 @@ class TTSWebApp:
         
         self.setup_routes()
         self.osc_client = udp_client.SimpleUDPClient("127.0.0.1", 9000)
+        atexit.register(self.cleanup)
     os.makedirs('templates', exist_ok=True) 
     def load_config(self):
         """
@@ -210,6 +195,8 @@ class TTSWebApp:
         self.app.route('/')(self.index)
         self.app.route('/tts', methods=['POST'])(self.tts_endpoint)
         self.app.route("/get_voice_list")(self.get_voice_list)
+        self.app.route("/GPTvts_tts_start")(self.GPTvts_tts_start)
+        self.app.route("/check_GPTvts_is_open")(self.check_GPTvts_is_open)
     async def index(self):
         """
         /,主页
@@ -346,6 +333,80 @@ class TTSWebApp:
                 os.remove(temp_file)
                 print(f"已清理临时文件: {temp_file}")
                 return jsonify({'status':'success','message': '转换并播放完成'})
+    async def GPTvts_tts_start(self):
+        """
+        启动GPTvts本地推理服务
+        """
+        try:
+            if self.local_tts_process is not None and self.local_tts_process.poll() is None:
+                print("GPTvts本地推理服务已启动，将关闭GPTvts本地推理服务")
+                self.cleanup()
+                time.sleep(1)
+                return jsonify({"status":"tts_close","message": "GPTvts本地推理服务已关闭"})
+            self.output_queue = queue.Queue()
+            self.local_tts_process = subprocess.Popen(
+                [
+                    self.local_interpreter_path,
+                    self.local_script_path,
+                    '-a', '127.0.0.1',
+                    '-p', '9880',
+                    '-c', 'GPT_SoVITS/configs/tts_infer.yaml'
+                ],
+                cwd=self.local_script_cwd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                bufsize=1,
+                text=True,
+                #creationflags=subprocess.CREATE_NEW_CONSOLE if os.name == 'nt' else 0,
+            )
+            stdout_thread = threading.Thread(target=self.read_output,args=(self.local_tts_process.stdout,self.output_queue))
+            stderr_thread = threading.Thread(target=self.read_output,args=(self.local_tts_process.stderr,self.output_queue))
+            stdout_thread.daemon = True
+            stderr_thread.daemon = True
+            stdout_thread.start()
+            stderr_thread.start()
+            time.sleep(1)
+            start_time = time.time()
+            timout = 60
+            while True:
+                if self.local_tts_process.poll() is not None:
+                    print(f"启动失败，进程返回码：{self.local_tts_process.poll()}")
+                    return jsonify({"status":"error","message": f"启动失败，进程返回码：{self.local_tts_process.poll()}"})
+                try:
+                    async with httpx.AsyncClient() as client:
+                        response = await client.get("http://127.0.0.1:9880/")
+                        response_data = response.json()
+                        if response_data.get("detail") == "Not Found":
+                            print(f"启动成功，进程返回码：{self.local_tts_process.poll()}")
+                            return jsonify({"status":"tts_open","message": f"启动成功，进程返回码：{self.local_tts_process.poll()}"})
+                except Exception:
+                    print(f"等待启动中。。已等待{time.time() - start_time}秒")
+                if time.time() - start_time > timout:
+                    print(f"启动失败，进程返回码：{self.local_tts_process.poll()}")
+                    return jsonify({"status":"error","message": f"启动失败，进程返回码：{self.local_tts_process.poll()}"})
+                time.sleep(1)
+        except Exception as e:
+            print(f"启动本地TTS服务失败: {e}")
+            self.local_tts_process = None
+            return jsonify({"status":"error","message": f"启动本地TTS服务失败: {e}"})
+    async def check_GPTvts_is_open(self):
+        """
+        检查GPTvts本地推理服务是否已启动
+        """
+        if self.local_tts_process is None or self.local_tts_process.poll() is not None:
+            return jsonify({"status":"tts_close","message": "GPTvts本地推理服务未启动"})
+        elif self.local_tts_process is not None and self.local_tts_process.poll() is None:
+            try:
+                async with httpx.AsyncClient() as client:
+                    response = await client.get("http://127.0.0.1:9880/")
+                    response_data = response.json()
+                if response_data.get("detail") == "Not Found":
+                    return jsonify({"status":"tts_open","message": "GPTvts本地推理服务已启动"})
+            except Exception as e:
+                print(f"GPTvts可能正在启动中: {e}")
+                return jsonify({"status":"error","message": f"检查本地TTS服务是否已启动失败: {e}"})
+        else:
+            return jsonify({"status":"error","message": "检查本地TTS服务是否已启动失败"})
     async def get_voice_list(self):
         voice_list = self.scan_voice_folders(self.GPTvts_voices_path)
         return jsonify(voice_list)
@@ -484,6 +545,21 @@ class TTSWebApp:
         设置音频输出设备
         """
         self.current_device = device
+    def read_output(self, pipe, output_queue):
+        try:
+            while True:
+                line = pipe.readline()
+                if not line:
+                    break
+                if isinstance(line, bytes):
+                    line = line.decode('utf-8', errors='replace')
+                line = line.strip()
+                print(print(f"[进程输出] {line}"))
+                output_queue.put(line)
+        except Exception as e:
+            print(f"读取输出时发生错误: {e}")
+        finally:
+            pipe.close()
     def scan_voice_folders(self,path):
         """
         扫描语音文件夹
@@ -516,15 +592,18 @@ class TTSWebApp:
         """
         清理
         """
-        if self.local_tts_process and self.local_tts_process.poll() is None:
-            print("正在终止本地 TTS 服务脚本...")
-            self.local_tts_process.terminate()
+        if self.local_tts_process is not None:
             try:
-                self.local_tts_process.wait(timeout=5) # 等待子进程终止
-                print("本地 TTS 服务脚本已终止。")
-            except subprocess.TimeoutExpired:
-                print("本地 TTS 服务脚本未在规定时间内终止，强制杀死。")
+                if os.name == 'nt':
+                    subprocess.run(["taskkill", "/F", "/T", "/PID", str(self.local_tts_process.pid)],stderr=subprocess.PIPE,stdout=subprocess.PIPE)
+                else:
+                    self.local_tts_process.terminate()
+                self.local_tts_process.wait(timeout=5)
+            except Exception as e:
+                print(f"清理本地TTS服务失败: {e}")
                 self.local_tts_process.kill()
+            finally:
+                self.local_tts_process = None
     def run(self,host,port):
         try:
             self.app.run(host=host,port=port)
