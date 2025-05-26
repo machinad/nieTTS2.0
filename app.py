@@ -1,4 +1,4 @@
-from turtle import isdown
+
 from quart import Quart,render_template,request,jsonify,send_file
 import os
 import win32com.client
@@ -460,7 +460,7 @@ class TTSWebApp:
                 try:
                     response = await client.get(url1)
                     response_data = response.json()
-                except Exception as e:
+                except Exception:
                     return jsonify({"status":"error","message": "本地推理服务没有启动"})
                 if response_data.get("code") == 400:
                     return jsonify({"status":"error","message": "模型不存在"})
@@ -471,7 +471,7 @@ class TTSWebApp:
                 try:
                     response = await client.get(url2)
                     response_data2 = response.json()
-                except Exception as e:
+                except Exception:
                     return jsonify({"status":"error","message": "本地推理服务没有启动"})
                 if response_data.get("code") == 400:
                     return jsonify({"status":"error","message": "模型不存在"})
