@@ -75,12 +75,11 @@
             transition: var(--transition);/* 过渡效果设置为var(--transition) */
         }
         .form-rang {
-            width: 100%;
-            padding: 0.8rem 1rem;
-            border: 1px solid #d1d3e2;
-            border-radius: var(--border-radius);
-            font-size: 1rem;
-            transition: var(--transition);
+            width: 100%;/* 宽度设置为100% */
+            border: 1px solid #d1d3e2;/* 边框设置为1px的实线 */
+            border-radius: var(--border-radius);/* 圆角设置为var(--border-radius) */
+            font-size: 1rem;/* 字体大小设置为1rem */
+            transition: var(--transition);/* 过渡效果设置为var(--transition) */
         }
         
         .form-control:focus, .form-select:focus {
@@ -124,6 +123,26 @@
         }
         
         .btn-tts-start:hover {
+            background-color: #fd7194;
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 12px rgba(255, 182, 193, 0.3);
+        }
+        .btn-seclectModel    {
+            display: inline-block;/* 内联块元素 */
+            width: 100%;/* 宽度设置为100% */
+            height: 100%;/* 高度设置为100% */;
+            background-color: var(--primary-color);/* 背景颜色设置为var(--primary-color) */
+            color: white;/* 文字颜色设置为white */
+            border: none;/* 边框设置为none */
+            padding: 1rem;/* 内边距设置为1rem */
+            font-size: 1rem;/* 字体大小设置为1rem */
+            font-weight: 600;/* 字体加粗 */
+            border-radius: var(--border-radius);/* 圆角设置为var(--border-radius) */
+            cursor: pointer;/* 鼠标指针设置为pointer */
+            transition: var(--transition);/* 过渡效果设置为var(--transition) */
+        }
+        
+        .btn-seclectModel:hover {
             background-color: #fd7194;
             transform: translateY(-2px) scale(1.02);
             box-shadow: 0 6px 12px rgba(255, 182, 193, 0.3);
@@ -227,11 +246,92 @@
             color: #fd7194;
             text-decoration: underline;
         }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+/* 隐藏原始复选框 */
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+/* 滑块外观 */
+        .toggle-switch-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ffa0c0;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+/* 滑块圆形按钮 */
+        .toggle-switch-slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+/* 选中状态 */
+        .toggle-switch input:checked + .toggle-switch-slider {
+            background-color: #88ca31;
+        }
+
+        .toggle-switch input:checked + .toggle-switch-slider:before {
+            transform: translateX(26px);
+        }
+        input[type=range] {
+            -webkit-appearance: none;
+            margin: 0;
+            width: 100%;
+            background: transparent;
+        }
+
+        /* 移除 Focus 时的边框 */
+        input[type=range]:focus {
+            outline: none;
+        }
+
+        /* 轨道样式 */
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 10px;
+            cursor: pointer;
+            background: #ffffff;
+            border-radius: 2px;
+            border: none;
+        }
+
+        /* 滑块样式 */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #ffd7e4;
+            cursor: pointer;
+            margin-top: -5.8px; /* (thumb height - track height) / 2 */
+            border: none;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1 class="mb-4">nieTTS</h1>
+        <h1 class="mb-4">nieTTS2.0</h1>
         
         <div class="row">
             <div class="col-md-12">
@@ -240,7 +340,34 @@
                     <div class="card-body" id="logArea"></div>
                 </div>
             </div>
-
+            <div class="col-md-12">
+                <div class="card" style="padding: 10px; align-items: center;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+                        <div style="display: flex; align-items: center;">
+                            <span style="margin-right: 10px;">是否播放音频</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="isPlayAudio" {% if user_config.isplayaudio %}checked{% endif %}>
+                                <span class="toggle-switch-slider">
+                                    <span class="toggle-switch-inner"></span>
+                                </span>
+                            </label>
+                        </div>
+                        <div style="display: flex; align-items: center;">
+                            <span style="margin-right: 10px;">是否下载</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="isDownload" {% if user_config.isdownload %}checked{% endif %}>
+                                <span class="toggle-switch-slider">
+                                    <span class="toggle-switch-inner"></span>
+                                </span>
+                            </label>
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; flex-basis: 100%;">
+                            <audio id="audioPlayer" controls style="width: 100%;"></audio>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="col-md-12">
                 <div class="form-group">
                     <label for="textInput" class="form-label">输入文本</label>
@@ -328,32 +455,122 @@
                                     </div>
                                 </div>
                                 <div class="form-group" style="display: inline; width: 100%;" >
-                                    <div class="form-group" style="display: block; width: 100%;" >
-                                        <div style="display: block; align-items: center; margin-bottom: 8px;">
-                                            <label for="speedFactorSlider" class="form-label">语速因子</label>
-                                            <span id="speedFactorValue">{{user_config.GPTvts_speed_factor}}</span>
+                                    <div style="display: block; width: 100%;margin-bottom: 20px;background-color: #ffb6c1; border-radius: 1rem;">
+                                        <div style="display:block;padding-top: 10px;padding-bottom: 10px;padding-left: 10px; align-items: center;">
+                                            <div style="display: inline-block;color: #ffffff; font-size: 1rem;">
+                                                <label for="speedFactorSlider" class="form-label">语速因子</label>
+                                            </div>
+                                            <div style="width: 60px; display: inline-block; font-size: 1rem;background-color: #ffffff;border-radius: 1rem;color: #ffa0c0;text-align: center;padding: 5px;">
+                                                <span id="speedFactorValue">{{user_config.GPTvts_speed_factor}}</span>
+                                            </div>
                                         </div>
-                                        <input type="range" class="form-rang" id="speedFactorSlider" min="0.6" max="1.65" step="0.05" value={{user_config.GPTvts_speed_factor}}>
+                                        <div style="display:block;padding: 10px;">
+                                            <input type="range" class="form-rang" id="speedFactorSlider" min="0.6" max="1.65" step="0.05" value={{user_config.GPTvts_speed_factor}}>
+                                        </div>
                                     </div>
-                                    <div class="form-group" style="display: block; width: 100%">
-                                        <div style="display: block; align-items: center; margin-bottom: 8px;">
-                                            <label for="temperatureFactorSlider" class="form-label">温度</label>
-                                            <span id="temperatureFactorValue">{{user_config.GPTvts_temperature_factor}}</span>
+                                    <div style="display: block; width: 100%;margin-bottom: 20px;background-color: #ffb6c1; border-radius: 1rem;">
+                                        <div style="display:block;padding-top: 10px;padding-bottom: 10px;padding-left: 10px; align-items: center;">
+                                            <div style="display: inline-block;color: #ffffff; font-size: 1rem;">
+                                                <label for="temperatureFactorSlider" class="form-label">温度</label>
+                                            </div>
+                                            <div style="width: 60px; display: inline-block; font-size: 1rem;background-color: #ffffff;border-radius: 1rem;color: #ffa0c0;text-align: center;padding: 5px;">
+                                                <span id="temperatureFactorValue">{{user_config.GPTvts_temperature_factor}}</span>
+                                            </div>
                                         </div>
-                                        <input type="range" class="form-rang" id="temperatureFactorSlider" min="0" max="1" step="0.05" value={{user_config.GPTvts_temperature_factor}}>
+                                        <div style="display:block;padding: 10px;">
+                                            <input type="range" class="form-rang" id="temperatureFactorSlider" min="0" max="1" step="0.05" value={{user_config.GPTvts_temperature_factor}}>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                             <div style="display: flex; justify-content: space-between; gap: 20px;">
                                 <div class="form-group" style="display: inline; width: 100%;" >
+                                    <div style="display: flex; align-items: center;height: 15%;">切换模型</div>
+                                    <div style="height: 80%; display: flex; align-items: center;">
+                                        <button id="btn_tts_start" class="btn-seclectModel" onclick="selectModel()">
+                                            切换模型
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="form-group" style="display: inline; width: 100%">
+                                    <div style="display: block;">
                                         <label for="text_split_methodSelect" class="form-label">文字切片类型选择</label>
                                         <select class="form-select" id="text_split_methodSelect">
                                             {% for type in text_split_method %}
                                             <option value="{{ type }}" {% if type == user_config.GPTvts_text_split_method %}selected{% endif %}>{{ type }}</option>
                                             {% endfor %}
                                         </select>
+                                    </div>
+                                    <div style="display: block;">
+                                        <label for="GptModelSelect" class="form-label">GPT模型选择</label>
+                                        <select class="form-select" id="GptModelSelect">
+                                            {% for type in GPTmodel_list %}
+                                            <option value="{{ type }}" {% if type == user_config.GPTmodelName %}selected{% endif %}>{{ type }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div style="display: block;">
+                                        <label for="SovitsModelSelect" class="form-label">Sovits模型选择</label>
+                                        <select class="form-select" id="SovitsModelSelect">
+                                            {% for type in SovitsMoedel_list %}
+                                            <option value="{{ type }}" {% if type == user_config.SovitsModelName %}selected{% endif %}>{{ type }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
                                 </div>
-                                <div class="form-group" style="display: inline; width: 100%">
+                            </div>
+                            <div style="display: flex; justify-content: space-between; gap: 20px; width: 100%;">
+                                <div style="display: inline; width: 50%;">
+                                    <div style="display: block; align-items: center;margin-bottom: 20px;">
+                                        <div style="display: inline-flex; margin-right: 20px;margin-left: 10px; ">
+                                            并行推理
+                                        </div>
+                                        <div style="display: inline-flex;">
+                                            <label class="toggle-switch">
+                                                <input type="checkbox" id="parallel_infer" {% if user_config.parallel_infer %}checked{% endif %}>
+                                                <span class="toggle-switch-slider">
+                                                    <span class="toggle-switch-inner"></span>
+                                                </span>
+                                            </label>
+                                        </div>
+                                        <div style="display: inline-flex; margin-right: 20px;margin-left: 10px; ">
+                                            数据分桶
+                                        </div>
+                                        <div style="display: inline-flex;">
+                                            <label class="toggle-switch">
+                                                <input type="checkbox" id="split_bucket" {% if user_config.split_bucket %}checked{% endif %}>
+                                                <span class="toggle-switch-slider">
+                                                    <span class="toggle-switch-inner"></span>
+                                                </span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div style="display: block; width: 100%;margin-bottom: 20px;background-color: #ffb6c1; border-radius: 1rem;">
+                                        <div style="display:block;padding-top: 10px;padding-bottom: 10px;padding-left: 10px; align-items: center;">
+                                            <div style="display: inline-block;color: #ffffff; font-size: 1rem;">
+                                                <label for="batch_size_slider" class="form-label">推理的批次大小</label>
+                                            </div>
+                                            <div style="width: 40px; display: inline-block; font-size: 1rem;background-color: #ffffff;border-radius: 1rem;color: #ffa0c0;text-align: center;padding: 5px;">
+                                                <span id="batch_size_value">{{user_config.batch_size_slider}}</span>
+                                            </div>
+                                        </div>
+                                        <div style="display:block;padding: 10px;">
+                                            <input type="range" class="form-rang" id="batch_size_slider" min="1" max="200" step="1" value={{user_config.batch_size_slider}}>
+                                        </div>
+                                    </div>
+                                    <div style="display: block; width: 100%;margin-bottom: 20px;background-color: #ffb6c1; border-radius: 1rem;">
+                                        <div style="display:block;padding-top: 10px;padding-bottom: 10px;padding-left: 10px; align-items: center;">
+                                            <div style="display: inline-block;color: #ffffff; font-size: 1rem;">
+                                                <label for="batch_size_slider" class="form-label">分段间隔（秒）</label>
+                                            </div>
+                                            <div style="width: 40px; display: inline-block; font-size: 1rem;background-color: #ffffff;border-radius: 1rem;color: #ffa0c0;text-align: center;padding: 5px;">
+                                                <span id="batch_threshold_value">{{user_config.batch_threshold_slider}}</span>
+                                            </div>
+                                        </div>
+                                        <div style="display:block;padding: 10px;">
+                                            <input type="range" class="form-rang" id="batch_threshold_slider" min="0.01" max="1" step="0.01" value={{user_config.batch_threshold_slider}}>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -373,6 +590,13 @@
         document.getElementById('temperatureFactorSlider').addEventListener('input', function() {
         document.getElementById('temperatureFactorValue').textContent = this.value;
         });
+        document.getElementById('batch_size_slider').addEventListener('input', function() {
+        document.getElementById('batch_size_value').textContent = this.value;
+        });
+        document.getElementById('batch_threshold_slider').addEventListener('input', function() {
+        document.getElementById('batch_threshold_value').textContent = this.value;
+        })
+        let currentAudioUrl = null;
         function check_GPTvts_is_open() {
                 fetch('/check_GPTvts_is_open')
                   .then(response => response.json())
@@ -433,8 +657,35 @@
                         }
                     }) 
         }
+        function selectModel(){
+            const data = {
+                GPTmodelName:document.getElementById('GptModelSelect').value,
+                SovitsModelName:document.getElementById('SovitsModelSelect').value,
+            }
+            fetch('/selectModel', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('模型切换失败');
+            });
+        }
         function convertToSpeech() {
             const text = document.getElementById('textInput').value.trim();
+            if (currentAudioUrl) {
+                URL.revokeObjectURL(currentAudioUrl);
+                currentAudioUrl = null;
+            }
             if (!text) {
                 alert('请输入要转换的文本');
                 return;
@@ -453,7 +704,15 @@
                 GPTvts_sample: document.getElementById('sampleSelect').value,
                 GPTvts_speed_factor:document.getElementById('speedFactorSlider').value,
                 GPTvts_temperature_factor:document.getElementById('temperatureFactorSlider').value,
-                GPTvts_text_split_method:document.getElementById('text_split_methodSelect').value
+                GPTvts_text_split_method:document.getElementById('text_split_methodSelect').value,
+                GPTmodelName:document.getElementById('GptModelSelect').value,
+                SovitsModelName:document.getElementById('SovitsModelSelect').value,
+                parallel_infer:document.getElementById('parallel_infer').checked,
+                split_bucket:document.getElementById('split_bucket').checked,
+                isdownload:document.getElementById('isDownload').checked,
+                isplayaudio:document.getElementById('isPlayAudio').checked,
+                batch_size_slider:document.getElementById('batch_size_slider').value,
+                batch_threshold_slider:document.getElementById("batch_threshold_slider").value
             };
 
             // 添加到日志
@@ -472,10 +731,23 @@
                 },
                 body: JSON.stringify(data)
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    alert(data.error);
+            .then(response => {
+                if(data.isdownload){
+                        return response.blob();
+                }
+                else{
+                        return response.json();
+                }
+            })
+            .then(result => {
+                if(data.isdownload){
+                    const currentAudioUrl = URL.createObjectURL(result);
+                    const audioElement = document.querySelector('#audioPlayer');
+                    audioElement.src = currentAudioUrl;
+                    //audioElement.play();
+                }
+                else{
+                    console.log('音频生成成功',result)
                 }
             })
             .catch(error => {

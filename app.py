@@ -1,4 +1,5 @@
-from quart import Quart,render_template,request,jsonify
+from turtle import isdown
+from quart import Quart,render_template,request,jsonify,send_file
 import os
 import win32com.client
 import edge_tts
@@ -7,10 +8,12 @@ import pygame
 import json
 import queue
 import threading
+import io
 import httpx
 import subprocess
 import socket
 import atexit
+import asyncio
 from pythonosc import udp_client
 from pathlib import Path
 import dashscope 
@@ -166,7 +169,15 @@ class TTSWebApp:
             "GPTvts_sample": "",
             "GPTvts_speed_factor":1,
             "GPTvts_temperature_factor":1,
-            "GPTvts_text_split_method":"按中文句号。切"
+            "GPTvts_text_split_method":"按中文句号。切",
+            "GPTmodelName":"",
+            "SovitsModelName":"",
+            "parallel_infer":True,
+            "split_bucket":True,
+            "batch_size_slider":5,
+            "batch_threshold_slider":0.75,
+            "isdownload":False,
+            "isplayaudio":True
         }
         if self.config_file.exists():
             try:
@@ -197,6 +208,7 @@ class TTSWebApp:
         self.app.route("/get_voice_list")(self.get_voice_list)
         self.app.route("/GPTvts_tts_start")(self.GPTvts_tts_start)
         self.app.route("/check_GPTvts_is_open")(self.check_GPTvts_is_open)
+        self.app.route("/selectModel",methods=["POST"])(self.selectModel)
     async def index(self):
         """
         /,主页
@@ -210,7 +222,9 @@ class TTSWebApp:
                                     ali_tts_voices=list(self.ali_tts_voices.keys()),
                                     sambert_tts_voices=list(self.sambert_tts_voices.keys()),
                                     user_config = self.user_config,
-                                    text_split_method = list(self.text_split_method.keys())
+                                    text_split_method = list(self.text_split_method.keys()),
+                                    GPTmodel_list = list(self.scan_GPTmodel_list(self.GPTvts_modelPath)),
+                                    SovitsMoedel_list = list(self.scan_SovitsModel_list(self.GPTvts_modelPath))
                                     )
     """
     返回格式
@@ -227,7 +241,15 @@ class TTSWebApp:
                 "GPTvts_sample": "【开心_happy】…凯亚是个不好应付的人啊，不过免费的酒真好喝。.wav"
                 "GPTvts_speed_factor":1
                 "GPTvts_temperature_factor":1
-                "GPTvts_text_split_method":"按中文句号。切"
+                "GPTvts_text_split_method":"按中文句号。切",
+                "GPTmodelName":"",
+                "SovitsModelName":"",
+                "parallel_infer":True,
+                "split_bucket":True,
+                "batch_size_slider":5,
+                "batch_threshold_slider":0.75,
+                "isdownload":False,
+                "isplayaudio":True,
             };
     """
     async def tts_endpoint(self):
@@ -249,7 +271,15 @@ class TTSWebApp:
             "GPTvts_sample": data.get("GPTvts_sample", ""),
             "GPTvts_speed_factor":data.get("GPTvts_speed_factor", 1.0),
             "GPTvts_temperature_factor":data.get("GPTvts_temperature_factor", 1.0),
-            "GPTvts_text_split_method":data.get("GPTvts_text_split_method", "按中文句号。切")
+            "GPTvts_text_split_method":data.get("GPTvts_text_split_method", "按中文句号。切"),
+            "GPTmodelName":data.get("GPTmodelName", ""),
+            "SovitsModelName":data.get("SovitsModelName", ""),
+            "parallel_infer":bool(data.get("parallel_infer", True)),
+            "split_bucket":bool(data.get("split_bucket", True)),
+            "batch_size_slider":data.get("batch_size_slider", 5),
+            "batch_threshold_slider":data.get("batch_threshold_slider", 0.75),
+            "isdownload":bool(data.get('isdownload', False)),
+            "isplayaudio":bool(data.get('isplayaudio', True))
         }
         self.save_config(config_to_save)
         self.user_config = config_to_save
@@ -257,9 +287,15 @@ class TTSWebApp:
         device = data.get('device', '')
         self.set_audio_device(device)
         id = uuid.uuid4().hex
+        isPlayAudio = bool(data.get('isplayaudio', True))
+        isdownload = bool(data.get('isdownload', False))
         temp_file = self.savePath / f"save_voice_{id}.mp3"
+        mimetype='audio/mp3'
+        attachment_filename = "audio.mp3"
         if data.get("provider") == "GPTvts本地推理":
             temp_file = self.savePath / f"save_voice_{id}.wav"
+            mimetype='audio/wav'
+            attachment_filename = "audio.wav"
         try:
             self.osc_client.send_message("/chatbox/input", [text, True])
             print("已发送文本到VRChat OSC")
@@ -271,68 +307,71 @@ class TTSWebApp:
             else:
                 print("Edge TTS转换失败")
                 return jsonify({'error': "tts转换失败"}), 400
-            if await self.play_audio(temp_file):
-                print(f"已播放音频文件: {temp_file}")
-            else:
-                print("播放音频文件失败")
-                return jsonify({'error': "音频播放失败"}), 400
-            if hasattr(pygame.mixer, 'get_init') and pygame.mixer.get_init():
-                pygame.mixer.quit()
-            if os.path.exists(temp_file):
-                os.remove(temp_file)
-                print(f"已清理临时文件: {temp_file}")
-                return jsonify({'status': 'success', 'message': '转换并播放完成'})
         if data.get("provider") == "阿里百炼cosyvice":
             if await self.use_ali_tts(data,temp_file):
                 print(f"已转使用阿里百炼换文本: 生成临时文件{temp_file}")
             else:
                 print("阿里百炼转换失败")
                 return jsonify({'error': "tts转换失败"}), 400
-            if await self.play_audio(temp_file):
-                print(f"已播放音频文件: {temp_file}")
-            else:
-                print("播放音频文件失败")
-                return jsonify({'error': "音频播放失败"}), 400
-            if hasattr(pygame.mixer, 'get_init') and pygame.mixer.get_init():
-                pygame.mixer.quit()
-            if os.path.exists(temp_file):
-                os.remove(temp_file)
-                print(f"已清理临时文件: {temp_file}")
-                return jsonify({'status':'success','message': '转换并播放完成'})
         if data.get("provider") == "阿里百炼sambert":
             if await self.use_sambert_tts(data,temp_file):
                 print(f"已转使用阿里百炼sambert模型换文本: 生成临时文件{temp_file}")
             else:
                 print("阿里百炼sambert模型转换失败")
                 return jsonify({'error': "tts转换失败"}), 400
-            if await self.play_audio(temp_file):
-                print(f"已播放音频文件: {temp_file}")
-            else:
-                print("播放音频文件失败")
-                return jsonify({'error': "音频播放失败"}), 400
-            if hasattr(pygame.mixer, 'get_init') and pygame.mixer.get_init():
-                pygame.mixer.quit()
-            if os.path.exists(temp_file):
-                os.remove(temp_file)
-                print(f"已清理临时文件: {temp_file}")
-                return jsonify({'status':'success','message': '转换并播放完成'})
         if data.get("provider") == "GPTvts本地推理":
             if await self.use_GPTvts(data,temp_file):
                 print(f"已转使用GPTvts换文本: 生成临时文件{temp_file}")
             else:
                 print("GPTvts模型转换失败")
-                return jsonify({'error': "tts转换失败"}), 400
-            if await self.play_audio(temp_file):
-                print(f"已播放音频文件: {temp_file}")
-            else:
-                print("播放音频文件失败")
-                return jsonify({'error': "音频播放失败"}), 400
-            if hasattr(pygame.mixer, 'get_init') and pygame.mixer.get_init():
-                pygame.mixer.quit()
+                return  jsonify({'error': "tts转换失败"}), 400
+        with open(temp_file,'rb') as audio_file:
+            audio_data = audio_file.read()
+        response_data = None
+        if isdownload:
+            response_data = await send_file(
+                io.BytesIO(audio_data),
+                mimetype=mimetype,
+                as_attachment=True,
+                attachment_filename=attachment_filename
+            )
+        else:
+            response_data = jsonify({
+                "status":"success",
+                "message": "tts转换成功",
+                "audio_info":{
+                    "size":len(audio_data),
+                    "mimetype":mimetype,
+                    "attachment_filename":attachment_filename
+                }
+            })
+        if isPlayAudio:
+            loop = asyncio.get_event_loop()
+            async def play_and_cleanup():
+                try:
+                    if await self.play_audio(temp_file):
+                        print(f"已播放音频文件: {temp_file}")
+                    else:
+                        print("播放音频文件失败")
+                        return jsonify({'error': "音频播放失败"}), 400
+                finally:
+                    if hasattr(pygame.mixer, 'get_init') and pygame.mixer.get_init():
+                        pygame.mixer.quit()
+                    if os.path.exists(temp_file):
+                        try:
+                            os.remove(temp_file)
+                            print(f"已清理临时文件: {temp_file}")
+                        except Exception as e:
+                            print(f"清理临时文件{temp_file}失败: {e}")
+            loop.create_task(play_and_cleanup())
+        else:
             if os.path.exists(temp_file):
-                os.remove(temp_file)
-                print(f"已清理临时文件: {temp_file}")
-                return jsonify({'status':'success','message': '转换并播放完成'})
+                try:
+                    os.remove(temp_file)
+                    print(f"已清理临时文件: {temp_file}")
+                except Exception as e:
+                    print(f"清理临时文件{temp_file}失败: {e}")
+        return response_data
     async def GPTvts_tts_start(self):
         """
         启动GPTvts本地推理服务
@@ -407,6 +446,36 @@ class TTSWebApp:
                 return jsonify({"status":"error","message": f"检查本地TTS服务是否已启动失败: {e}"})
         else:
             return jsonify({"status":"error","message": "检查本地TTS服务是否已启动失败"})
+    async def selectModel(self):
+        """
+        选择模型
+        """
+        data =await request.get_json()
+        GPTmodelName = data.get("GPTmodelName", "")
+        SovitsModelName= data.get("SovitsModelName", "")
+        if GPTmodelName is not None:
+            path = os.path.join(self.GPTvts_modelPath, GPTmodelName)
+            url1 = f"http://127.0.0.1:9880/set_gpt_weights?weights_path={path}"
+            async with httpx.AsyncClient() as client:
+                try:
+                    response = await client.get(url1)
+                    response_data = response.json()
+                except Exception as e:
+                    return jsonify({"status":"error","message": "本地推理服务没有启动"})
+                if response_data.get("code") == 400:
+                    return jsonify({"status":"error","message": "模型不存在"})
+        if SovitsModelName is not None:
+            path2 = os.path.join(self.GPTvts_modelPath, SovitsModelName)
+            url2 = f"http://127.0.0.1:9880/set_sovits_weights?weights_path={path2}"
+            async with httpx.AsyncClient() as client:
+                try:
+                    response = await client.get(url2)
+                    response_data2 = response.json()
+                except Exception as e:
+                    return jsonify({"status":"error","message": "本地推理服务没有启动"})
+                if response_data.get("code") == 400:
+                    return jsonify({"status":"error","message": "模型不存在"})
+        return jsonify({"status":"success","message": "选择模型成功","GPTmodel":response_data,"SovitsModel":response_data2})
     async def get_voice_list(self):
         voice_list = self.scan_voice_folders(self.GPTvts_voices_path)
         return jsonify(voice_list)
@@ -420,7 +489,8 @@ class TTSWebApp:
             pygame.mixer.music.load(audio_file)
             pygame.mixer.music.play()
             while pygame.mixer.music.get_busy():
-                pygame.time.Clock().tick(10)
+                await asyncio.sleep(0.1)
+                # pygame.time.Clock().tick(10)
             pygame.mixer.quit()
             return True
         except Exception as e:
@@ -504,13 +574,13 @@ class TTSWebApp:
             "top_p":1,
             "temperature":float(data.get("GPTvts_temperature_factor",1)),
             "text_split_method":text_split_method,
-            "batch_size": 1,
-            "batch_threshold": 0.75,
-            "split_bucket": True,
+            "batch_size": int(data.get("batch_size_slider",5)),
+            "batch_threshold": float(data.get("batch_threshold_slider",0.75)),
+            "split_bucket": bool(data.get("split_bucket",True)),
             "speed_factor":float(data.get("GPTvts_speed_factor",1)),
             "streaming_mode": False,
             "seed": -1,
-            "parallel_infer": True,
+            "parallel_infer": bool(data.get("parallel_infer",True)),
             "repetition_penalty": 1.35,
             "sample_steps": 32,
             "super_sampling": False
@@ -560,6 +630,26 @@ class TTSWebApp:
             print(f"读取输出时发生错误: {e}")
         finally:
             pipe.close()
+    def scan_GPTmodel_list(self,path):
+        """
+        扫描模型文件
+        """
+        model_path = path
+        model_list = []
+        for model in model_path.iterdir():
+            if model.name.endswith(".ckpt"):# 检查文件是否为.pth格式
+                model_list.append(model.name)
+        return model_list
+    def scan_SovitsModel_list(self,path):
+        """
+        扫描模型文件
+        """
+        model_path = path
+        model_list = []
+        for model in model_path.iterdir():
+            if model.name.endswith(".pth"):# 检查文件是否为.pth格式
+                model_list.append(model.name)
+        return model_list
     def scan_voice_folders(self,path):
         """
         扫描语音文件夹
