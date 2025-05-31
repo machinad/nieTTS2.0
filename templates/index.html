@@ -682,22 +682,77 @@
                         }
                     }) 
         }
-        function onIndexStart(){
+        function addLog(text){
+            const logArea = document.getElementById("logArea")
+            logArea.innerHTML+=`<div>${text}</div>`;
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+        function checkIndexTts(){
             const btn = document.getElementById("btn_indextts_start")
-            btn.disabled = true;
-            fetch("/index_tts_start")
-                .then(response => response.json())
-                .then(data =>{
-                    if(data.status === "index_tts_open"){
-                        alert("index服务已经启动");
-                    }
-                    else if(data.status ==="error"){
-                        alert("index服务启动失败");
+            fetch("/check_index_tts")
+                .then(response=>response.json())
+                .then(data=>{
+                    if(data.status==="index_tts_isOpen"){
+                        btn.innerHTML = '运行中';
+                        btn.style.backgroundColor = '#3baf05';
                     }
                     else{
-                        alert("index服务启动失败");
+                        btn.innerHTML = '已关闭';
+                        btn.style.backgroundColor = '#ff3636';
                     }
                 })
+        }
+        function onIndexStart(){
+            const logArea = document.getElementById('logArea');
+            const btn = document.getElementById("btn_indextts_start")
+            btn.disabled = true;
+            fetch("/check_index_tts")
+                .then(response =>response.json())
+                .then(data =>{
+                    if(data.status==="index_tts_isClose"){
+                        addLog("检测到index服务未启动，正在启动中")
+                        btn.innerHTML = "index实例化中"
+                        btn.style.backgroundColor = '#0076d6';
+                        fetch("/index_tts_start")
+                            .then(response=>response.json())
+                            .then(data =>{
+                                if(data.status==="index_tts_open"){
+                                    addLog("index_tts已经成功实例化")
+                                    btn.innerHTML = "运行中";
+                                    btn.style.backgroundColor = '#3baf05';
+                                    btn.disabled = false;
+                                }
+                                else{
+                                    addLog("index实例化失败")
+                            }
+                        })
+                    }
+                    else if(data.status==="index_tts_isOpen"){
+                        addLog("index已经实例化，即将关闭")
+                        btn.innerHTML = '关闭中';
+                        btn.style.backgroundColor = '#0076d6';
+                        fetch("/index_tts_start")
+                            .then(response=>response.json())
+                            .then(data =>{
+                                if(data.status==="index_tts_close"){
+                                    btn.innerHTML = '已关闭';
+                                    btn.style.backgroundColor = '#ff3636';
+                                    btn.disabled = false;
+                                    addLog("index实例已经关闭")
+                                }
+                                else if(data.status==="error"){
+                                    addLog("index实例关闭错误")
+                                }
+                                else{
+                                    addLog("index实例关闭错误")
+                                }
+                            })
+                    }
+                    else{
+                        addLog("index实例化失败")
+                    }
+                })
+           
         }
         function selectModel(){
             const data = {
@@ -716,6 +771,7 @@
                 if (data.error) {
                     alert(data.error);
                 }
+                addLog("已经成功更改GPT模型")
             })
             .catch(error => {
                 console.error('Error:', error);
@@ -866,6 +922,7 @@
                 const speedFactorSliderGroup = document.getElementById('speedFactorSliderGroup');
                 loadVoiceList()
                 check_GPTvts_is_open()
+                checkIndexTts()
                 function toggleProviderSettings(){
                     voiceSelectGroup.style.display = "none";
                     aliApiKeyGroup.style.display = "none";

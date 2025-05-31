@@ -222,6 +222,7 @@ class TTSWebApp:
         self.app.route("/check_GPTvts_is_open")(self.check_GPTvts_is_open)
         self.app.route("/selectModel",methods=["POST"])(self.selectModel)
         self.app.route("/index_tts_start")(self.index_tts_start)
+        self.app.route("/check_index_tts")(self.check_index_tts)
     async def index(self):
         """
         /,主页初始化
@@ -465,12 +466,21 @@ class TTSWebApp:
                 return jsonify({"status":"index_tts_open","message":"indextts启动成功"})
 
         else:
-            print("indexTTS服务已经启动，将关闭")
-            self.index_tts.torch_empty_cache()
-            del self.index_tts
-            self.index_tts = None
-            torch.cuda.empty_cache()
-            gc.collect()
+            try:
+                print("indexTTS服务已经启动，将关闭")
+                self.index_tts.torch_empty_cache()
+                del self.index_tts
+                self.index_tts = None
+                torch.cuda.empty_cache()
+                gc.collect()
+            except Exception:
+                print("index实例关闭失败")
+                return jsonify({"status":"error"})
+            finally:
+                print("Index TTS服务关闭")
+                return jsonify({"status":"index_tts_close"})
+
+
 
     async def check_GPTvts_is_open(self):
         """
@@ -490,6 +500,16 @@ class TTSWebApp:
                 return jsonify({"status":"error","message": f"检查本地TTS服务是否已启动失败: {e}"})
         else:
             return jsonify({"status":"error","message": "检查本地TTS服务是否已启动失败"})
+    async def check_index_tts(self):
+        """
+        /check_index_tts检查index服务的启动状态
+        """
+        if self.index_tts is None:
+            return jsonify({"status":"index_tts_isClose"})
+        elif self.index_tts is not None:
+            return jsonify({"status":"index_tts_isOpen"})
+        else:
+            return jsonify({"status":"error"})
     async def selectModel(self):
         """
         /selectModel切换GPTvts模型
