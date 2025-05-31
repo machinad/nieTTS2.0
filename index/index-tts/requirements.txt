@@ -1,11 +1,3 @@
-pygame
-pywin32
-comtypes
-edge-tts
-python-osc
-quart
-httpx
-dashscope
 accelerate==0.25.0
 transformers==4.36.2
 tokenizers==0.15.0
@@ -21,9 +13,11 @@ pandas==2.1.3
 matplotlib==3.8.2
 opencv-python==4.9.0.80
 vocos==0.1.0
+accelerate==0.25.0
 tensorboard==2.9.1
 omegaconf
 sentencepiece
 librosa
 gradio
 tqdm
+

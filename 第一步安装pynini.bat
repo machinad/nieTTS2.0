@@ -49,38 +49,5 @@ echo 开始安装依赖...
 
 REM 先使用 conda 安装 pynini
 echo 正在使用 conda 安装 pynini...
-rem conda install -c conda-forge pynini=2.1.5
+conda install -c conda-forge pynini=2.1.5
 echo pynini 安装完成。
-
-REM 使用 pip 安装 WeTextProcessing
-echo 正在使用 pip 安装 WeTextProcessing...
-pip install WeTextProcessing==1.0.3 -i https://mirrors.aliyun.com/pypi/simple
-IF %ERRORLEVEL% NEQ 0 (
-    echo 使用 pip 安装 WeTextProcessing 失败。
-    pause
-    goto end
-)
-echo WeTextProcessing 安装完成。
-
-REM 使用 pip 安装 index-tts (editable 模式)
-echo 正在使用 pip 安装 index-tts (editable 模式)...
-pip install -e ".\index\index-tts[webui]" -i https://mirrors.aliyun.com/pypi/simple
-IF %ERRORLEVEL% NEQ 0 (
-    echo 使用 pip 安装 index-tts 失败。
-    goto end
-)
-echo index-tts 安装完成。
-
-REM 使用 pip 安装主项目的 requirements.txt 中的其余依赖
-echo 正在使用 pip 安装 requirements.txt 中的其余依赖...
-pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple
-IF %ERRORLEVEL% NEQ 0 (
-    echo 安装 requirements.txt 中的依赖失败。
-    goto end
-)
-echo requirements.txt 中的依赖安装完成。
-
-echo 所有依赖安装完成。
-
-:end
-pause

@@ -10,16 +10,25 @@ import queue
 import threading
 import io
 import httpx
+import sys
 import subprocess
 import socket
 import atexit
 import asyncio
+import torch
 from pythonosc import udp_client
 from pathlib import Path
 import dashscope 
+import gc
 from dashscope.audio.tts_v2 import SpeechSynthesizer as SpeechSynthesizerV2
 from dashscope.audio.tts import SpeechSynthesizer as SpeechSynthesizerV1
 import time
+current_dir = os.path.dirname(os.path.abspath(__file__))
+index_tts_parent_dir = os.path.join(current_dir,'index','index-tts')
+if index_tts_parent_dir not in sys.path:
+    sys.path.insert(0,index_tts_parent_dir)
+# 将import语句移至文件顶部其他import语句的位置
+from indextts.infer import IndexTTS  # noqa: E402
 class TTSWebApp:
     def __init__(self):
         self.text_split_method = {
@@ -110,6 +119,7 @@ class TTSWebApp:
             "Brian-客服男声-通用场景":"sambert-brian-v1",
             "Waan-泰语女声-通用场景":"sambert-waan-v1"
         }
+        self.index_path = Path("./index/index-tts").resolve()
         self.local_tts_process = None
         self.GPTvts_voices_path = Path("./GPTvts_voices").resolve()
         self.GPTvts_path = Path("./GPTvts").resolve()
@@ -146,10 +156,12 @@ class TTSWebApp:
             "Edge TTS",
             "阿里百炼cosyvice",
             "阿里百炼sambert",
-            "GPTvts本地推理"
+            "GPTvts本地推理",
+            "Index TTS"
         ]
         
         self.setup_routes()
+        self.index_tts = None
         self.osc_client = udp_client.SimpleUDPClient("127.0.0.1", 9000)
         atexit.register(self.cleanup)
     os.makedirs('templates', exist_ok=True) 
@@ -209,9 +221,10 @@ class TTSWebApp:
         self.app.route("/GPTvts_tts_start")(self.GPTvts_tts_start)
         self.app.route("/check_GPTvts_is_open")(self.check_GPTvts_is_open)
         self.app.route("/selectModel",methods=["POST"])(self.selectModel)
+        self.app.route("/index_tts_start")(self.index_tts_start)
     async def index(self):
         """
-        /,主页
+        /,主页初始化
         """
         providers = self.tts_providers
         audio_devices = self.get_audio_devices()
@@ -325,6 +338,12 @@ class TTSWebApp:
             else:
                 print("GPTvts模型转换失败")
                 return  jsonify({'error': "tts转换失败"}), 400
+        if data.get("provider") == "Index TTS":
+            if await self.use_index_tts(data,temp_file):
+                print(f"已转使用Index TTS换文本: 生成临时文件{temp_file}")
+            else:
+                print("Index TTS转换失败")
+                return jsonify({'error': "tts转换失败"}), 400
         with open(temp_file,'rb') as audio_file:
             audio_data = audio_file.read()
         response_data = None
@@ -374,7 +393,7 @@ class TTSWebApp:
         return response_data
     async def GPTvts_tts_start(self):
         """
-        启动GPTvts本地推理服务
+        /GPTvts_tts_start启动GPTvts本地推理服务
         """
         try:
             if self.local_tts_process is not None and self.local_tts_process.poll() is None:
@@ -428,9 +447,34 @@ class TTSWebApp:
             print(f"启动本地TTS服务失败: {e}")
             self.local_tts_process = None
             return jsonify({"status":"error","message": f"启动本地TTS服务失败: {e}"})
+        
+    async def index_tts_start(self):
+        """
+        /index_tts_start启动Index TTS服务
+        """
+        if self.index_tts is None:
+            try:
+                checkpoint_path = os.path.join(self.index_path,"checkpoints")
+                config_path = os.path.join(self.index_path,"checkpoints","config.yaml")
+                self.index_tts = IndexTTS(model_dir=checkpoint_path,cfg_path=config_path)
+            except Exception as e:
+                print(f"启动Index TTS服务失败: {e}")
+                return jsonify({"status":"error","message": f"启动Index TTS服务失败: {e}"})
+            finally:
+                print("Index TTS服务已启动")
+                return jsonify({"status":"index_tts_open","message":"indextts启动成功"})
+
+        else:
+            print("indexTTS服务已经启动，将关闭")
+            self.index_tts.torch_empty_cache()
+            del self.index_tts
+            self.index_tts = None
+            torch.cuda.empty_cache()
+            gc.collect()
+
     async def check_GPTvts_is_open(self):
         """
-        检查GPTvts本地推理服务是否已启动
+        /check_GPTvts_is_open检查GPTvts本地推理服务是否已启动
         """
         if self.local_tts_process is None or self.local_tts_process.poll() is not None:
             return jsonify({"status":"tts_close","message": "GPTvts本地推理服务未启动"})
@@ -448,7 +492,7 @@ class TTSWebApp:
             return jsonify({"status":"error","message": "检查本地TTS服务是否已启动失败"})
     async def selectModel(self):
         """
-        选择模型
+        /selectModel切换GPTvts模型
         """
         data =await request.get_json()
         GPTmodelName = data.get("GPTmodelName", "")
@@ -477,6 +521,9 @@ class TTSWebApp:
                     return jsonify({"status":"error","message": "模型不存在"})
         return jsonify({"status":"success","message": "选择模型成功","GPTmodel":response_data,"SovitsModel":response_data2})
     async def get_voice_list(self):
+        """
+        /get_voice_list获取GPTvts语音音频列表
+        """
         voice_list = self.scan_voice_folders(self.GPTvts_voices_path)
         return jsonify(voice_list)
     async def play_audio(self, audio_file):
@@ -555,6 +602,10 @@ class TTSWebApp:
             print("阿里百炼转换失败")
             return False
     async def use_GPTvts(self,data,temp_file):
+        """
+        使用GPTvts模型服务转换文本
+        """
+
         url = "http://127.0.0.1:9880/tts"
         ref_audio_path = os.path.join(self.GPTvts_voices_path, data.get("GPTvts_character"),data.get("GPTvts_emotion"),data.get("GPTvts_sample"))
         ref_audio = data.get("GPTvts_sample")
@@ -597,6 +648,17 @@ class TTSWebApp:
                 with open(temp_file, 'wb') as f:
                     f.write(response.content)
                 return True
+    async def use_index_tts(self,data,temp_file):
+        """
+        使用index服务转换文本
+        """
+        if self.index_tts is None:
+            print("indexTTS服务未启动")
+            return False
+        voice = os.path.join(self.GPTvts_voices_path, data.get("GPTvts_character"),data.get("GPTvts_emotion"),data.get("GPTvts_sample"))
+        text= data.get("text","")
+        self.index_tts.infer(voice, text, temp_file)
+        return True
     def get_audio_devices(self):
         """
         扫描系统音频输出设备
