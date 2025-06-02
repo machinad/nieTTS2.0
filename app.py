@@ -189,7 +189,8 @@ class TTSWebApp:
             "batch_size_slider":5,
             "batch_threshold_slider":0.75,
             "isdownload":False,
-            "isplayaudio":True
+            "isplayaudio":True,
+            "isIndex_tts_flash":False
         }
         if self.config_file.exists():
             try:
@@ -264,6 +265,7 @@ class TTSWebApp:
                 "batch_threshold_slider":0.75,
                 "isdownload":False,
                 "isplayaudio":True,
+                "isIndex_tts_flash":False
             };
     """
     async def tts_endpoint(self):
@@ -293,7 +295,8 @@ class TTSWebApp:
             "batch_size_slider":data.get("batch_size_slider", 5),
             "batch_threshold_slider":data.get("batch_threshold_slider", 0.75),
             "isdownload":bool(data.get('isdownload', False)),
-            "isplayaudio":bool(data.get('isplayaudio', True))
+            "isplayaudio":bool(data.get('isplayaudio', True)),
+            "isIndex_tts_flash":bool(data.get("isIndex_tts_flash",False))
         }
         self.save_config(config_to_save)
         self.user_config = config_to_save
@@ -677,7 +680,11 @@ class TTSWebApp:
             return False
         voice = os.path.join(self.GPTvts_voices_path, data.get("GPTvts_character"),data.get("GPTvts_emotion"),data.get("GPTvts_sample"))
         text= data.get("text","")
-        self.index_tts.infer(voice, text, temp_file)
+        isFlash = bool(data.get("isIndex_tts_flash","False"))
+        if isFlash:
+            self.index_tts.infer_fast(voice,text,temp_file)
+        else:
+            self.index_tts.infer(voice, text, temp_file)
         return True
     def get_audio_devices(self):
         """

@@ -574,10 +574,10 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="form-group" id="speedFactorSliderGroup">
+                        <div class="form-group" id="indexTtsGroup">
                             <div style="display: flex; justify-content: space-between; gap: 20px; width: 100%;">
                                 <div class="form-group" style="display: inline; width: 100%;" >
-                                        <div style="display: flex; align-items: center;height: 15%;">启动index服务</div>
+                                        <div style="display: flex; align-items: center;height: 15%; margin: 10px;">启动index服务</div>
                                         <div style="height: 80%; display: flex; align-items: center;">
                                             <button id="btn_indextts_start" class="btn btn-tts-start" onclick="onIndexStart()">
                                                 <i class="bi bi-soundwave me-2"></i>启动！
@@ -586,11 +586,11 @@
                                 </div>
                                 <div class="form-group" style="display: inline; width: 100%;" >
                                     <div style="display: inline-flex; margin-right: 20px;margin-left: 10px; ">
-                                            并行推理
+                                            长文本快速推理(性能开销大)
                                     </div>
                                     <div style="display: inline-flex;">
                                         <label class="toggle-switch">
-                                            <input type="checkbox" id="parallel_infer" {% if user_config.parallel_infer %}checked{% endif %}>
+                                            <input type="checkbox" id="isIndex_tts_flash" {% if user_config.isIndex_tts_flash %}checked{% endif %}>
                                             <span class="toggle-switch-slider">
                                                 <span class="toggle-switch-inner"></span>
                                             </span>
@@ -809,6 +809,7 @@
                 split_bucket:document.getElementById('split_bucket').checked,
                 isdownload:document.getElementById('isDownload').checked,
                 isplayaudio:document.getElementById('isPlayAudio').checked,
+                isIndex_tts_flash:document.getElementById("isIndex_tts_flash").checked,
                 batch_size_slider:document.getElementById('batch_size_slider').value,
                 batch_threshold_slider:document.getElementById("batch_threshold_slider").value
             };
@@ -920,6 +921,7 @@
                 const emotionSelectGroup = document.getElementById('emotionSelectGroup');
                 const sampleSelectGroup = document.getElementById('sampleSelectGroup');
                 const speedFactorSliderGroup = document.getElementById('speedFactorSliderGroup');
+                const indexTtsGroup = document.getElementById("indexTtsGroup");
                 loadVoiceList()
                 check_GPTvts_is_open()
                 checkIndexTts()
@@ -932,6 +934,7 @@
                     emotionSelectGroup.style.display = "none";
                     sampleSelectGroup.style.display = "none";
                     speedFactorSliderGroup.style.display = "none";
+                    indexTtsGroup.style.display = "none";
                     if(providerSelect.value ==='Edge TTS'){
                         voiceSelectGroup.style.display = "block";
                     }
@@ -953,6 +956,7 @@
                         characterSelectGroup.style.display = "block";
                         emotionSelectGroup.style.display = "block";
                         sampleSelectGroup.style.display = "block";
+                        indexTtsGroup.style.display = "block";
                     }
                 }
                 toggleProviderSettings();

@@ -62,15 +62,6 @@ IF %ERRORLEVEL% NEQ 0 (
 )
 echo WeTextProcessing 安装完成。
 
-REM 使用 pip 安装 index-tts (editable 模式)
-echo 正在使用 pip 安装 index-tts (editable 模式)...
-pip install -e ".\index\index-tts[webui]" -i https://mirrors.aliyun.com/pypi/simple
-IF %ERRORLEVEL% NEQ 0 (
-    echo 使用 pip 安装 index-tts 失败。
-    goto end
-)
-echo index-tts 安装完成。
-
 REM 使用 pip 安装主项目的 requirements.txt 中的其余依赖
 echo 正在使用 pip 安装 requirements.txt 中的其余依赖...
 pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple
