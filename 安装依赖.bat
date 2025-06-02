@@ -6,7 +6,7 @@ cls
 echo 检查并创建/激活 conda 环境...
 
 REM 定义 conda 环境名称
-SET CONDA_ENV_NAME=nietts
+SET CONDA_ENV_NAME=nietts2.0
 
 REM 检查 conda 是否安装
 where conda >nul 2>nul
@@ -49,7 +49,7 @@ echo 开始安装依赖...
 
 REM 先使用 conda 安装 pynini
 echo 正在使用 conda 安装 pynini...
-rem conda install -c conda-forge pynini=2.1.5
+call conda install -c conda-forge pynini=2.1.5 -y
 echo pynini 安装完成。
 
 REM 使用 pip 安装 WeTextProcessing
@@ -61,6 +61,16 @@ IF %ERRORLEVEL% NEQ 0 (
     goto end
 )
 echo WeTextProcessing 安装完成。
+
+REM 使用 pip 安装 PyTorch
+echo 正在使用 pip 安装 PyTorch...
+pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu118
+IF %ERRORLEVEL% NEQ 0 (
+    echo 使用 pip 安装 WeTextProcessing 失败。
+    pause
+    goto end
+)
+echo PyTorch 安装完成。
 
 REM 使用 pip 安装主项目的 requirements.txt 中的其余依赖
 echo 正在使用 pip 安装 requirements.txt 中的其余依赖...

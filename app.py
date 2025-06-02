@@ -23,11 +23,6 @@ import gc
 from dashscope.audio.tts_v2 import SpeechSynthesizer as SpeechSynthesizerV2
 from dashscope.audio.tts import SpeechSynthesizer as SpeechSynthesizerV1
 import time
-current_dir = os.path.dirname(os.path.abspath(__file__))
-index_tts_parent_dir = os.path.join(current_dir,'index','index-tts')
-if index_tts_parent_dir not in sys.path:
-    sys.path.insert(0,index_tts_parent_dir)
-# 将import语句移至文件顶部其他import语句的位置
 from indextts.infer import IndexTTS  # noqa: E402
 class TTSWebApp:
     def __init__(self):
@@ -119,7 +114,7 @@ class TTSWebApp:
             "Brian-客服男声-通用场景":"sambert-brian-v1",
             "Waan-泰语女声-通用场景":"sambert-waan-v1"
         }
-        self.index_path = Path("./index/index-tts").resolve()
+        self.index_path = Path("./checkpoints").resolve()
         self.local_tts_process = None
         self.GPTvts_voices_path = Path("./GPTvts_voices").resolve()
         self.GPTvts_path = Path("./GPTvts").resolve()
@@ -458,8 +453,8 @@ class TTSWebApp:
         """
         if self.index_tts is None:
             try:
-                checkpoint_path = os.path.join(self.index_path,"checkpoints")
-                config_path = os.path.join(self.index_path,"checkpoints","config.yaml")
+                checkpoint_path = self.index_path
+                config_path = os.path.join(self.index_path,"config.yaml")
                 self.index_tts = IndexTTS(model_dir=checkpoint_path,cfg_path=config_path)
             except Exception as e:
                 print(f"启动Index TTS服务失败: {e}")
