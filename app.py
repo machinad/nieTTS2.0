@@ -124,31 +124,27 @@ class TTSWebApp:
         self.local_tts_process = None
         self.GPTvts_voices_path = Path("./GPTvts_voices").resolve()
         self.GPTvts_path = Path("./GPTvts").resolve()
+        self.rvcIndex_path = Path("./logs").resolve()
         self.savePath = Path("./save").resolve()
-        self.GPTvts_modelPath = Path("./models").resolve()
+        self.GPTvts_name = "GPT-SoVITS-v4-20250422fix"
+        self.GPTvts_modelPath = Path("./GPTvts/GPT-SoVITS-v4-20250422fix/GPT_SoVITS/pretrained_models").resolve()
         self.local_interpreter_path = os.path.join(self.GPTvts_path, "GPT-SoVITS-v4-20250422fix",'runtime', 'python.exe')
-        self.local_script_path = os.path.join(self.GPTvts_path, "GPT-SoVITS-v4-20250422fix",'api_v2.py')
-        self.local_script_cwd = os.path.join(self.GPTvts_path, "GPT-SoVITS-v4-20250422fix")
+        self.local_script_path = os.path.join(self.GPTvts_path,"GPT-SoVITS-v4-20250422fix",'api_v2.py')
+        self.local_script_cwd = os.path.join(self.GPTvts_path,"GPT-SoVITS-v4-20250422fix")
         try:
+            self.rvcIndex_path.mkdir(parents=True, exist_ok=True)
             self.GPTvts_path.mkdir(parents=True, exist_ok=True)
-            print(f"目录{self.GPTvts_path}已创建或已存在")
+            print(f"创建目录{self.GPTvts_modelPath}成功")
         except Exception as e:
             print(f"创建目录{self.GPTvts_path}失败: {e}")
         try:
             self.GPTvts_voices_path.mkdir(parents=True, exist_ok=True)
-            print(f"目录{self.GPTvts_voices_path}已创建或已存在")
         except Exception as e:
             print(f"创建目录{self.GPTvts_voices_path}失败: {e}")
         try:
             self.savePath.mkdir(parents=True, exist_ok=True)
-            print(f"目录{self.savePath}已创建或已存在")
         except Exception as e:
             print(f"创建目录{self.savePath}失败: {e}")
-        try:
-            self.GPTvts_modelPath.mkdir(parents=True, exist_ok=True)
-            print(f"目录{self.GPTvts_modelPath}已创建或已存在")
-        except Exception as e:
-            print(f"创建目录{self.GPTvts_modelPath}失败: {e}")
         self.user_config = self.load_config()
         self.user_rvc_config = self.load_rvc_config()
         self.app = Quart(__name__)

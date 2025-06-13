@@ -38,7 +38,7 @@ nieTTS2.0/
 ├── GPTvts/             # GPT-SoVITS 项目目录，请将整个GPT-SoVITS整合包放进去
 ├── GPTvts_voices/      # 语音样本文件夹
 ├── indextts/           # Index TTS 实现
-├── models/             # GPT-SoVITS 模型文件
+├── GPTvts/GPT-SoVITS-v4-20250422fix/GPT_SoVITS/pretrained_models/  # GPT-SoVITS 模型文件
 ├── save/               # 音频输出目录
 └── templates/          # Web 界面模板
 ```
@@ -116,11 +116,7 @@ IndexTTS 是一种主要基于 XTTS 和 Tortoise 的 GPT 风格的文本转语�
 
 1. 首次使用需下载相应模型文件
 2. GPU 加速需要 CUDA 支持
-<<<<<<< HEAD
 3. 音频设备建议使用虚拟声卡。
-=======
-3. 音频设备建议使用虚拟声卡
->>>>>>> d8ac5318321c1d755230f51377a34313879e25b0
 
 ## 技术支持
 
