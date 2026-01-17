@@ -50,6 +50,8 @@ IF %ERRORLEVEL% NEQ 0 (
     goto end
 )
 echo pip 升级完成。
+
+REM 安装其他依赖
 echo 正在安装 requirements.txt 中的依赖...
 pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 IF %ERRORLEVEL% NEQ 0 (
