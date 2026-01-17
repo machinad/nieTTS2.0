@@ -377,6 +377,9 @@
                 <button class="btn btn-primary mt-3" onclick="convertToSpeech()" id = "updataGroup">
                     <i class="bi bi-soundwave me-2"></i>发送并提交osc
                 </button>
+                <div class="container">
+                    <button class="btn btn-primary mt-3" id="recordButton">点击开始录音</button>
+                </div>
 
                 <details class="mt-4">
                     <summary>高级设置</summary>
@@ -880,6 +883,132 @@
         document.getElementById('n_cpu').addEventListener('input', function() {
         document.getElementById('n_cpu_value').textContent = this.value;
         });
+        //--------stt代码块，以下为语音转文字相关代码--------
+ // --- 1. 获取 DOM 元素 ---
+        const recordButton = document.getElementById('recordButton');
+
+        // --- 2. 定义状态变量 ---
+        let isRecording = false;
+        let mediaRecorder = null;
+        let audioChunks = []; // 用于存储录音数据块
+        let userMediaStream = null; // 用于存储麦克风流，以便后续关闭
+
+        // --- 3. API 相关配置 ---
+        const apiUrl = 'https://api.siliconflow.cn/v1/audio/transcriptions';
+        // ！！！！重要！！！！
+        // ！！！！请将 <YOUR_TOKEN_HERE> 替换为您自己的 SiliconFlow API 密钥！！！！
+        const apiToken = 'sk-kcoeyfczewxhsuemjwclvqitiavjxaehvqmbqmzpttadmvrj';
+        
+        // --- 4. 按钮点击事件处理 ---
+        recordButton.addEventListener('click', async () => {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                await startRecording();
+            }
+        });
+
+        // --- 5. 开始录音函数 ---
+        async function startRecording() {
+            // 检查 API 密钥是否已填写
+            if (apiToken === '<YOUR_TOKEN_HERE>') {
+                alert('请在 JavaScript 代码中替换 <YOUR_TOKEN_HERE> 为您的真实 API 密钥！');
+                return;
+            }
+
+            try {
+                // 请求用户麦克风权限
+                userMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                recordButton.textContent = '停止录音';
+                recordButton.classList.add('recording');
+                isRecording = true;
+                audioChunks = []; // 清空上一次的录音数据
+
+                // 创建 MediaRecorder 实例
+                mediaRecorder = new MediaRecorder(userMediaStream);
+
+                // 当有数据可用时，存入 audioChunks 数组
+                mediaRecorder.addEventListener('dataavailable', event => {
+                    audioChunks.push(event.data);
+                });
+
+                // 当录音停止时，处理数据并发送到服务器
+                mediaRecorder.addEventListener('stop', () => {
+                    // 关闭麦克风轨道，这样浏览器的“使用中”图标就会消失
+                    userMediaStream.getTracks().forEach(track => track.stop());
+
+                    // 将收集到的音频数据块整合成一个 Blob 对象
+                    // 浏览器通常默认录制为 webm 格式
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    
+                    // 发送音频到服务器
+                    sendAudioToServer(audioBlob);
+                });
+
+                // 开始录音
+                mediaRecorder.start();
+
+            } catch (error) {
+                console.error('无法开始录音:', error);
+                statusDisplay.textContent = `错误: ${error.message}. 请确保已授予麦克风权限并且页面在 https 环境下。`;
+                isRecording = false; // 重置状态
+                recordButton.textContent = '点击开始录音';
+                recordButton.classList.remove('recording');
+            }
+        }
+
+        // --- 6. 停止录音函数 ---
+        function stopRecording() {
+            if (mediaRecorder) {
+                mediaRecorder.stop(); // 这会触发 'stop' 事件
+                isRecording = false;
+                recordButton.textContent = '点击开始录音';
+                recordButton.classList.remove('recording');
+            }
+        }
+
+        // --- 7. 发送音频到服务器的函数 ---
+        async function sendAudioToServer(audioBlob) {
+            const formData = new FormData();
+
+            // 关键点：这里的'file'字段的值是 Blob 对象本身，而不是一个字符串
+            // 第三个参数是文件名，对于 API 来说可能是必需的
+            formData.append('file', audioBlob, 'recording.webm');
+            formData.append('model', 'FunAudioLLM/SenseVoiceSmall');
+            
+            const options = {
+                method: 'POST',
+                headers: {
+                    // 注意：当 body 是 FormData 时, Fetch API 会自动设置 'Content-Type' 为 'multipart/form-data'
+                    // 所以不要手动设置它，否则会破坏 boundary 的定义。
+                    'Authorization': `Bearer ${apiToken}`
+                },
+                body: formData
+            };
+
+            try {
+                const response = await fetch(apiUrl, options);
+                
+                const data = await response.json();
+
+                if (!response.ok) {
+                    // 如果服务器返回了错误信息，优先显示它
+                    const errorMsg = data.error ? data.error.message : `HTTP 错误: ${response.status}`;
+                    throw new Error(errorMsg);
+                }
+
+                // 成功，格式化并显示结果
+                addLog(data.text);
+                document.getElementById('textInput').value = data.text;
+                convertToSpeech();
+            } catch (error) {
+                console.error('API 请求失败:', error);
+                resultDisplay.textContent = `请求失败: ${error.message}`;
+                statusDisplay.textContent = '处理失败，请重试。';
+            }
+        }
+
+        //--------stt代码块--------
         let currentAudioUrl = null;
         function check_GPTvts_is_open() {
                 fetch('/check_GPTvts_is_open')

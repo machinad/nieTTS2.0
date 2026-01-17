@@ -6,7 +6,7 @@ cls
 echo 检查并激活 Conda 环境...
 
 REM 定义 Conda 环境名称
-SET CONDA_ENV_NAME=nietts2.0
+SET CONDA_ENV_NAME=nietts3.0
 
 REM 激活 Conda 环境
 call conda activate %CONDA_ENV_NAME%

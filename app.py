@@ -1004,20 +1004,26 @@ class TTSWebApp:
         """
         model_path = path
         model_list = []
-        for model in model_path.iterdir():
-            if model.name.endswith(".ckpt"):# 检查文件是否为.pth格式
-                model_list.append(model.name)
-        return model_list
+        try:
+            for model in model_path.iterdir():
+                if model.name.endswith(".pth"):# 检查文件是否为.pth格式
+                     model_list.append(model.name)
+            return model_list
+        except Exception:
+            return model_list
     def scan_RVCweight_list(self,path):
         """
         扫描模型文件
         """
         model_path = path
         model_list = []
-        for model in model_path.iterdir():
-            if model.name.endswith(".pth"):# 检查文件是否为.pth格式
-                model_list.append(model.name)
-        return model_list
+        try:
+            for model in model_path.iterdir():
+                if model.name.endswith(".pth"):# 检查文件是否为.pth格式
+                     model_list.append(model.name)
+            return model_list
+        except Exception:
+            return model_list
     def scan_RVCindex_list(self,path):
         """
         扫描模型文件
@@ -1034,10 +1040,13 @@ class TTSWebApp:
         """
         model_path = path
         model_list = []
-        for model in model_path.iterdir():
-            if model.name.endswith(".pth"):# 检查文件是否为.pth格式
-                model_list.append(model.name)
-        return model_list
+        try:
+            for model in model_path.iterdir():
+                if model.name.endswith(".pth"):# 检查文件是否为.pth格式
+                     model_list.append(model.name)
+            return model_list
+        except Exception:
+            return model_list
     def scan_voice_folders(self,path):
         """
         扫描语音文件夹
@@ -1082,6 +1091,13 @@ class TTSWebApp:
                 self.local_tts_process.kill()
             finally:
                 self.local_tts_process = None
+    '''
+    def run(self,host,port,certfile, keyfile):
+        try:
+            self.app.run(host=host,port=port,certfile=certfile, keyfile=keyfile)
+        finally:
+            self.cleanup()
+    '''
     def run(self,host,port):
         try:
             self.app.run(host=host,port=port)
@@ -1111,6 +1127,13 @@ if __name__ == '__main__':
         ╚═╝  ╚═══╝  ╚═╝  ╚══════╝     ╚═╝        ╚═╝     ╚══════╝
         """)
     try:
+        '''
+        app.run(host=host, 
+                port=port,
+                certfile='cert.pem',
+                keyfile='key.pem'
+                )
+        '''
         app.run(host=host, port=port)
     except Exception as e:
         print(f"启动应用时发生错误: {e}")

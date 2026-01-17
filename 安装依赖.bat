@@ -11,7 +11,7 @@ echo ╚═╝  ╚═══╝  ╚═╝  ╚══════╝     ╚═�
 echo 检查并创建/激活 conda 环境...
 
 REM 定义 conda 环境名称
-SET CONDA_ENV_NAME=nietts2.0
+SET CONDA_ENV_NAME=nietts3.0
 
 REM 检查 conda 是否安装
 where conda >nul 2>nul
@@ -88,7 +88,7 @@ echo PyTorch 安装完成。
 REM 使用 pip 安装主项目的 requirements.txt 中的其余依赖
 echo 正在使用 pip 安装 requirements.txt 中的其余依赖...
 pip install dotenv -i https://pypi.tuna.tsinghua.edu.cn/simple
-pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+pip install -r requirements.txt --verbose
 IF %ERRORLEVEL% NEQ 0 (
     echo 安装 requirements.txt 中的依赖失败。
     goto end
