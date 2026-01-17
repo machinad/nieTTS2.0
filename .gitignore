@@ -39,6 +39,7 @@ ffprobe.*
 /outputs/
 /build/
 /venv/
+/Python
 /__pycache__
 *.egg-info
 *.DS_Store
