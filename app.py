@@ -1,4 +1,3 @@
-
 from quart import Quart,render_template,request,jsonify,send_file
 import os
 import win32com.client
@@ -6,36 +5,26 @@ import edge_tts
 import uuid
 import pygame
 import json
-import queue
-import threading
 import io
-import sys
-import httpx
 import subprocess
 import socket
 import atexit
 import asyncio
-import torch
 from pythonosc import udp_client
 from pathlib import Path
 import dashscope 
-import gc
-import sounddevice as sd
 from dashscope.audio.tts_v2 import SpeechSynthesizer as SpeechSynthesizerV2
 from dashscope.audio.tts import SpeechSynthesizer as SpeechSynthesizerV1
-import time
-from multiprocessing import freeze_support
-from indextts.infer import IndexTTS  # noqa: E402
 class TTSWebApp:
     def __init__(self):
-        self.text_split_method = {
+        """ self.text_split_method = {
             "不切":"cut0",
             "凑四句一切":"cut1",
             "凑50字一切":"cut2",
             "按中文句号。切":"cut3",
             "按英文句号.切":"cut4",
             "按标点符号切":"cut5"
-        }
+        } """
         self.Edge_TTS_voices = [
             # 女声
             "zh-CN-XiaoxiaoNeural",  # Female, News/Novel, Warm
@@ -117,21 +106,21 @@ class TTSWebApp:
             "Waan-泰语女声-通用场景":"sambert-waan-v1"
         }
         self.config_file = Path("./config.json")
-        self.rvc_config_file = Path("./configs/config.json")
-        self.rvc_weights_path = Path("./assets/weights").resolve()
-        self.rvc_index_path = Path("./logs").resolve()
-        self.index_path = Path("./checkpoints").resolve()
+        #self.rvc_config_file = Path("./configs/config.json")
+        #self.rvc_weights_path = Path("./assets/weights").resolve()
+        #self.rvc_index_path = Path("./logs").resolve()
+        #self.index_path = Path("./checkpoints").resolve()
         self.local_tts_process = None
-        self.GPTvts_voices_path = Path("./GPTvts_voices").resolve()
-        self.GPTvts_path = Path("./GPTvts").resolve()
-        self.rvcIndex_path = Path("./logs").resolve()
+        #self.GPTvts_voices_path = Path("./GPTvts_voices").resolve()
+        #self.GPTvts_path = Path("./GPTvts").resolve()
+        #self.rvcIndex_path = Path("./logs").resolve()
         self.savePath = Path("./save").resolve()
-        self.GPTvts_name = "GPT-SoVITS-v4-20250422fix"
-        self.GPTvts_modelPath = Path("./GPTvts/GPT-SoVITS-v4-20250422fix/GPT_SoVITS/pretrained_models").resolve()
-        self.local_interpreter_path = os.path.join(self.GPTvts_path, "GPT-SoVITS-v4-20250422fix",'runtime', 'python.exe')
-        self.local_script_path = os.path.join(self.GPTvts_path,"GPT-SoVITS-v4-20250422fix",'api_v2.py')
-        self.local_script_cwd = os.path.join(self.GPTvts_path,"GPT-SoVITS-v4-20250422fix")
-        try:
+        #self.GPTvts_name = "GPT-SoVITS-v4-20250422fix"
+        #self.GPTvts_modelPath = Path("./GPTvts/GPT-SoVITS-v4-20250422fix/GPT_SoVITS/pretrained_models").resolve()
+        #self.local_interpreter_path = os.path.join(self.GPTvts_path, "GPT-SoVITS-v4-20250422fix",'runtime', 'python.exe')
+        #self.local_script_path = os.path.join(self.GPTvts_path,"GPT-SoVITS-v4-20250422fix",'api_v2.py')
+        #self.local_script_cwd = os.path.join(self.GPTvts_path,"GPT-SoVITS-v4-20250422fix")
+        """ try:
             self.rvcIndex_path.mkdir(parents=True, exist_ok=True)
             self.GPTvts_path.mkdir(parents=True, exist_ok=True)
             print(f"创建目录{self.GPTvts_modelPath}成功")
@@ -140,27 +129,27 @@ class TTSWebApp:
         try:
             self.GPTvts_voices_path.mkdir(parents=True, exist_ok=True)
         except Exception as e:
-            print(f"创建目录{self.GPTvts_voices_path}失败: {e}")
+            print(f"创建目录{self.GPTvts_voices_path}失败: {e}") """
         try:
             self.savePath.mkdir(parents=True, exist_ok=True)
         except Exception as e:
             print(f"创建目录{self.savePath}失败: {e}")
         self.user_config = self.load_config()
-        self.user_rvc_config = self.load_rvc_config()
+        #self.user_rvc_config = self.load_rvc_config()
         self.app = Quart(__name__)
         self.current_device = "default"
         self.tts_providers = [
             "Edge TTS",
             "阿里百炼cosyvice",
-            "阿里百炼sambert",
-            "GPTvts本地推理",
-            "Index TTS",
-            "RVC变声器"
+            "阿里百炼sambert"
+            #"GPTvts本地推理",
+            #"Index TTS",
+            #"RVC变声器"
         ]
         
         self.setup_routes()
-        self.index_tts = None
-        self.rvc_server = None
+        #self.index_tts = None
+        #self.rvc_server = None
         self.osc_client = udp_client.SimpleUDPClient("127.0.0.1", 9000)
         atexit.register(self.cleanup)
     os.makedirs('templates', exist_ok=True) 
@@ -175,18 +164,18 @@ class TTSWebApp:
             "ali_tts_voice":"龙婉-普通话-语音助手、导航播报、聊天数字人",
             "sambert_tts_voice":"知婧-严厉女声-通用场景",
             "ali_api_key":"",
-            "GPTvts_character": "",
-            "GPTvts_emotion": "",
-            "GPTvts_sample": "",
-            "GPTvts_speed_factor":1,
-            "GPTvts_temperature_factor":1,
-            "GPTvts_text_split_method":"按中文句号。切",
-            "GPTmodelName":"",
-            "SovitsModelName":"",
-            "parallel_infer":True,
-            "split_bucket":True,
-            "batch_size_slider":5,
-            "batch_threshold_slider":0.75,
+            #"GPTvts_character": "",
+            #"GPTvts_emotion": "",
+            #"GPTvts_sample": "",
+            #"GPTvts_speed_factor":1,
+            #"GPTvts_temperature_factor":1,
+            #"GPTvts_text_split_method":"按中文句号。切",
+            #"GPTmodelName":"",
+            #"SovitsModelName":"",
+            #"parallel_infer":True,
+            #"split_bucket":True,
+            #"batch_size_slider":5,
+            #"batch_threshold_slider":0.75,
             "isdownload":False,
             "isplayaudio":True,
             "isIndex_tts_flash":False
@@ -199,6 +188,7 @@ class TTSWebApp:
                 print(f"tts加载配置文件失败: {e}")
                 return default_config
         return default_config
+    '''
     def load_rvc_config(self):
         """
         加载RVC配置
@@ -232,6 +222,7 @@ class TTSWebApp:
                 print(f"加载配置文件失败: {e}")
                 return default_config
         return default_config
+    '''
     def save_config(self,config):
         """
         保存配置
@@ -253,17 +244,17 @@ class TTSWebApp:
         /tts,POST请求，处理tts请求,
         """
         self.app.route('/tts', methods=['POST'])(self.tts_endpoint)
-        self.app.route("/get_voice_list")(self.get_voice_list)
-        self.app.route("/GPTvts_tts_start")(self.GPTvts_tts_start)
-        self.app.route("/check_GPTvts_is_open")(self.check_GPTvts_is_open)
-        self.app.route("/selectModel",methods=["POST"])(self.selectModel)
-        self.app.route("/index_tts_start")(self.index_tts_start)
-        self.app.route("/check_index_tts")(self.check_index_tts)
-        self.app.route("/RVC_server_start",methods=["POST"])(self.RVC_server_start)
-        self.app.route("/RVC_start",methods=["POST"])(self.RVC_start)
-        self.app.route("/change_rvc_config",methods=["POST"])(self.change_rvc_config)
-        self.app.route("/check_RVCserver_is_open")(self.check_RVCserver_is_open)
-        self.app.route("/RVC_stop")(self.RVC_stop)
+        #self.app.route("/get_voice_list")(self.get_voice_list)
+        #self.app.route("/GPTvts_tts_start")(self.GPTvts_tts_start)
+        #self.app.route("/check_GPTvts_is_open")(self.check_GPTvts_is_open)
+        #self.app.route("/selectModel",methods=["POST"])(self.selectModel)
+        #self.app.route("/index_tts_start")(self.index_tts_start)
+        #self.app.route("/check_index_tts")(self.check_index_tts)
+        #self.app.route("/RVC_server_start",methods=["POST"])(self.RVC_server_start)
+        #self.app.route("/RVC_start",methods=["POST"])(self.RVC_start)
+        #self.app.route("/change_rvc_config",methods=["POST"])(self.change_rvc_config)
+        #self.app.route("/check_RVCserver_is_open")(self.check_RVCserver_is_open)
+        #self.app.route("/RVC_stop")(self.RVC_stop)
 
     async def index(self):
         """
@@ -278,14 +269,22 @@ class TTSWebApp:
                                     ali_tts_voices=list(self.ali_tts_voices.keys()),
                                     sambert_tts_voices=list(self.sambert_tts_voices.keys()),
                                     user_config = self.user_config,
-                                    user_rvc_config = self.user_rvc_config,
-                                    text_split_method = list(self.text_split_method.keys()),
-                                    GPTmodel_list = list(self.scan_GPTmodel_list(self.GPTvts_modelPath)),
-                                    SovitsMoedel_list = list(self.scan_SovitsModel_list(self.GPTvts_modelPath)),
-                                    RVC_input_devices = list(self.get_input_devices()),
-                                    RVC_output_devices = list(self.get_output_devices()),
-                                    RVC_weights = list(self.scan_RVCweight_list(self.rvc_weights_path)),
-                                    RVC_indexes = list(self.scan_RVCindex_list(self.rvc_index_path)),
+                                    user_rvc_config = {},
+                                    text_split_method = [],
+                                    GPTmodel_list = [],
+                                    SovitsMoedel_list = [],
+                                    RVC_input_devices = [],
+                                    RVC_output_devices = [],
+                                    RVC_weights = [],
+                                    RVC_indexes = [],
+                                    #user_rvc_config = self.user_rvc_config,
+                                    #text_split_method = list(self.text_split_method.keys()),
+                                    #GPTmodel_list = list(self.scan_GPTmodel_list(self.GPTvts_modelPath)),
+                                    #SovitsMoedel_list = list(self.scan_SovitsModel_list(self.GPTvts_modelPath)),
+                                    #RVC_input_devices = list(self.get_input_devices()),
+                                    #RVC_output_devices = list(self.get_output_devices()),
+                                    #RVC_weights = list(self.scan_RVCweight_list(self.rvc_weights_path)),
+                                    #RVC_indexes = list(self.scan_RVCindex_list(self.rvc_index_path)),
                                     )
     """
     返回格式
@@ -328,18 +327,18 @@ class TTSWebApp:
             "ali_tts_voice":data.get("ali_tts_voice",self.user_config.get("ali_tts_voice")),
             "sambert_tts_voice":data.get("sambert_tts_voice",self.user_config.get("sambert_tts_voice")),
             "ali_api_key":data.get("ali_api_key",self.user_config.get("ali_api_key")),
-            "GPTvts_character": data.get("GPTvts_character", "温迪"),
-            "GPTvts_emotion": data.get("GPTvts_emotion", "开心_happy"),
-            "GPTvts_sample": data.get("GPTvts_sample", ""),
-            "GPTvts_speed_factor":data.get("GPTvts_speed_factor", 1.0),
-            "GPTvts_temperature_factor":data.get("GPTvts_temperature_factor", 1.0),
-            "GPTvts_text_split_method":data.get("GPTvts_text_split_method", "按中文句号。切"),
-            "GPTmodelName":data.get("GPTmodelName", ""),
-            "SovitsModelName":data.get("SovitsModelName", ""),
-            "parallel_infer":bool(data.get("parallel_infer", True)),
-            "split_bucket":bool(data.get("split_bucket", True)),
-            "batch_size_slider":data.get("batch_size_slider", 5),
-            "batch_threshold_slider":data.get("batch_threshold_slider", 0.75),
+            #"GPTvts_character": data.get("GPTvts_character", "温迪"),
+            #"GPTvts_emotion": data.get("GPTvts_emotion", "开心_happy"),
+            #"GPTvts_sample": data.get("GPTvts_sample", ""),
+            #"GPTvts_speed_factor":data.get("GPTvts_speed_factor", 1.0),
+            #"GPTvts_temperature_factor":data.get("GPTvts_temperature_factor", 1.0),
+            #"GPTvts_text_split_method":data.get("GPTvts_text_split_method", "按中文句号。切"),
+            #"GPTmodelName":data.get("GPTmodelName", ""),
+            #"SovitsModelName":data.get("SovitsModelName", ""),
+            #"parallel_infer":bool(data.get("parallel_infer", True)),
+            #"split_bucket":bool(data.get("split_bucket", True)),
+            #"batch_size_slider":data.get("batch_size_slider", 5),
+            #"batch_threshold_slider":data.get("batch_threshold_slider", 0.75),
             "isdownload":bool(data.get('isdownload', False)),
             "isplayaudio":bool(data.get('isplayaudio', True)),
             "isIndex_tts_flash":bool(data.get("isIndex_tts_flash",False))
@@ -355,10 +354,10 @@ class TTSWebApp:
         temp_file = self.savePath / f"save_voice_{id}.mp3"
         mimetype='audio/mp3'
         attachment_filename = "audio.mp3"
-        if data.get("provider") == "GPTvts本地推理":
+        """ if data.get("provider") == "GPTvts本地推理":
             temp_file = self.savePath / f"save_voice_{id}.wav"
             mimetype='audio/wav'
-            attachment_filename = "audio.wav"
+            attachment_filename = "audio.wav" """
         try:
             self.osc_client.send_message("/chatbox/input", [text, True])
             print("已发送文本到VRChat OSC")
@@ -422,7 +421,6 @@ class TTSWebApp:
                         print(f"已播放音频文件: {temp_file}")
                     else:
                         print("播放音频文件失败")
-                        return jsonify({'error': "音频播放失败"}), 400
                 finally:
                     if hasattr(pygame.mixer, 'get_init') and pygame.mixer.get_init():
                         pygame.mixer.quit()
@@ -431,7 +429,7 @@ class TTSWebApp:
                             os.remove(temp_file)
                             print(f"已清理临时文件: {temp_file}")
                         except Exception as e:
-                            print(f"清理临时文件{temp_file}失败: {e}")
+                            print(f"清理临时文件失败: {e}")
             loop.create_task(play_and_cleanup())
         else:
             if os.path.exists(temp_file):
@@ -439,8 +437,9 @@ class TTSWebApp:
                     os.remove(temp_file)
                     print(f"已清理临时文件: {temp_file}")
                 except Exception as e:
-                    print(f"清理临时文件{temp_file}失败: {e}")
+                    print(f"清理临时文件失败: {e}")
         return response_data
+    '''
     async def GPTvts_tts_start(self):
         """
         /GPTvts_tts_start启动GPTvts本地推理服务
@@ -497,8 +496,8 @@ class TTSWebApp:
             print(f"启动本地TTS服务失败: {e}")
             self.local_tts_process = None
             return jsonify({"status":"error","message": f"启动本地TTS服务失败: {e}"})
-        
     async def index_tts_start(self):
+
         """
         /index_tts_start启动Index TTS服务
         """
@@ -777,6 +776,7 @@ class TTSWebApp:
         """
         voice_list = self.scan_voice_folders(self.GPTvts_voices_path)
         return jsonify(voice_list)
+    '''
     async def play_audio(self, audio_file):
         """
         播放音频文件
@@ -852,6 +852,7 @@ class TTSWebApp:
         else:
             print("阿里百炼转换失败")
             return False
+    '''
     async def use_GPTvts(self,data,temp_file):
         """
         使用GPTvts模型服务转换文本
@@ -914,19 +915,6 @@ class TTSWebApp:
         else:
             self.index_tts.infer(voice, text, temp_file)
         return True
-    def get_audio_devices(self):
-        """
-        扫描系统音频输出设备
-        """
-        devices = {"默认设备": "default"}
-        sapi = win32com.client.Dispatch("SAPI.SpVoice")
-        audio_outputs = sapi.GetAudioOutputs()  
-        for i in range(audio_outputs.Count):
-            device_desc = audio_outputs.Item(i).GetDescription()#
-            devices[device_desc] = i  
-        print(f"已找到 {audio_outputs.Count} 个音频设备")
-        print(f"已找到 {str(devices)} 个音频设备")
-        return devices
     def update_devices(self, hostapi_name=None):
         """获取设备列表"""
         sd._terminate()
@@ -971,18 +959,33 @@ class TTSWebApp:
             return input_devices
         except Exception as e:
             print(f"Failed to get output devices: {e}")
-
     def get_output_devices(self):
+    
         try:
             _, output_devices, _, _ = self.update_devices()
             return output_devices
         except Exception as e:
             print(f"Failed to get output devices: {e}")
+    '''
     def set_audio_device(self, device):
         """
         设置音频输出设备
         """
         self.current_device = device
+    def get_audio_devices(self):
+        """
+        扫描系统音频输出设备
+        """
+        devices = {"默认设备": "default"}
+        sapi = win32com.client.Dispatch("SAPI.SpVoice")
+        audio_outputs = sapi.GetAudioOutputs()  
+        for i in range(audio_outputs.Count):
+            device_desc = audio_outputs.Item(i).GetDescription()#
+            devices[device_desc] = i  
+        print(f"已找到 {audio_outputs.Count} 个音频设备")
+        print(f"已找到 {str(devices)} 个音频设备")
+        return devices
+    '''
     def read_output(self, pipe, output_queue):
         try:
             while True:
@@ -1075,6 +1078,7 @@ class TTSWebApp:
                     "emotions": emotions
                 })
         return voices_list
+    '''
     def cleanup(self):
         """
         清理
