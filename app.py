@@ -13,6 +13,7 @@ import asyncio
 from pythonosc import udp_client
 from pathlib import Path
 import dashscope 
+import webbrowser
 from dashscope.audio.tts_v2 import SpeechSynthesizer as SpeechSynthesizerV2
 from dashscope.audio.tts import SpeechSynthesizer as SpeechSynthesizerV1
 class TTSWebApp:
@@ -1108,20 +1109,6 @@ class TTSWebApp:
         finally:
             self.cleanup()
 if __name__ == '__main__': 
-    host = os.environ.get('APP_HOST', '0.0.0.0') # 默认绑定到所有接口
-    port = int(os.environ.get('APP_PORT', 1145)) # 默认端口 1145
-    app = TTSWebApp()
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80)) # 连接到一个外部地址以获取本机IP
-        local_ip = s.getsockname()[0]
-        s.close()
-        print(f"本机局域网 IP 地址: {local_ip}:{port}")
-    except Exception as e:
-        print(f"无法获取本机局域网 IP 地址: {e}")
-        local_ip = "未知"
-
-    print(f"正在启动应用，监听地址: {host}:{port}")
     print("""
         ███╗   ██╗  ██╗  ███████╗  ████████╗  ████████╗  ███████╗
         ████╗  ██║  ██║  ██╔════╝  ╚══██╔══╝  ╚══██╔══╝  ██╔════╝
@@ -1130,14 +1117,23 @@ if __name__ == '__main__':
         ██║ ╚████║  ██║  ███████╗     ██║        ██║     ███████║
         ╚═╝  ╚═══╝  ╚═╝  ╚══════╝     ╚═╝        ╚═╝     ╚══════╝
         """)
+    host = os.environ.get('APP_HOST', '0.0.0.0') # 默认绑定到所有接口
+    port = int(os.environ.get('APP_PORT', 1145)) # 默认端口 1145
+    app = TTSWebApp()
     try:
-        '''
-        app.run(host=host, 
-                port=port,
-                certfile='cert.pem',
-                keyfile='key.pem'
-                )
-        '''
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80)) # 连接到一个外部地址以获取本机IP
+        local_ip = s.getsockname()[0]
+        s.close()
+        url = f"http://{local_ip}:{port}"
+        print(f"本机局域网 IP 地址: {url},可以使用任意同局域网设备访问此地址以打开前端页面")
+        webbrowser.open(f"http://127.0.0.1:{port}")
+    except Exception as e:
+        print(f"无法获取本机局域网 IP 地址: {e}")
+        local_ip = "未知"
+
+    print(f"正在启动应用，监听地址: {host}:{port}")
+    try:
         app.run(host=host, port=port)
     except Exception as e:
         print(f"启动应用时发生错误: {e}")
