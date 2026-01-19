@@ -52,7 +52,7 @@ pip install -r requirements.txt
 如需使用阿里百炼TTS，在Web界面中输入API密钥即可，无需修改配置文件。
 
 **在Web界面输入API密钥：**
-1. 启动应用后，打开 `http://localhost:8000`
+1. 启动应用后，打开 `http://localhost:1145`
 2. 在Web界面的设置面板中找到 "API密钥" 输入框
 3. 粘贴您的阿里百炼API密钥
 4. 保存设置
@@ -75,7 +75,7 @@ pip install -r requirements.txt
 python app.py
 ```
 
-应用启动后，打开浏览器访问：`http://localhost:8000`
+应用启动后，打开浏览器访问：`http://localhost:1145`
 
 > 💡 **提示**：首次运行时，`启动.bat` 会自动安装所有必要的依赖，之后可以直接双击启动。
 
@@ -112,7 +112,6 @@ python app.py
 **1. 安装虚拟声卡软件**
    - **VB-Audio Virtual Cable**（推荐，免费版可用）
    - **Virtual Audio Cable**（付费）
-   - **Soundflower**（仅Mac）
 
 **2. 配置虚拟声卡**
    - 在Windows中设置虚拟声卡为默认播放设备
