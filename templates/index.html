@@ -361,7 +361,23 @@
                                 </span>
                             </label>
                         </div>
-                        
+                        <div style="display: flex; align-items: center;">
+                            <span style="margin-right: 10px;">是否翻译</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="isTranslate" {% if user_config.isTranslate %}checked{% endif %}>
+                                <span class="toggle-switch-slider">
+                                    <span class="toggle-switch-inner"></span>
+                                </span>
+                            </label>
+                        </div>
+                        <div class="form-group"id="tLanguageSelectGroup" style="display: flex; align-items: center;">
+                            <label for="tLanguage" class="form-label" style="display: flex; margin-left: 10px;">目标语言</label>
+                            <select class="form-select" id="tLanguage">
+                                {% for Language in tlanguages %}
+                                <option value="{{ Language }}" {% if Language == user_config.tLanguage %}selected{% endif %}>{{ Language }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
                         <div style="display: flex; align-items: center; flex-basis: 100%;">
                             <audio id="audioPlayer" controls style="width: 100%;"></audio>
                         </div>
@@ -413,6 +429,10 @@
                             <label for="aliApiKey" class="form-label">api_key</label>
                             <input type="text" class="form-select" id="aliApiKey" placeholder="请输入api_key" value="{{user_config.ali_api_key}}">
                         </div>
+                        <div class="form-group"id="siliconflowApiKeyGroup">
+                            <label for="siliconflowApiKeyGroup" class="form-label">硅基流动api_key</label>
+                            <input type="text" class="form-select" id="siliconflowApiKey" placeholder="请输入api_key，该key用于语音识别和翻译服务" value="{{user_config.siliconflowApiKey}}">
+                        </div>
                         <div class="form-group"id="ali_voiceSelectGroup">
                             <label for="ali_voiceSelect" class="form-label">语音选择</label>
                             <select class="form-select" id="ali_voiceSelect">
@@ -429,7 +449,7 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="form-group" id="characterSelectGroup">
+                        <!-- <div class="form-group" id="characterSelectGroup">
                             <label for="characterSelect" class="form-label">角色选择</label>
                             <select id="characterSelect" class="form-select" onchange="updateEmotions()">
                                 <option value="">选择角色</option>
@@ -464,7 +484,7 @@
                                                 <label for="speedFactorSlider" class="form-label">语速因子</label>
                                             </div>
                                             <div style="width: 60px; display: inline-block; font-size: 1rem;background-color: #ffffff;border-radius: 1rem;color: #ffa0c0;text-align: center;padding: 5px;">
-                                                <span id="speedFactorValue">{{user_config.GPTvts_speed_factor}}</span>
+                                                <span id="speedFactorValue">{#{{user_config.GPTvts_speed_factor}}#}</span>
                                             </div>
                                         </div>
                                         <div style="display:block;padding: 10px;">
@@ -477,7 +497,7 @@
                                                 <label for="temperatureFactorSlider" class="form-label">温度</label>
                                             </div>
                                             <div style="width: 60px; display: inline-block; font-size: 1rem;background-color: #ffffff;border-radius: 1rem;color: #ffa0c0;text-align: center;padding: 5px;">
-                                                <span id="temperatureFactorValue">{{user_config.GPTvts_temperature_factor}}</span>
+                                                <span id="temperatureFactorValue">{#{{user_config.GPTvts_temperature_factor}}#}</span>
                                             </div>
                                         </div>
                                         <div style="display:block;padding: 10px;">
@@ -833,7 +853,7 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </div> -->
                 </details>
             </div>
         </div>
@@ -844,7 +864,7 @@
     </footer>
 
     <script>
-        document.getElementById('speedFactorSlider').addEventListener('input', function() {
+       /*  document.getElementById('speedFactorSlider').addEventListener('input', function() {
         document.getElementById('speedFactorValue').textContent = this.value;
         });
         document.getElementById('temperatureFactorSlider').addEventListener('input', function() {
@@ -882,7 +902,7 @@
         });
         document.getElementById('n_cpu').addEventListener('input', function() {
         document.getElementById('n_cpu_value').textContent = this.value;
-        });
+        }); */
         //--------stt代码块，以下为语音转文字相关代码--------
  // --- 1. 获取 DOM 元素 ---
         const recordButton = document.getElementById('recordButton');
@@ -897,8 +917,6 @@
         const apiUrl = 'https://api.siliconflow.cn/v1/audio/transcriptions';
         // ！！！！重要！！！！
         // ！！！！请将 <YOUR_TOKEN_HERE> 替换为您自己的 SiliconFlow API 密钥！！！！
-        const apiToken = 'sk-kcoeyfczewxhsuemjwclvqitiavjxaehvqmbqmzpttadmvrj';
-        
         // --- 4. 按钮点击事件处理 ---
         recordButton.addEventListener('click', async () => {
             if (isRecording) {
@@ -910,12 +928,6 @@
 
         // --- 5. 开始录音函数 ---
         async function startRecording() {
-            // 检查 API 密钥是否已填写
-            if (apiToken === '<YOUR_TOKEN_HERE>') {
-                alert('请在 JavaScript 代码中替换 <YOUR_TOKEN_HERE> 为您的真实 API 密钥！');
-                return;
-            }
-
             try {
                 // 请求用户麦克风权限
                 userMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -970,7 +982,7 @@
         // --- 7. 发送音频到服务器的函数 ---
         async function sendAudioToServer(audioBlob) {
             const formData = new FormData();
-
+            const apiToken =document.getElementById('siliconflowApiKey').value;
             // 关键点：这里的'file'字段的值是 Blob 对象本身，而不是一个字符串
             // 第三个参数是文件名，对于 API 来说可能是必需的
             formData.append('file', audioBlob, 'recording.webm');
@@ -995,10 +1007,11 @@
                     // 如果服务器返回了错误信息，优先显示它
                     const errorMsg = data.error ? data.error.message : `HTTP 错误: ${response.status}`;
                     throw new Error(errorMsg);
+                    addLog(`请求失败: ${errorMsg}`);
                 }
 
                 // 成功，格式化并显示结果
-                addLog(data.text);
+                addLog('识别成功！');
                 document.getElementById('textInput').value = data.text;
                 convertToSpeech();
             } catch (error) {
@@ -1010,7 +1023,7 @@
 
         //--------stt代码块--------
         let currentAudioUrl = null;
-        function check_GPTvts_is_open() {
+        /* function check_GPTvts_is_open() {
                 fetch('/check_GPTvts_is_open')
                   .then(response => response.json())
                   .then(data => {
@@ -1025,8 +1038,8 @@
                             btn.style.backgroundColor = '#ff3636';
                         }
                   })
-        }
-        function onTtsStart() {
+        } */
+        /* function onTtsStart() {
                 const btn = document.getElementById('btn_tts_start');
                 btn.disabled = true;
 
@@ -1069,13 +1082,13 @@
                             alert('本地推理服务启动失败');
                         }
                     }) 
-        }
+        } */
         function addLog(text){
             const logArea = document.getElementById("logArea")
             logArea.innerHTML+=`<div>${text}</div>`;
             logArea.scrollTop = logArea.scrollHeight;
         }
-        function checkIndexTts(){
+        /* function checkIndexTts(){
             const btn = document.getElementById("btn_indextts_start")
             fetch("/check_index_tts")
                 .then(response=>response.json())
@@ -1089,8 +1102,8 @@
                         btn.style.backgroundColor = '#ff3636';
                     }
                 })
-        }
-        function onIndexStart(){
+        } */
+        /* function onIndexStart(){
             const logArea = document.getElementById('logArea');
             const btn = document.getElementById("btn_indextts_start");
             btn.disabled = true;
@@ -1141,8 +1154,8 @@
                     }
                 })
            
-        }
-        function selectModel(){
+        } */
+        /* function selectModel(){
             const data = {
                 GPTmodelName:document.getElementById('GptModelSelect').value,
                 SovitsModelName:document.getElementById('SovitsModelSelect').value,
@@ -1165,8 +1178,8 @@
                 console.error('Error:', error);
                 alert('模型切换失败');
             });
-        }
-        function changeRvcConfig(){
+        } */
+        /* function changeRvcConfig(){
             const config_data = {
                 pth_path:document.getElementById('RVC_weights').value,
                 index_path:document.getElementById('RVC_indexes').value,
@@ -1215,8 +1228,8 @@
                     addLog(`RVC实例未启动${data.message}`);
                 }
             })
-        }
-        function onRvcServerStart(){
+        } */
+        /* function onRvcServerStart(){
             const btn = document.getElementById('btn_rvc_start');
             const config_data = {
                 pth_path:document.getElementById('RVC_weights').value,
@@ -1299,8 +1312,8 @@
                         addLog(`RVC实例未启动${data.message}`);
                     } 
                 })
-        }
-        function onRvcStart(){
+        } */
+        /* function onRvcStart(){
             const config_data = {
                 pth_path:document.getElementById('RVC_weights').value,
                 index_path:document.getElementById('RVC_indexes').value,
@@ -1336,8 +1349,8 @@
                         addLog(`RVC转换失败:${data.message}`)
                     }
                 })
-        }
-        function onRvcStop(){
+        } */
+        /* function onRvcStop(){
             fetch("/RVC_stop")
                 .then(response=>response.json())
                 .then(data=>{
@@ -1348,7 +1361,7 @@
                         addLog(`错误：${data.message}`)
                     }
                 })
-        }
+        } */
         function convertToSpeech() {
             const text = document.getElementById('textInput').value.trim();
             if (currentAudioUrl) {
@@ -1365,30 +1378,31 @@
                 device: document.getElementById('deviceSelect').value,
                 provider: document.getElementById('providerSelect').value,
                 edge_tts_voice: document.getElementById('voiceSelect').value,
+                tLanguage: document.getElementById('tLanguage').value,
                 ali_api_key: document.getElementById('aliApiKey').value,
                 ali_tts_voice: document.getElementById('ali_voiceSelect').value,
                 sambert_tts_voice: document.getElementById('sambert_voiceSelect').value,
-                GPTvts_character: document.getElementById('characterSelect').value,
-                GPTvts_emotion: document.getElementById('emotionSelect').value,
-                GPTvts_sample: document.getElementById('sampleSelect').value,
-                GPTvts_speed_factor:document.getElementById('speedFactorSlider').value,
-                GPTvts_temperature_factor:document.getElementById('temperatureFactorSlider').value,
-                GPTvts_text_split_method:document.getElementById('text_split_methodSelect').value,
-                GPTmodelName:document.getElementById('GptModelSelect').value,
-                SovitsModelName:document.getElementById('SovitsModelSelect').value,
-                parallel_infer:document.getElementById('parallel_infer').checked,
-                split_bucket:document.getElementById('split_bucket').checked,
+                siliconflowApiKey: document.getElementById('siliconflowApiKey').value,
+                //GPTvts_character: document.getElementById('characterSelect').value,
+                //GPTvts_emotion: document.getElementById('emotionSelect').value,
+                //GPTvts_sample: document.getElementById('sampleSelect').value,
+                //GPTvts_speed_factor:document.getElementById('speedFactorSlider').value,
+                //GPTvts_temperature_factor:document.getElementById('temperatureFactorSlider').value,
+                //GPTvts_text_split_method:document.getElementById('text_split_methodSelect').value,
+                //GPTmodelName:document.getElementById('GptModelSelect').value,
+                //SovitsModelName:document.getElementById('SovitsModelSelect').value,
+                //parallel_infer:document.getElementById('parallel_infer').checked,
+               // split_bucket:document.getElementById('split_bucket').checked,
                 isdownload:document.getElementById('isDownload').checked,
                 isplayaudio:document.getElementById('isPlayAudio').checked,
-                isIndex_tts_flash:document.getElementById("isIndex_tts_flash").checked,
-                batch_size_slider:document.getElementById('batch_size_slider').value,
-                batch_threshold_slider:document.getElementById("batch_threshold_slider").value
+                isTranslate:document.getElementById('isTranslate').checked
+                //isIndex_tts_flash:document.getElementById("isIndex_tts_flash").checked,
+                //batch_size_slider:document.getElementById('batch_size_slider').value,
+                //batch_threshold_slider:document.getElementById("batch_threshold_slider").value
             };
 
             // 添加到日志
-            const logArea = document.getElementById('logArea');
-            logArea.innerHTML += `<div>${text}</div>`;
-            logArea.scrollTop = logArea.scrollHeight;
+            addLog(text);
 
             // 清空输入框
             document.getElementById('textInput').value = '';
@@ -1433,8 +1447,8 @@
                 convertToSpeech();
             }
         });
-        let voiceData = [];
-        async function loadVoiceList() {
+        //let voiceData = [];
+        /* async function loadVoiceList() {
             try{
                 const response = await fetch('/get_voice_list');
                 voiceData = await response.json();
@@ -1447,8 +1461,8 @@
             catch(error){
                 console.error('获取角色列表失败', error);
             }
-        }
-        function updateEmotions() {
+        } */
+        /* function updateEmotions() {
                 const characterSelect = document.getElementById('characterSelect');
                 const emotionSelect = document.getElementById('emotionSelect');
                 const selectedCharacter = characterSelect.value;
@@ -1462,8 +1476,8 @@
                         })
                     }
                 }
-        }
-        function updateSamples() {
+        } */
+        /* function updateSamples() {
             const characterSelect = document.getElementById('characterSelect');
             const emotionSelect = document.getElementById('emotionSelect');
             const sampleSelect = document.getElementById('sampleSelect');
@@ -1481,42 +1495,46 @@
                      } 
                 }  
             }
-        }
+        } */
         document.addEventListener('DOMContentLoaded',function() {
                 const providerSelect = document.getElementById('providerSelect');
                 const voiceSelectGroup = document.getElementById('voiceSelectGroup');
                 const aliApiKeyGroup = document.getElementById('aliApiKeyGroup');
+                const siliconflowApiKeyGroup = document.getElementById('siliconflowApiKeyGroup');
                 const ali_voiceSelectGroup = document.getElementById('ali_voiceSelectGroup');
                 const sambert_voiceSelectGroup = document.getElementById('sambert_voiceSelectGroup');
-                const characterSelectGroup = document.getElementById('characterSelectGroup');
-                const emotionSelectGroup = document.getElementById('emotionSelectGroup');
-                const sampleSelectGroup = document.getElementById('sampleSelectGroup');
-                const speedFactorSliderGroup = document.getElementById('speedFactorSliderGroup');
-                const indexTtsGroup = document.getElementById("indexTtsGroup");
+                //const characterSelectGroup = document.getElementById('characterSelectGroup');
+                //const emotionSelectGroup = document.getElementById('emotionSelectGroup');
+                //const sampleSelectGroup = document.getElementById('sampleSelectGroup');
+                //const speedFactorSliderGroup = document.getElementById('speedFactorSliderGroup');
+                //const indexTtsGroup = document.getElementById("indexTtsGroup");
                 const downAuidioGroup = document.getElementById("dow_audio")
-                const rvc_serverGroup  = document.getElementById("rvc_serverGroup");
+                //const rvc_serverGroup  = document.getElementById("rvc_serverGroup");
                 const textInputGroup = document.getElementById("textInputGroup")
                 const updataGroup = document.getElementById("updataGroup")
                 const deviceSelect = document.getElementById('deviceSelect');
-                loadVoiceList()
-                check_GPTvts_is_open()
-                checkIndexTts()
+                //已经废弃，不再使用
+                //loadVoiceList()加载角色列表
+                //check_GPTvts_is_open()检查本地推理服务是否开启
+                //checkIndexTts()检查Index TTS服务是否开启
                 function toggleProviderSettings(){
                     voiceSelectGroup.style.display = "none";
                     aliApiKeyGroup.style.display = "none";
+                    siliconflowApiKeyGroup.style.display = "none";
                     ali_voiceSelectGroup.style.display = "none";
                     sambert_voiceSelectGroup.style.display = "none";
-                    characterSelectGroup.style.display = "none";
-                    emotionSelectGroup.style.display = "none";
-                    sampleSelectGroup.style.display = "none";
-                    speedFactorSliderGroup.style.display = "none";
-                    indexTtsGroup.style.display = "none";
+                    //characterSelectGroup.style.display = "none";
+                    //emotionSelectGroup.style.display = "none";
+                    //sampleSelectGroup.style.display = "none";
+                    //speedFactorSliderGroup.style.display = "none";
+                    //indexTtsGroup.style.display = "none";
                     downAuidioGroup.style.display = "none";
-                    rvc_serverGroup.style.display = "none";
+                    //rvc_serverGroup.style.display = "none";
                     textInputGroup.style.display = "none";
                     updataGroup.style.display = "none";
                     deviceSelect.style.display = "none";
                     if(providerSelect.value ==='Edge TTS'){
+                        siliconflowApiKeyGroup.style.display = "block";
                         voiceSelectGroup.style.display = "block";
                         downAuidioGroup.style.display = "block";
                         textInputGroup.style.display = "block";
@@ -1525,6 +1543,7 @@
                     }
                     else if(providerSelect.value ==='阿里百炼cosyvice'){
                         aliApiKeyGroup.style.display = "block";
+                        siliconflowApiKeyGroup.style.display = "block";
                         ali_voiceSelectGroup.style.display = "block";
                         downAuidioGroup.style.display = "block";
                         textInputGroup.style.display = "block";
@@ -1533,13 +1552,14 @@
                     }
                     else if(providerSelect.value ==='阿里百炼sambert'){
                         aliApiKeyGroup.style.display = "block";
+                        siliconflowApiKeyGroup.style.display = "block";
                         sambert_voiceSelectGroup.style.display = "block";
                         downAuidioGroup.style.display = "block";
                         textInputGroup.style.display = "block";
                         updataGroup.style.display = "block";
                         deviceSelect.style.display = "block";
                     }
-                    else if(providerSelect.value ==='GPTvts本地推理'){
+                    /* else if(providerSelect.value ==='GPTvts本地推理'){
                         characterSelectGroup.style.display = "block";
                         emotionSelectGroup.style.display = "block";
                         sampleSelectGroup.style.display = "block";
@@ -1561,11 +1581,11 @@
                     }
                     else if(providerSelect.value ==='RVC变声器'){
                         rvc_serverGroup.style.display = "block";
-                    }
+                    } */
                 }
                 toggleProviderSettings();
                 providerSelect.addEventListener('change',toggleProviderSettings);
-                const controlIds = {
+                /* const controlIds = {
                     // 滑动条
                     ranges: ['threhold', 'pitch', 'formant', 'index_rate', 'rms_mix_rate', 
                             'block_time', 'crossfade_length', 'extra_time', 'n_cpu'],
@@ -1578,7 +1598,7 @@
                 });
                 controlIds.checkboxes.forEach(id => {
                     document.getElementById(id).addEventListener('change', changeRvcConfig);
-                });
+                }); */
         }
         );
     </script>

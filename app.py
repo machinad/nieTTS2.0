@@ -14,6 +14,7 @@ from pythonosc import udp_client
 from pathlib import Path
 import dashscope 
 import webbrowser
+from openai import OpenAI
 from dashscope.audio.tts_v2 import SpeechSynthesizer as SpeechSynthesizerV2
 from dashscope.audio.tts import SpeechSynthesizer as SpeechSynthesizerV1
 class TTSWebApp:
@@ -38,6 +39,10 @@ class TTSWebApp:
             "zh-CN-YunxiNeural",     # Male, Novel, Lively/Sunshine
             "zh-CN-YunxiaNeural",    # Male, Cartoon/Novel, Cute
             "zh-CN-YunyangNeural"    # Male, News, Professional/Reliable
+        ]
+        self.tlanguages = [
+            "英语",
+            "日语"
         ]
         self.ali_tts_voices = {
             "龙婉-普通话-语音助手、导航播报、聊天数字人":"longwan",
@@ -165,6 +170,8 @@ class TTSWebApp:
             "ali_tts_voice":"龙婉-普通话-语音助手、导航播报、聊天数字人",
             "sambert_tts_voice":"知婧-严厉女声-通用场景",
             "ali_api_key":"",
+            "siliconflowApiKey":"",
+            "tLanguage":"英语",
             #"GPTvts_character": "",
             #"GPTvts_emotion": "",
             #"GPTvts_sample": "",
@@ -179,6 +186,7 @@ class TTSWebApp:
             #"batch_threshold_slider":0.75,
             "isdownload":False,
             "isplayaudio":True,
+            "isTranslate":True,
             "isIndex_tts_flash":False
         }
         if self.config_file.exists():
@@ -267,6 +275,7 @@ class TTSWebApp:
                                     providers=providers,
                                     edge_tts_voices=self.Edge_TTS_voices,
                                     audio_devices=audio_devices,
+                                    tlanguages=self.tlanguages,
                                     ali_tts_voices=list(self.ali_tts_voices.keys()),
                                     sambert_tts_voices=list(self.sambert_tts_voices.keys()),
                                     user_config = self.user_config,
@@ -314,6 +323,25 @@ class TTSWebApp:
                 "isIndex_tts_flash":False
             };
     """
+    async def useTranslate(self,text,tLanguage,apikey):
+        url = "https://api.siliconflow.cn/v1"
+        client = OpenAI(
+            api_key=apikey,
+            base_url=url
+        )
+        try:
+            response = client.chat.completions.create(
+                model = "Qwen/Qwen3-8B",
+                messages=[
+                    {"role": "system", "content": f"你是一个专业的翻译家，你的任务是将用户提供的文本翻译成{tLanguage}，请确保翻译内容准确且符合目标语言的表达习惯。记住你只需要提供翻译内容，不需要任何额外的解释或评论。也不要回答任何问题，只需专注于翻译任务。你只能输出翻译后的文本，不允许有任何多余的内容。"},
+                    {"role": "user", "content": f"{text}"}
+                ]
+            )
+            print("调用翻译接口成功结果为:",response.choices[0].message.content)
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"调用翻译接口失败: {e}")
+            return(f"调用翻译接口失败: {e}")
     async def tts_endpoint(self):
         """
         /tts,转换并播放文本
@@ -328,6 +356,8 @@ class TTSWebApp:
             "ali_tts_voice":data.get("ali_tts_voice",self.user_config.get("ali_tts_voice")),
             "sambert_tts_voice":data.get("sambert_tts_voice",self.user_config.get("sambert_tts_voice")),
             "ali_api_key":data.get("ali_api_key",self.user_config.get("ali_api_key")),
+            "siliconflowApiKey":data.get("siliconflowApiKey",self.user_config.get("siliconflowApiKey")),
+            "tLanguage":data.get("tLanguage",self.user_config.get("tLanguage")),
             #"GPTvts_character": data.get("GPTvts_character", "温迪"),
             #"GPTvts_emotion": data.get("GPTvts_emotion", "开心_happy"),
             #"GPTvts_sample": data.get("GPTvts_sample", ""),
@@ -342,6 +372,7 @@ class TTSWebApp:
             #"batch_threshold_slider":data.get("batch_threshold_slider", 0.75),
             "isdownload":bool(data.get('isdownload', False)),
             "isplayaudio":bool(data.get('isplayaudio', True)),
+            "isTranslate":bool(data.get("isTranslate",True)),
             "isIndex_tts_flash":bool(data.get("isIndex_tts_flash",False))
         }
         self.save_config(config_to_save)
@@ -350,6 +381,8 @@ class TTSWebApp:
         device = data.get('device', '')
         self.set_audio_device(device)
         id = uuid.uuid4().hex
+        t = None
+        outText = None
         isPlayAudio = bool(data.get('isplayaudio', True))
         isdownload = bool(data.get('isdownload', False))
         temp_file = self.savePath / f"save_voice_{id}.mp3"
@@ -359,12 +392,24 @@ class TTSWebApp:
             temp_file = self.savePath / f"save_voice_{id}.wav"
             mimetype='audio/wav'
             attachment_filename = "audio.wav" """
-        try:
-            self.osc_client.send_message("/chatbox/input", [text, True])
-            print("已发送文本到VRChat OSC")
-        except Exception as e:
-            print(f"发送OSC消息失败: {e}")
+        if(data.get("isTranslate",False)):
+            async def translate_and_send():
+                t = await self.useTranslate(text,data.get("tLanguage"),data.get("siliconflowApiKey"))
+                outText = text + ("\n" + t if t else "")
+                try:
+                    self.osc_client.send_message("/chatbox/input", [outText, True])
+                    print("已发送文本到VRChat OSC")
+                except Exception as e:
+                    print(f"发送OSC消息失败: {e}")
+            asyncio.create_task(translate_and_send())
+        else:
+            try:
+                self.osc_client.send_message("/chatbox/input", [outText, True])
+                print("已发送文本到VRChat OSC")
+            except Exception as e:
+                print(f"发送OSC消息失败: {e}")
         if data.get("provider") == "Edge TTS":
+            print("使用Edge TTS转换文本")
             if await self.use_edge_tts(data,temp_file):
                 print(f"已转换文本: 生成临时文件{temp_file}")
             else:
