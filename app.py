@@ -27,19 +27,24 @@ class TTSWebApp:
             "按英文句号.切":"cut4",
             "按标点符号切":"cut5"
         } """
-        self.Edge_TTS_voices = [
-            # 女声
-            "zh-CN-XiaoxiaoNeural",  # Female, News/Novel, Warm
-            "zh-CN-XiaoyiNeural",    # Female, Cartoon/Novel, Lively
-            "zh-CN-liaoning-XiaobeiNeural",  # Female, Dialect, Humorous
-            "zh-CN-shaanxi-XiaoniNeural",   # Female, Dialect, Bright
-            
-            # 男声
-            "zh-CN-YunjianNeural",   # Male, Sports/Novel, Passion
-            "zh-CN-YunxiNeural",     # Male, Novel, Lively/Sunshine
-            "zh-CN-YunxiaNeural",    # Male, Cartoon/Novel, Cute
-            "zh-CN-YunyangNeural"    # Male, News, Professional/Reliable
-        ]
+        self.Edge_TTS_voices = {
+            "汉语女声-晓晓-新闻小说-温柔":"zh-CN-XiaoxiaoNeural",
+            "汉语女声-晓艺-漫画小说-活泼":"zh-CN-XiaoyiNeural",
+            "汉语女声-晓贝-辽宁方言-幽默":"zh-CN-liaoning-XiaobeiNeural",
+            "汉语女声-晓倪-西安方言-明亮":"zh-CN-shaanxi-XiaoniNeural",
+            "汉语男声-云间-体育小说-激情":"zh-CN-YunjianNeural",
+            "汉语男声-云曦-小说-活泼阳光":"zh-CN-YunxiNeural",
+            "汉语男声-云霞-漫画小说-可爱":"zh-CN-YunxiaNeural",
+            "汉语男声-云阳-新闻-专业可靠":"zh-CN-YunyangNeural",
+            "台湾女声-晓晨-普通-阳光积极":"zh-TW-HsiaoChenNeural",
+            "台湾女声-晓玉-普通-阳光积极":"zh-TW-HsiaoYuNeural",
+            "台湾男声-云杰-普通-阳光积极":"zh-TW-YunJheNeural",
+            "粤语女声-晓佳-普通-阳光积极":"zh-HK-HiuGaaiNeural",
+            "粤语女声-晓雯-普通-阳光积极":"zh-HK-HiuMaanNeural",
+            "粤语男声-云龙-普通-阳光积极":"zh-HK-WanLungNeural",
+            "日语男声-圭太-普通-阳光积极":"ja-JP-KeitaNeural",
+            "日语女声-七海-普通-阳光积极":"ja-JP-NanamiNeural"
+        }
         self.tlanguages = [
             "英语",
             "日语"
@@ -273,7 +278,7 @@ class TTSWebApp:
         audio_devices = self.get_audio_devices()
         return await render_template('index.html',
                                     providers=providers,
-                                    edge_tts_voices=self.Edge_TTS_voices,
+                                    edge_tts_voices=list(self.Edge_TTS_voices.keys()),
                                     audio_devices=audio_devices,
                                     tlanguages=self.tlanguages,
                                     ali_tts_voices=list(self.ali_tts_voices.keys()),
@@ -381,17 +386,12 @@ class TTSWebApp:
         device = data.get('device', '')
         self.set_audio_device(device)
         id = uuid.uuid4().hex
-        t = None
-        outText = None
         isPlayAudio = bool(data.get('isplayaudio', True))
         isdownload = bool(data.get('isdownload', False))
         temp_file = self.savePath / f"save_voice_{id}.mp3"
         mimetype='audio/mp3'
         attachment_filename = "audio.mp3"
-        """ if data.get("provider") == "GPTvts本地推理":
-            temp_file = self.savePath / f"save_voice_{id}.wav"
-            mimetype='audio/wav'
-            attachment_filename = "audio.wav" """
+        #判断是否翻译并且发送OSC消息
         if(data.get("isTranslate",False)):
             async def translate_and_send():
                 t = await self.useTranslate(text,data.get("tLanguage"),data.get("siliconflowApiKey"))
@@ -408,40 +408,34 @@ class TTSWebApp:
                 print("已发送文本到VRChat OSC")
             except Exception as e:
                 print(f"发送OSC消息失败: {e}")
+        #选择TTS引擎进行转换
         if data.get("provider") == "Edge TTS":
             print("使用Edge TTS转换文本")
             if await self.use_edge_tts(data,temp_file):
                 print(f"已转换文本: 生成临时文件{temp_file}")
             else:
                 print("Edge TTS转换失败")
+                remove_file(temp_file)
                 return jsonify({'error': "tts转换失败"}), 400
         if data.get("provider") == "阿里百炼cosyvice":
             if await self.use_ali_tts(data,temp_file):
                 print(f"已转使用阿里百炼换文本: 生成临时文件{temp_file}")
             else:
                 print("阿里百炼转换失败")
+                remove_file(temp_file)
                 return jsonify({'error': "tts转换失败"}), 400
         if data.get("provider") == "阿里百炼sambert":
             if await self.use_sambert_tts(data,temp_file):
                 print(f"已转使用阿里百炼sambert模型换文本: 生成临时文件{temp_file}")
             else:
                 print("阿里百炼sambert模型转换失败")
+                remove_file(temp_file)
                 return jsonify({'error': "tts转换失败"}), 400
-        if data.get("provider") == "GPTvts本地推理":
-            if await self.use_GPTvts(data,temp_file):
-                print(f"已转使用GPTvts换文本: 生成临时文件{temp_file}")
-            else:
-                print("GPTvts模型转换失败")
-                return  jsonify({'error': "tts转换失败"}), 400
-        if data.get("provider") == "Index TTS":
-            if await self.use_index_tts(data,temp_file):
-                print(f"已转使用Index TTS换文本: 生成临时文件{temp_file}")
-            else:
-                print("Index TTS转换失败")
-                return jsonify({'error': "tts转换失败"}), 400
+        #读取生成的音频文件
         with open(temp_file,'rb') as audio_file:
             audio_data = audio_file.read()
         response_data = None
+        #根据是否下载返回不同响应
         if isdownload:
             response_data = await send_file(
                 io.BytesIO(audio_data),
@@ -459,6 +453,15 @@ class TTSWebApp:
                     "attachment_filename":attachment_filename
                 }
             })
+        #定义清理临时文件函数
+        def remove_file(path):
+            if os.path.exists(path):
+                try:
+                    os.remove(path)
+                    print(f"已清理临时文件: {path}")
+                except Exception as e:
+                    print(f"清理临时文件失败: {e}")
+        #播放音频并清理临时文件
         if isPlayAudio:
             loop = asyncio.get_event_loop()
             async def play_and_cleanup():
@@ -467,23 +470,14 @@ class TTSWebApp:
                         print(f"已播放音频文件: {temp_file}")
                     else:
                         print("播放音频文件失败")
+                        remove_file(temp_file)
                 finally:
                     if hasattr(pygame.mixer, 'get_init') and pygame.mixer.get_init():
                         pygame.mixer.quit()
-                    if os.path.exists(temp_file):
-                        try:
-                            os.remove(temp_file)
-                            print(f"已清理临时文件: {temp_file}")
-                        except Exception as e:
-                            print(f"清理临时文件失败: {e}")
+                    remove_file(temp_file)
             loop.create_task(play_and_cleanup())
         else:
-            if os.path.exists(temp_file):
-                try:
-                    os.remove(temp_file)
-                    print(f"已清理临时文件: {temp_file}")
-                except Exception as e:
-                    print(f"清理临时文件失败: {e}")
+            remove_file(temp_file)
         return response_data
     '''
     async def GPTvts_tts_start(self):
@@ -845,7 +839,8 @@ class TTSWebApp:
         使用Edge TTS服务转换文本
         """
         try:
-            communicate = edge_tts.Communicate(data.get("text",""), data.get("edge_tts_voice",""))
+            edge_tts_voice = self.Edge_TTS_voices.get(data.get("edge_tts_voice","zh-CN-XiaoxiaoNeural"))
+            communicate = edge_tts.Communicate(data.get("text",""), edge_tts_voice)
             await communicate.save(temp_file)
             return True
         except Exception as e:
