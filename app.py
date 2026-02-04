@@ -404,7 +404,7 @@ class TTSWebApp:
             asyncio.create_task(translate_and_send())
         else:
             try:
-                self.osc_client.send_message("/chatbox/input", [outText, True])
+                self.osc_client.send_message("/chatbox/input", [text, True])
                 print("已发送文本到VRChat OSC")
             except Exception as e:
                 print(f"发送OSC消息失败: {e}")
