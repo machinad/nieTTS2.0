@@ -328,25 +328,30 @@ class TTSWebApp:
                 "isIndex_tts_flash":False
             };
     """
+
     async def useTranslate(self,text,tLanguage,apikey):
         url = "https://api.siliconflow.cn/v1"
-        client = OpenAI(
-            api_key=apikey,
-            base_url=url
-        )
-        try:
-            response = client.chat.completions.create(
-                model = "Qwen/Qwen3-8B",
-                messages=[
-                    {"role": "system", "content": f"你是一个专业的翻译家，你的任务是将用户提供的文本翻译成{tLanguage}，请确保翻译内容准确且符合目标语言的表达习惯。记住你只需要提供翻译内容，不需要任何额外的解释或评论。也不要回答任何问题，只需专注于翻译任务。你只能输出翻译后的文本，不允许有任何多余的内容。"},
-                    {"role": "user", "content": f"{text}"}
-                ]
+        def call_api():
+            client = OpenAI(
+                api_key=apikey,
+                base_url=url
             )
-            print("调用翻译接口成功结果为:",response.choices[0].message.content)
-            return response.choices[0].message.content
-        except Exception as e:
-            print(f"调用翻译接口失败: {e}")
-            return(f"调用翻译接口失败: {e}")
+            try:
+                response = client.chat.completions.create(
+                    model = "Qwen/Qwen3-8B",
+                    messages=[
+                        {"role": "system", "content": f"你是一个专业的翻译家，你的任务是将用户提供的文本翻译成{tLanguage}，请确保翻译内容准确且符合目标语言的表达习惯。记住你只需要提供翻译内容，不需要任何额外的解释或评论。也不要回答任何问题，只需专注于翻译任务。你只能输出翻译后的文本，不允许有任何多余的内容。"},
+                        {"role": "user", "content": f"{text}"}
+                    ]
+                )
+                return response.choices[0].message.content
+            except Exception as e:
+                print(f"调用翻译接口失败: {e}")
+                return(f"调用翻译接口失败: {e}")
+        text = await asyncio.to_thread(call_api)
+        print(f"翻译结果: {text}")
+        return text
+    
     async def tts_endpoint(self):
         """
         /tts,转换并播放文本
@@ -391,6 +396,7 @@ class TTSWebApp:
         temp_file = self.savePath / f"save_voice_{id}.mp3"
         mimetype='audio/mp3'
         attachment_filename = "audio.mp3"
+
         #判断是否翻译并且发送OSC消息
         if(data.get("isTranslate",False)):
             async def translate_and_send():
@@ -408,6 +414,7 @@ class TTSWebApp:
                 print("已发送文本到VRChat OSC")
             except Exception as e:
                 print(f"发送OSC消息失败: {e}")
+                
         #选择TTS引擎进行转换
         if data.get("provider") == "Edge TTS":
             print("使用Edge TTS转换文本")

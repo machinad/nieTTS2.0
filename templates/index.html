@@ -986,7 +986,7 @@
             // 关键点：这里的'file'字段的值是 Blob 对象本身，而不是一个字符串
             // 第三个参数是文件名，对于 API 来说可能是必需的
             formData.append('file', audioBlob, 'recording.webm');
-            formData.append('model', 'FunAudioLLM/SenseVoiceSmall');
+            formData.append('model', 'TeleAI/TeleSpeechASR');
             
             const options = {
                 method: 'POST',
