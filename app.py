@@ -10,9 +10,11 @@ import subprocess
 import socket
 import atexit
 import asyncio
+# import ssl  # 暂时注释掉，因为实际使用openssl命令行
+import tempfile
 from pythonosc import udp_client
 from pathlib import Path
-import dashscope 
+import dashscope
 import webbrowser
 from openai import OpenAI
 from dashscope.audio.tts_v2 import SpeechSynthesizer as SpeechSynthesizerV2
@@ -487,12 +489,105 @@ class TTSWebApp:
                 self.local_tts_process.kill()
             finally:
                 self.local_tts_process = None
-    def run(self,host,port):
+    def generate_self_signed_cert(self, ip_address, cert_path, key_path):
+        """
+        生成自签名证书
+        """
         try:
-            self.app.run(host=host,port=port)
+            # 创建临时目录用于生成证书
+            temp_dir = tempfile.mkdtemp()
+            cert_file = os.path.join(temp_dir, "cert.pem")
+            key_file = os.path.join(temp_dir, "key.pem")
+
+            # 这部分代码实际上不会执行，只是为了消除IDE警告
+            # 真正的证书生成是通过openssl命令行完成的
+
+            # 使用openssl命令行生成证书（更可靠的方法）
+            # 生成私钥
+            subprocess.run([
+                "openssl", "genrsa", "-out", key_file, "2048"
+            ], check=True, capture_output=True)
+
+            # 创建证书请求配置文件
+            config_file = os.path.join(temp_dir, "cert.conf")
+            with open(config_file, "w") as f:
+                f.write(f"""[req]
+                        default_bits = 2048
+                        prompt = no
+                        default_md = sha256
+                        x509_extensions = v3_req
+                        distinguished_name = dn
+
+                        [dn]
+                        C = CN
+                        ST = Some-State
+                        L = Some-City
+                        O = nieTTS
+                        OU = Development
+                        CN = {ip_address}
+
+                        [v3_req]
+                        subjectAltName = @alt_names
+
+                        [alt_names]
+                        IP.1 = {ip_address}
+                        DNS.1 = localhost
+                        """)
+
+            # 生成自签名证书
+            subprocess.run([
+                "openssl", "req", "-new", "-x509", "-nodes",
+                "-days", "365", "-config", config_file,
+                "-key", key_file, "-out", cert_file
+            ], check=True, capture_output=True)
+
+            # 复制到指定路径
+            import shutil
+            shutil.copy(cert_file, cert_path)
+            shutil.copy(key_file, key_path)
+
+            # 清理临时目录
+            shutil.rmtree(temp_dir)
+
+            print(f"已生成自签名证书: {cert_path}")
+            print(f"已生成私钥: {key_path}")
+            return True
+
+        except Exception as e:
+            print(f"生成自签名证书失败: {e}")
+            print("请确保系统已安装OpenSSL")
+            return False
+
+    def cleanup_certificates(self, cert_path, key_path):
+        """
+        清理证书文件
+        """
+        try:
+            if os.path.exists(cert_path):
+                os.remove(cert_path)
+                print(f"已清理证书文件: {cert_path}")
+            if os.path.exists(key_path):
+                os.remove(key_path)
+                print(f"已清理私钥文件: {key_path}")
+        except Exception as e:
+            print(f"清理证书文件失败: {e}")
+
+    def run(self, host, port, use_https=False, cert_path=None, key_path=None):
+        """
+        运行应用，支持HTTPS
+        """
+        try:
+            if use_https and cert_path and key_path:
+                if os.path.exists(cert_path) and os.path.exists(key_path):
+                    self.app.run(host=host, port=port, certfile=cert_path, keyfile=key_path)
+                else:
+                    print(f"证书文件不存在，使用HTTP模式")
+                    self.app.run(host=host, port=port)
+            else:
+                self.app.run(host=host, port=port)
         finally:
             self.cleanup()
-if __name__ == '__main__': 
+if __name__ == '__main__':
     print("""
         ███╗   ██╗  ██╗  ███████╗  ████████╗  ████████╗  ███████╗
         ████╗  ██║  ██║  ██╔════╝  ╚══██╔══╝  ╚══██╔══╝  ██╔════╝
@@ -504,22 +599,76 @@ if __name__ == '__main__':
     host = os.environ.get('APP_HOST', '0.0.0.0') # 默认绑定到所有接口
     port = int(os.environ.get('APP_PORT', 1145)) # 默认端口 1145
     app = TTSWebApp()
+
+    # 证书文件路径
+    cert_dir = Path("./certificates")
+    cert_dir.mkdir(exist_ok=True)
+    cert_path = cert_dir / "cert.pem"
+    key_path = cert_dir / "key.pem"
+
+    local_ip = "未知"
+    use_https = False
+
     try:
+        # 获取本机IP地址
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80)) # 连接到一个外部地址以获取本机IP
         local_ip = s.getsockname()[0]
         s.close()
-        url = f"http://{local_ip}:{port}"
-        print(f"本机局域网 IP 地址: {url},可以使用任意同局域网设备访问此地址以打开前端页面")
-        webbrowser.open(f"http://127.0.0.1:{port}")
+
+        # 生成自签名证书
+        print(f"检测到本机IP地址: {local_ip}")
+        print("正在生成自签名证书...")
+
+        if app.generate_self_signed_cert(local_ip, str(cert_path), str(key_path)):
+            use_https = True
+            url = f"https://{local_ip}:{port}"
+            print(f"""
+                  =======================================================
+
+                  已经启动HTTPS服务器，使用自签名证书保护通信安全
+                  本机局域网 HTTPS 地址: {url}
+
+                  ***可以使用任意同局域网设备访问此地址以打开前端页面***
+
+                  注意: 由于使用自签名证书，浏览器会显示安全警告，请点击'高级'->'继续访问'
+
+                  =======================================================
+                  """
+                  )
+        else:
+            url = f"http://{local_ip}:{port}"
+            print(f"证书生成失败，使用HTTP模式")
+            print(f"本机局域网 HTTP 地址: {url},可以使用任意同局域网设备访问此地址以打开前端页面")
+            print("注意: HTTP模式下无法使用录音功能")
+
+        # 打开浏览器
+        if use_https:
+            webbrowser.open(url)
+        else:
+            webbrowser.open(f"http://127.0.0.1:{port}")
+
     except Exception as e:
-        print(f"无法获取本机局域网 IP 地址: {e}")
-        local_ip = "未知"
+        print(f"无法获取本机局域网 IP 地址或生成证书: {e}")
+        url = f"http://{host}:{port}"
+        print(f"使用HTTP模式，监听地址: {url}")
+        webbrowser.open(f"http://127.0.0.1:{port}")
 
     print(f"正在启动应用，监听地址: {host}:{port}")
     try:
-        app.run(host=host, port=port)
+        if use_https:
+            print(f"使用HTTPS模式启动")
+            app.run(host=host, port=port, use_https=True, cert_path=str(cert_path), key_path=str(key_path))
+        else:
+            print(f"使用HTTP模式启动")
+            app.run(host=host, port=port)
     except Exception as e:
         print(f"启动应用时发生错误: {e}")
         print("请检查端口是否被占用，或者使用不同的端口启动应用。")
-        input("按 Enter 键退出...")
+    finally:
+        # 清理证书文件
+        if use_https:
+            print("清理证书文件...")
+            app.cleanup_certificates(str(cert_path), str(key_path))
+
+    input("按 Enter 键退出...")

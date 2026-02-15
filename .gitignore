@@ -45,3 +45,4 @@ ffprobe.*
 *.DS_Store
 .idea/
 .vscode/
+/certificates
