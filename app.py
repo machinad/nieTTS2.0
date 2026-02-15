@@ -10,8 +10,6 @@ import subprocess
 import socket
 import atexit
 import asyncio
-# import ssl  # 暂时注释掉，因为实际使用openssl命令行
-import tempfile
 from pythonosc import udp_client
 from pathlib import Path
 import dashscope
@@ -19,6 +17,13 @@ import webbrowser
 from openai import OpenAI
 from dashscope.audio.tts_v2 import SpeechSynthesizer as SpeechSynthesizerV2
 from dashscope.audio.tts import SpeechSynthesizer as SpeechSynthesizerV1
+import ssl
+import ipaddress
+from cryptography import x509
+from cryptography.x509.oid import NameOID
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from datetime import datetime, timedelta
 class TTSWebApp:
     def __init__(self):
         self.Edge_TTS_voices = {
@@ -113,10 +118,12 @@ class TTSWebApp:
         self.config_file = Path("./config.json")
         self.local_tts_process = None
         self.savePath = Path("./save").resolve()
+        self.cert_path = Path("./certificates").resolve()
         try:
             self.savePath.mkdir(parents=True, exist_ok=True)
+            self.cert_path.mkdir(parents=True, exist_ok=True)
         except Exception as e:
-            print(f"创建目录{self.savePath}失败: {e}")
+            print(f"创建目录失败: {e}")
         self.user_config = self.load_config()
         #self.user_rvc_config = self.load_rvc_config()
         self.app = Quart(__name__)
@@ -126,7 +133,7 @@ class TTSWebApp:
             "阿里百炼cosyvice",
             "阿里百炼sambert"
         ]
-        
+
         self.setup_routes()
         self.osc_client = udp_client.SimpleUDPClient("127.0.0.1", 9000)
         atexit.register(self.cleanup)
@@ -489,105 +496,101 @@ class TTSWebApp:
                 self.local_tts_process.kill()
             finally:
                 self.local_tts_process = None
-    def generate_self_signed_cert(self, ip_address, cert_path, key_path):
+
+        # 清理证书文件
+        self.cleanup_certificates()
+
+    def generate_self_signed_certificate(self, ip_address):
         """
-        生成自签名证书
+        为指定IP地址生成自签名证书
         """
         try:
-            # 创建临时目录用于生成证书
-            temp_dir = tempfile.mkdtemp()
-            cert_file = os.path.join(temp_dir, "cert.pem")
-            key_file = os.path.join(temp_dir, "key.pem")
-
-            # 这部分代码实际上不会执行，只是为了消除IDE警告
-            # 真正的证书生成是通过openssl命令行完成的
-
-            # 使用openssl命令行生成证书（更可靠的方法）
             # 生成私钥
-            subprocess.run([
-                "openssl", "genrsa", "-out", key_file, "2048"
-            ], check=True, capture_output=True)
+            key = rsa.generate_private_key(
+                public_exponent=65537,
+                key_size=2048,
+            )
 
-            # 创建证书请求配置文件
-            config_file = os.path.join(temp_dir, "cert.conf")
-            with open(config_file, "w") as f:
-                f.write(f"""[req]
-                        default_bits = 2048
-                        prompt = no
-                        default_md = sha256
-                        x509_extensions = v3_req
-                        distinguished_name = dn
+            # 设置证书信息
+            subject = issuer = x509.Name([
+                x509.NameAttribute(NameOID.COUNTRY_NAME, "CN"),
+                x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "Beijing"),
+                x509.NameAttribute(NameOID.LOCALITY_NAME, "Beijing"),
+                x509.NameAttribute(NameOID.ORGANIZATION_NAME, "nieTTS2.0"),
+                x509.NameAttribute(NameOID.COMMON_NAME, f"nieTTS2.0 - {ip_address}"),
+            ])
 
-                        [dn]
-                        C = CN
-                        ST = Some-State
-                        L = Some-City
-                        O = nieTTS
-                        OU = Development
-                        CN = {ip_address}
+            # 创建证书
+            cert = x509.CertificateBuilder().subject_name(
+                subject
+            ).issuer_name(
+                issuer
+            ).public_key(
+                key.public_key()
+            ).serial_number(
+                x509.random_serial_number()
+            ).not_valid_before(
+                datetime.now().replace(tzinfo=None)
+            ).not_valid_after(
+                datetime.now().replace(tzinfo=None) + timedelta(days=365)
+            ).add_extension(
+                x509.SubjectAlternativeName([
+                    x509.DNSName("localhost"),
+                    x509.DNSName("127.0.0.1"),
+                    x509.IPAddress(ipaddress.IPv4Address(ip_address)),
+                ]),
+                critical=False,
+            ).sign(key, hashes.SHA256())
 
-                        [v3_req]
-                        subjectAltName = @alt_names
+            # 保存私钥和证书
+            key_path = self.cert_path / "key.pem"
+            cert_path = self.cert_path / "cert.pem"
 
-                        [alt_names]
-                        IP.1 = {ip_address}
-                        DNS.1 = localhost
-                        """)
+            with open(key_path, "wb") as f:
+                f.write(key.private_bytes(
+                    encoding=serialization.Encoding.PEM,
+                    format=serialization.PrivateFormat.PKCS8,
+                    encryption_algorithm=serialization.NoEncryption(),
+                ))
 
-            # 生成自签名证书
-            subprocess.run([
-                "openssl", "req", "-new", "-x509", "-nodes",
-                "-days", "365", "-config", config_file,
-                "-key", key_file, "-out", cert_file
-            ], check=True, capture_output=True)
+            with open(cert_path, "wb") as f:
+                f.write(cert.public_bytes(serialization.Encoding.PEM))
 
-            # 复制到指定路径
-            import shutil
-            shutil.copy(cert_file, cert_path)
-            shutil.copy(key_file, key_path)
+            print(f"已为IP地址 {ip_address} 生成自签名证书")
+            print(f"私钥文件: {key_path}")
+            print(f"证书文件: {cert_path}")
 
-            # 清理临时目录
-            shutil.rmtree(temp_dir)
-
-            print(f"已生成自签名证书: {cert_path}")
-            print(f"已生成私钥: {key_path}")
-            return True
+            return key_path, cert_path
 
         except Exception as e:
             print(f"生成自签名证书失败: {e}")
-            print("请确保系统已安装OpenSSL")
-            return False
+            return None, None
 
-    def cleanup_certificates(self, cert_path, key_path):
+    def cleanup_certificates(self):
         """
         清理证书文件
         """
         try:
-            if os.path.exists(cert_path):
-                os.remove(cert_path)
-                print(f"已清理证书文件: {cert_path}")
-            if os.path.exists(key_path):
-                os.remove(key_path)
-                print(f"已清理私钥文件: {key_path}")
+            cert_files = ["key.pem", "cert.pem"]
+            for cert_file in cert_files:
+                file_path = self.cert_path / cert_file
+                if file_path.exists():
+                    file_path.unlink()
+                    print(f"已清理证书文件: {file_path}")
         except Exception as e:
             print(f"清理证书文件失败: {e}")
 
-    def run(self, host, port, use_https=False, cert_path=None, key_path=None):
-        """
-        运行应用，支持HTTPS
-        """
+    def run(self,host,port, use_https=False, ssl_context=None):
         try:
-            if use_https and cert_path and key_path:
-                if os.path.exists(cert_path) and os.path.exists(key_path):
-                    self.app.run(host=host, port=port, certfile=cert_path, keyfile=key_path)
-                else:
-                    print(f"证书文件不存在，使用HTTP模式")
-                    self.app.run(host=host, port=port)
+            if use_https and ssl_context:
+                # Quart使用cert和key参数而不是ssl_context
+                cert_path, key_path = ssl_context
+                self.app.run(host=host, port=port, certfile=cert_path, keyfile=key_path)
             else:
                 self.app.run(host=host, port=port)
         finally:
             self.cleanup()
-if __name__ == '__main__':
+if __name__ == '__main__': 
     print("""
         ███╗   ██╗  ██╗  ███████╗  ████████╗  ████████╗  ███████╗
         ████╗  ██║  ██║  ██╔════╝  ╚══██╔══╝  ╚══██╔══╝  ██╔════╝
@@ -599,76 +602,53 @@ if __name__ == '__main__':
     host = os.environ.get('APP_HOST', '0.0.0.0') # 默认绑定到所有接口
     port = int(os.environ.get('APP_PORT', 1145)) # 默认端口 1145
     app = TTSWebApp()
-
-    # 证书文件路径
-    cert_dir = Path("./certificates")
-    cert_dir.mkdir(exist_ok=True)
-    cert_path = cert_dir / "cert.pem"
-    key_path = cert_dir / "key.pem"
-
-    local_ip = "未知"
-    use_https = False
-
     try:
-        # 获取本机IP地址
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80)) # 连接到一个外部地址以获取本机IP
         local_ip = s.getsockname()[0]
         s.close()
-
-        # 生成自签名证书
-        print(f"检测到本机IP地址: {local_ip}")
-        print("正在生成自签名证书...")
-
-        if app.generate_self_signed_cert(local_ip, str(cert_path), str(key_path)):
-            use_https = True
-            url = f"https://{local_ip}:{port}"
-            print(f"""
-                  =======================================================
-
-                  已经启动HTTPS服务器，使用自签名证书保护通信安全
-                  本机局域网 HTTPS 地址: {url}
-
-                  ***可以使用任意同局域网设备访问此地址以打开前端页面***
-
-                  注意: 由于使用自签名证书，浏览器会显示安全警告，请点击'高级'->'继续访问'
-
-                  =======================================================
-                  """
-                  )
-        else:
-            url = f"http://{local_ip}:{port}"
-            print(f"证书生成失败，使用HTTP模式")
-            print(f"本机局域网 HTTP 地址: {url},可以使用任意同局域网设备访问此地址以打开前端页面")
-            print("注意: HTTP模式下无法使用录音功能")
-
-        # 打开浏览器
-        if use_https:
-            webbrowser.open(url)
-        else:
-            webbrowser.open(f"http://127.0.0.1:{port}")
-
     except Exception as e:
-        print(f"无法获取本机局域网 IP 地址或生成证书: {e}")
-        url = f"http://{host}:{port}"
-        print(f"使用HTTP模式，监听地址: {url}")
-        webbrowser.open(f"http://127.0.0.1:{port}")
+        print(f"无法获取本机局域网 IP 地址: {e}")
+        local_ip = "未知"
+
+    # 生成自签名证书并使用HTTPS
+    use_https = False
+    ssl_context = None
+
+    if local_ip != "未知":
+        try:
+            key_path, cert_path = app.generate_self_signed_certificate(local_ip)
+            if key_path and cert_path and key_path.exists() and cert_path.exists():
+                ssl_context = (str(cert_path), str(key_path))
+                use_https = True
+                print(f"已生成自签名证书，将使用HTTPS协议")
+            else:
+                print("证书生成失败，将使用HTTP协议")
+        except Exception as e:
+            print(f"证书生成失败，将使用HTTP协议: {e}")
 
     print(f"正在启动应用，监听地址: {host}:{port}")
     try:
-        if use_https:
-            print(f"使用HTTPS模式启动")
-            app.run(host=host, port=port, use_https=True, cert_path=str(cert_path), key_path=str(key_path))
+        if use_https and ssl_context:
+            url = f"https://{local_ip}:{port}"
+            print(f"""
+            ====================================================================================
+                                                                                                      
+                    HTTPS访问地址: {url}                                                   
+                    本地访问地址: https://127.0.0.1:{port}
+                    如果浏览器提示证书不受信任，请选择继续访问（不安全）以使用应用的HTTPS功能
+
+            ====================================================================================
+            """)
+            webbrowser.open(f"https://127.0.0.1:{port}")
         else:
-            print(f"使用HTTP模式启动")
-            app.run(host=host, port=port)
+            url = f"http://{local_ip}:{port}"
+            print(f"HTTP访问地址: {url}")
+            print(f"本地访问地址: http://127.0.0.1:{port}")
+            webbrowser.open(f"http://127.0.0.1:{port}")
+
+        app.run(host=host, port=port, use_https=use_https, ssl_context=ssl_context)
     except Exception as e:
         print(f"启动应用时发生错误: {e}")
         print("请检查端口是否被占用，或者使用不同的端口启动应用。")
-    finally:
-        # 清理证书文件
-        if use_https:
-            print("清理证书文件...")
-            app.cleanup_certificates(str(cert_path), str(key_path))
-
-    input("按 Enter 键退出...")
+        input("按 Enter 键退出...")
