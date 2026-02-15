@@ -19,14 +19,6 @@ from dashscope.audio.tts_v2 import SpeechSynthesizer as SpeechSynthesizerV2
 from dashscope.audio.tts import SpeechSynthesizer as SpeechSynthesizerV1
 class TTSWebApp:
     def __init__(self):
-        """ self.text_split_method = {
-            "不切":"cut0",
-            "凑四句一切":"cut1",
-            "凑50字一切":"cut2",
-            "按中文句号。切":"cut3",
-            "按英文句号.切":"cut4",
-            "按标点符号切":"cut5"
-        } """
         self.Edge_TTS_voices = {
             "汉语女声-晓晓-新闻小说-温柔":"zh-CN-XiaoxiaoNeural",
             "汉语女声-晓艺-漫画小说-活泼":"zh-CN-XiaoyiNeural",
@@ -199,15 +191,7 @@ class TTSWebApp:
                                     tlanguages=self.tlanguages,
                                     ali_tts_voices=list(self.ali_tts_voices.keys()),
                                     sambert_tts_voices=list(self.sambert_tts_voices.keys()),
-                                    user_config = self.user_config,
-                                    user_rvc_config = {},
-                                    text_split_method = [],
-                                    GPTmodel_list = [],
-                                    SovitsMoedel_list = [],
-                                    RVC_input_devices = [],
-                                    RVC_output_devices = [],
-                                    RVC_weights = [],
-                                    RVC_indexes = [],
+                                    user_config = self.user_config
                                     )
     async def useTranslate(self,text,tLanguage,apikey):
         url = "https://api.siliconflow.cn/v1"

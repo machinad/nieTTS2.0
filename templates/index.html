@@ -295,7 +295,9 @@
             transform: translateX(26px);
         }
         input[type=range] {
+            appearance: none;
             -webkit-appearance: none;
+            -moz-appearance: none;
             margin: 0;
             width: 100%;
             background: transparent;
@@ -518,7 +520,10 @@
 
             } catch (error) {
                 console.error('无法开始录音:', error);
-                statusDisplay.textContent = `错误: ${error.message}. 请确保已授予麦克风权限并且页面在 https 环境下。`;
+                addLog(`录音失败: ${error.message}`);
+                if (typeof statusDisplay !== 'undefined') {
+                    statusDisplay.textContent = `错误: ${error.message}. 请确保已授予麦克风权限并且页面在 https 环境下。`;
+                }
                 isRecording = false; // 重置状态
                 recordButton.textContent = '点击开始录音';
                 recordButton.classList.remove('recording');
@@ -556,14 +561,13 @@
 
             try {
                 const response = await fetch(apiUrl, options);
-                
+
                 const data = await response.json();
 
                 if (!response.ok) {
                     // 如果服务器返回了错误信息，优先显示它
                     const errorMsg = data.error ? data.error.message : `HTTP 错误: ${response.status}`;
                     throw new Error(errorMsg);
-                    addLog(`请求失败: ${errorMsg}`);
                 }
 
                 // 成功，格式化并显示结果
@@ -572,8 +576,13 @@
                 convertToSpeech();
             } catch (error) {
                 console.error('API 请求失败:', error);
-                resultDisplay.textContent = `请求失败: ${error.message}`;
-                statusDisplay.textContent = '处理失败，请重试。';
+                addLog(`识别失败: ${error.message}`);
+                if (typeof resultDisplay !== 'undefined') {
+                    resultDisplay.textContent = `请求失败: ${error.message}`;
+                }
+                if (typeof statusDisplay !== 'undefined') {
+                    statusDisplay.textContent = '处理失败，请重试。';
+                }
             }
         }
 
@@ -605,22 +614,9 @@
                 ali_tts_voice: document.getElementById('ali_voiceSelect').value,
                 sambert_tts_voice: document.getElementById('sambert_voiceSelect').value,
                 siliconflowApiKey: document.getElementById('siliconflowApiKey').value,
-                //GPTvts_character: document.getElementById('characterSelect').value,
-                //GPTvts_emotion: document.getElementById('emotionSelect').value,
-                //GPTvts_sample: document.getElementById('sampleSelect').value,
-                //GPTvts_speed_factor:document.getElementById('speedFactorSlider').value,
-                //GPTvts_temperature_factor:document.getElementById('temperatureFactorSlider').value,
-                //GPTvts_text_split_method:document.getElementById('text_split_methodSelect').value,
-                //GPTmodelName:document.getElementById('GptModelSelect').value,
-                //SovitsModelName:document.getElementById('SovitsModelSelect').value,
-                //parallel_infer:document.getElementById('parallel_infer').checked,
-               // split_bucket:document.getElementById('split_bucket').checked,
                 isdownload:document.getElementById('isDownload').checked,
                 isplayaudio:document.getElementById('isPlayAudio').checked,
                 isTranslate:document.getElementById('isTranslate').checked
-                //isIndex_tts_flash:document.getElementById("isIndex_tts_flash").checked,
-                //batch_size_slider:document.getElementById('batch_size_slider').value,
-                //batch_threshold_slider:document.getElementById("batch_threshold_slider").value
             };
 
             // 添加到日志
@@ -638,27 +634,47 @@
                 body: JSON.stringify(data)
             })
             .then(response => {
-                if(data.isdownload){
-                        return response.blob();
+                // 检查响应状态
+                if (!response.ok) {
+                    // 尝试解析错误信息
+                    return response.text().then(text => {
+                        let errorMsg = `HTTP错误 ${response.status}`;
+                        try {
+                            const errorJson = JSON.parse(text);
+                            if (errorJson.error) {
+                                errorMsg = errorJson.error;
+                            }
+                        } catch (e) {
+                            // 如果不是JSON，使用原始文本
+                            if (text) errorMsg = text;
+                        }
+                        throw new Error(errorMsg);
+                    });
                 }
-                else{
-                        return response.json();
+
+                // 根据是否下载返回不同类型的数据
+                if (data.isdownload) {
+                    return response.blob();
+                } else {
+                    return response.json();
                 }
             })
             .then(result => {
-                if(data.isdownload){
+                if (data.isdownload) {
                     const currentAudioUrl = URL.createObjectURL(result);
                     const audioElement = document.querySelector('#audioPlayer');
                     audioElement.src = currentAudioUrl;
-                    //audioElement.play();
-                }
-                else{
-                    console.log('音频生成成功',result)
+                    // audioElement.play();
+                    addLog('音频下载成功，已加载到播放器');
+                } else {
+                    console.log('音频生成成功', result);
+                    addLog('音频生成成功');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('转换失败，请查看控制台获取详细信息');
+                addLog(`错误: ${error.message}`);
+                alert('转换失败，请查看日志获取详细信息');
             });
         }
 
