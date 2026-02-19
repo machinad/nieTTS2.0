@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
+    <title>nieTTS - 文字转语音</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0f0f23;
+            --bg-secondary: #1a1a2e;
+            --bg-card: #16213e;
+            --bg-input: #1f2940;
+            --accent-primary: #6366f1;
+            --accent-secondary: #8b5cf6;
+            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+            --accent-glow: rgba(99, 102, 241, 0.4);
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border-color: rgba(99, 102, 241, 0.2);
+            --success: #22c55e;
+            --error: #ef4444;
+            --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.15);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 24px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* 背景装饰 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(168, 85, 247, 0.05) 0%, transparent 40%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        /* 头部 */
+        .header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        /* 卡片 */
+        .card {
+            background: var(--bg-card);
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--border-color);
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+            box-shadow: var(--shadow-glow);
+            transition: var(--transition);
+        }
+
+        .card:hover {
+            border-color: rgba(99, 102, 241, 0.4);
+            box-shadow: var(--shadow-glow), var(--shadow-lg);
+        }
+
+        .card-header {
+            padding: 1.25rem 1.5rem;
+            background: rgba(99, 102, 241, 0.1);
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .card-header svg {
+            width: 20px;
+            height: 20px;
+            color: var(--accent-primary);
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        /* 日志区域 */
+        .log-container {
+            background: var(--bg-primary);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            min-height: 150px;
+            max-height: 250px;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        .log-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .log-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .log-container::-webkit-scrollbar-thumb {
+            background: var(--accent-primary);
+            border-radius: 3px;
+        }
+
+        .log-item {
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-sm);
+            border-left: 3px solid var(--accent-primary);
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            animation: slideIn 0.3s ease;
+        }
+
+        .log-item:last-child {
+            margin-bottom: 0;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* 控制面板 */
+        .control-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .control-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .control-item label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        /* 开关样式 */
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background: var(--bg-input);
+            border-radius: 24px;
+            transition: var(--transition);
+            border: 1px solid var(--border-color);
+        }
+
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            left: 2px;
+            bottom: 2px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            transition: var(--transition);
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+
+        .toggle-switch input:checked + .toggle-slider::before {
+            transform: translateX(20px);
+            background: white;
+        }
+
+        /* 下拉选择 */
+        .select-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .select-wrapper label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .form-select {
+            padding: 0.5rem 0.75rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            min-width: 100px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .form-select:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        /* 音频播放器 */
+        .audio-player-wrapper {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+        }
+
+        audio {
+            width: 100%;
+            height: 40px;
+            border-radius: var(--radius-sm);
+        }
+
+        audio::-webkit-media-controls-panel {
+            background: var(--bg-input);
+        }
+
+        /* 输入区域 */
+        .input-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 1rem 1.25rem;
+            background: var(--bg-input);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: var(--transition);
+            resize: none;
+        }
+
+        .form-control::placeholder {
+            color: var(--text-muted);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 4px var(--accent-glow);
+        }
+
+        /* 按钮组 */
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .btn {
+            padding: 1rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--accent-gradient);
+            color: white;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-input);
+            border-color: var(--accent-primary);
+        }
+
+        .btn-secondary.recording {
+            background: var(--error);
+            border-color: var(--error);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            50% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+        }
+
+        /* 高级设置 */
+        .settings-accordion {
+            background: var(--bg-card);
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .settings-header {
+            padding: 1rem 1.5rem;
+            background: rgba(99, 102, 241, 0.05);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: var(--transition);
+        }
+
+        .settings-header:hover {
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .settings-header h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .settings-header svg {
+            width: 20px;
+            height: 20px;
+            color: var(--accent-primary);
+            transition: var(--transition);
+        }
+
+        .settings-header.open svg {
+            transform: rotate(180deg);
+        }
+
+        .settings-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease;
+        }
+
+        .settings-content.open {
+            max-height: 800px;
+        }
+
+        .settings-inner {
+            padding: 1.5rem;
+            display: grid;
+            gap: 1.25rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-group label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .form-group select,
+        .form-group input {
+            padding: 0.75rem 1rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            transition: var(--transition);
+        }
+
+        .form-group select:focus,
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .form-group input::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* 页脚 */
+        footer {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        footer a {
+            color: var(--accent-primary);
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        footer a:hover {
+            color: var(--accent-secondary);
+            text-decoration: underline;
+        }
+
+        /* 响应式 */
+        @media (max-width: 640px) {
+            .container {
+                padding: 1.5rem 1rem;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .control-panel {
+                grid-template-columns: 1fr;
+            }
+
+            .button-group {
+                grid-template-columns: 1fr;
+            }
+
+            .settings-inner {
+                padding: 1rem;
+            }
+        }
+
+        /* 隐藏元素类 */
+        .hidden {
+            display: none !important;
+        }
+
+        /* 图标占位 */
+        .icon {
+            width: 20px;
+            height: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 头部 -->
+        <header class="header">
+            <h1>nieTTS 2.0</h1>
+            <p>现代化的文字转语音解决方案</p>
+        </header>
+
+        <!-- 日志卡片 -->
+        <div class="card">
+            <div class="card-header">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
+                </svg>
+                日志记录
+            </div>
+            <div class="card-body">
+                <div class="log-container" id="logArea"></div>
+            </div>
+        </div>
+
+        <!-- 控制面板 -->
+        <div class="card" id="dow_audio">
+            <div class="card-header">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                </svg>
+                控制面板
+            </div>
+            <div class="card-body">
+                <div class="control-panel">
+                    <div class="control-item">
+                        <label>播放音频</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="isPlayAudio" {% if user_config.isplayaudio %}checked{% endif %}>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="control-item">
+                        <label>下载音频</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="isDownload" {% if user_config.isdownload %}checked{% endif %}>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="control-item">
+                        <label>翻译文本</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="isTranslate" {% if user_config.isTranslate %}checked{% endif %}>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="select-wrapper" id="tLanguageSelectGroup">
+                        <label>目标语言</label>
+                        <select class="form-select" id="tLanguage">
+                            {% for Language in tlanguages %}
+                            <option value="{{ Language }}" {% if Language == user_config.tLanguage %}selected{% endif %}>{{ Language }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="audio-player-wrapper">
+                    <audio id="audioPlayer" controls></audio>
+                </div>
+            </div>
+        </div>
+
+        <!-- 输入区域 -->
+        <div class="input-section" id="textInputGroup">
+            <div class="input-wrapper">
+                <input type="text" class="form-control" id="textInput" placeholder="输入要转换的文本，按 Enter 发送...">
+            </div>
+        </div>
+
+        <!-- 按钮组 -->
+        <div class="button-group">
+            <button class="btn btn-primary" onclick="convertToSpeech()" id="updataGroup">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="icon">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3a9 9 0 0 0-9 9c0 3.6 2.1 6.7 5.2 8.1l.8-1.5C6.5 18.1 5 15.7 5 13c0-3.9 3.1-7 7-7s7 3.1 7 7c0 2.7-1.5 5.1-4 6.6l.8 1.5c3.1-1.4 5.2-4.5 5.2-8.1a9 9 0 0 0-9-9z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 7c-2.8 0-5 2.2-5 5 0 1.9 1 3.5 2.5 4.3l.8-1.4C9.5 14.4 9 13.2 9 12c0-1.7 1.3-3 3-3s3 1.3 3 3c0 1.2-.5 2.4-1.3 2.9l.8 1.4C16 15.5 17 13.9 17 12c0-2.8-2.2-5-5-5z" />
+                    <circle cx="12" cy="12" r="2" />
+                </svg>
+                发送并提交OSC
+            </button>
+            <button class="btn btn-secondary" id="recordButton">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="icon">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 0 1 6 0v8.25a3 3 0 0 1-3 3Z" />
+                </svg>
+                <span id="recordButtonText">点击开始录音</span>
+            </button>
+        </div>
+
+        <!-- 高级设置 -->
+        <div class="settings-accordion" style="margin-top: 1.5rem;">
+            <div class="settings-header" id="settingsToggle">
+                <h3>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                    </svg>
+                    高级设置
+                </h3>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                </svg>
+            </div>
+            <div class="settings-content" id="settingsContent">
+                <div class="settings-inner">
+                    <div class="form-group">
+                        <label for="deviceSelect">输出设备</label>
+                        <select id="deviceSelect">
+                            {% for device in audio_devices %}
+                            <option value="{{ device }}" {% if device == user_config.device %}selected{% endif %}>{{ device }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="providerSelect">TTS 服务商</label>
+                        <select id="providerSelect">
+                            {% for provider in providers %}
+                            <option value="{{ provider }}" {% if provider == user_config.provider %}selected{% endif %}>{{ provider }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="voiceSelectGroup">
+                        <label for="voiceSelect">语音选择</label>
+                        <select id="voiceSelect">
+                            {% for voice in edge_tts_voices %}
+                            <option value="{{ voice }}" {% if voice == user_config.edge_tts_voice %}selected{% endif %}>{{ voice }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="aliApiKeyGroup">
+                        <label for="aliApiKey">阿里云 API Key</label>
+                        <input type="text" id="aliApiKey" placeholder="请输入阿里云 API Key" value="{{ user_config.ali_api_key }}">
+                    </div>
+
+                    <div class="form-group" id="siliconflowApiKeyGroup">
+                        <label for="siliconflowApiKey">硅基流动 API Key</label>
+                        <input type="text" id="siliconflowApiKey" placeholder="用于语音识别和翻译服务" value="{{ user_config.siliconflowApiKey }}">
+                    </div>
+
+                    <div class="form-group" id="ali_voiceSelectGroup">
+                        <label for="ali_voiceSelect">阿里百炼语音选择</label>
+                        <select id="ali_voiceSelect">
+                            {% for voice in ali_tts_voices %}
+                            <option value="{{ voice }}" {% if voice == user_config.ali_tts_voice %}selected{% endif %}>{{ voice }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="sambert_voiceSelectGroup">
+                        <label for="sambert_voiceSelect">Sambert 语音选择</label>
+                        <select id="sambert_voiceSelect">
+                            {% for voice in sambert_tts_voices %}
+                            <option value="{{ voice }}" {% if voice == user_config.sambert_tts_voice %}selected{% endif %}>{{ voice }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 页脚 -->
+        <footer>
+            <p>
+                <a href="https://github.com/machinad/nieTTS2.0" target="_blank">nieTTS2.0</a> 
+                由 <a href="https://github.com/machinad" target="_blank">machinad</a> 构建 | 
+                <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank">Apache-2.0 License</a>
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        // ===== 高级设置折叠 =====
+        const settingsToggle = document.getElementById('settingsToggle');
+        const settingsContent = document.getElementById('settingsContent');
+        
+        settingsToggle.addEventListener('click', () => {
+            settingsToggle.classList.toggle('open');
+            settingsContent.classList.toggle('open');
+        });
+
+        // ===== STT 语音识别模块 =====
+        const recordButton = document.getElementById('recordButton');
+        const recordButtonText = document.getElementById('recordButtonText');
+        
+        let isRecording = false;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let userMediaStream = null;
+
+        const apiUrl = 'https://api.siliconflow.cn/v1/audio/transcriptions';
+
+        recordButton.addEventListener('click', async () => {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                await startRecording();
+            }
+        });
+
+        async function startRecording() {
+            try {
+                userMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                recordButtonText.textContent = '点击停止录音';
+                recordButton.classList.add('recording');
+                isRecording = true;
+                audioChunks = [];
+
+                mediaRecorder = new MediaRecorder(userMediaStream);
+
+                mediaRecorder.addEventListener('dataavailable', event => {
+                    audioChunks.push(event.data);
+                });
+
+                mediaRecorder.addEventListener('stop', () => {
+                    userMediaStream.getTracks().forEach(track => track.stop());
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    sendAudioToServer(audioBlob);
+                });
+
+                mediaRecorder.start();
+                addLog('🎤 开始录音...');
+
+            } catch (error) {
+                console.error('无法开始录音:', error);
+                addLog(`❌ 录音失败: ${error.message}`);
+                isRecording = false;
+                recordButtonText.textContent = '点击开始录音';
+                recordButton.classList.remove('recording');
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder) {
+                mediaRecorder.stop();
+                isRecording = false;
+                recordButtonText.textContent = '点击开始录音';
+                recordButton.classList.remove('recording');
+                addLog('⏹️ 录音结束，正在识别...');
+            }
+        }
+
+        async function sendAudioToServer(audioBlob) {
+            const formData = new FormData();
+            const apiToken = document.getElementById('siliconflowApiKey').value;
+            
+            formData.append('file', audioBlob, 'recording.webm');
+            formData.append('model', 'TeleAI/TeleSpeechASR');
+
+            const options = {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiToken}`
+                },
+                body: formData
+            };
+
+            try {
+                const response = await fetch(apiUrl, options);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    const errorMsg = data.error ? data.error.message : `HTTP 错误: ${response.status}`;
+                    throw new Error(errorMsg);
+                }
+
+                addLog('✅ 识别成功！');
+                document.getElementById('textInput').value = data.text;
+                convertToSpeech();
+
+            } catch (error) {
+                console.error('API 请求失败:', error);
+                addLog(`❌ 识别失败: ${error.message}`);
+            }
+        }
+
+        // ===== TTS 文字转语音模块 =====
+        let currentAudioUrl = null;
+
+        function addLog(text) {
+            const logArea = document.getElementById('logArea');
+            const time = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            logArea.innerHTML += `<div class="log-item"><span style="color: var(--text-muted); margin-right: 8px;">[${time}]</span>${text}</div>`;
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        function convertToSpeech() {
+            const text = document.getElementById('textInput').value.trim();
+            
+            if (currentAudioUrl) {
+                URL.revokeObjectURL(currentAudioUrl);
+                currentAudioUrl = null;
+            }
+            
+            if (!text) {
+                addLog('⚠️ 请输入要转换的文本');
+                return;
+            }
+
+            const data = {
+                text: text,
+                device: document.getElementById('deviceSelect').value,
+                provider: document.getElementById('providerSelect').value,
+                edge_tts_voice: document.getElementById('voiceSelect').value,
+                tLanguage: document.getElementById('tLanguage').value,
+                ali_api_key: document.getElementById('aliApiKey').value,
+                ali_tts_voice: document.getElementById('ali_voiceSelect').value,
+                sambert_tts_voice: document.getElementById('sambert_voiceSelect').value,
+                siliconflowApiKey: document.getElementById('siliconflowApiKey').value,
+                isdownload: document.getElementById('isDownload').checked,
+                isplayaudio: document.getElementById('isPlayAudio').checked,
+                isTranslate: document.getElementById('isTranslate').checked
+            };
+
+            addLog(`📤 发送文本: ${text}`);
+            document.getElementById('textInput').value = '';
+
+            fetch('/tts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        let errorMsg = `HTTP错误 ${response.status}`;
+                        try {
+                            const errorJson = JSON.parse(text);
+                            if (errorJson.error) {
+                                errorMsg = errorJson.error;
+                            }
+                        } catch (e) {
+                            if (text) errorMsg = text;
+                        }
+                        throw new Error(errorMsg);
+                    });
+                }
+
+                if (data.isdownload) {
+                    return response.blob();
+                } else {
+                    return response.json();
+                }
+            })
+            .then(result => {
+                if (data.isdownload) {
+                    currentAudioUrl = URL.createObjectURL(result);
+                    const audioElement = document.querySelector('#audioPlayer');
+                    audioElement.src = currentAudioUrl;
+                    addLog('✅ 音频生成成功，已加载到播放器');
+                } else {
+                    addLog('✅ 音频生成成功');
+                    console.log('音频生成成功', result);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                addLog(`❌ 错误: ${error.message}`);
+            });
+        }
+
+        // 回车键提交
+        document.getElementById('textInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                convertToSpeech();
+            }
+        });
+
+        // ===== 服务商切换逻辑 =====
+        document.addEventListener('DOMContentLoaded', function() {
+            const providerSelect = document.getElementById('providerSelect');
+            const voiceSelectGroup = document.getElementById('voiceSelectGroup');
+            const aliApiKeyGroup = document.getElementById('aliApiKeyGroup');
+            const siliconflowApiKeyGroup = document.getElementById('siliconflowApiKeyGroup');
+            const ali_voiceSelectGroup = document.getElementById('ali_voiceSelectGroup');
+            const sambert_voiceSelectGroup = document.getElementById('sambert_voiceSelectGroup');
+            const dow_audio = document.getElementById('dow_audio');
+            const textInputGroup = document.getElementById('textInputGroup');
+            const updataGroup = document.getElementById('updataGroup');
+            const deviceSelect = document.getElementById('deviceSelect');
+
+            function toggleProviderSettings() {
+                // 隐藏所有
+                voiceSelectGroup.classList.add('hidden');
+                aliApiKeyGroup.classList.add('hidden');
+                siliconflowApiKeyGroup.classList.add('hidden');
+                ali_voiceSelectGroup.classList.add('hidden');
+                sambert_voiceSelectGroup.classList.add('hidden');
+                dow_audio.classList.add('hidden');
+                textInputGroup.classList.add('hidden');
+                updataGroup.classList.add('hidden');
+                deviceSelect.parentElement.classList.add('hidden');
+
+                const provider = providerSelect.value;
+
+                if (provider === 'Edge TTS') {
+                    siliconflowApiKeyGroup.classList.remove('hidden');
+                    voiceSelectGroup.classList.remove('hidden');
+                    dow_audio.classList.remove('hidden');
+                    textInputGroup.classList.remove('hidden');
+                    updataGroup.classList.remove('hidden');
+                    deviceSelect.parentElement.classList.remove('hidden');
+                } else if (provider === '阿里百炼cosyvice') {
+                    aliApiKeyGroup.classList.remove('hidden');
+                    siliconflowApiKeyGroup.classList.remove('hidden');
+                    ali_voiceSelectGroup.classList.remove('hidden');
+                    dow_audio.classList.remove('hidden');
+                    textInputGroup.classList.remove('hidden');
+                    updataGroup.classList.remove('hidden');
+                    deviceSelect.parentElement.classList.remove('hidden');
+                } else if (provider === '阿里百炼sambert') {
+                    aliApiKeyGroup.classList.remove('hidden');
+                    siliconflowApiKeyGroup.classList.remove('hidden');
+                    sambert_voiceSelectGroup.classList.remove('hidden');
+                    dow_audio.classList.remove('hidden');
+                    textInputGroup.classList.remove('hidden');
+                    updataGroup.classList.remove('hidden');
+                    deviceSelect.parentElement.classList.remove('hidden');
+                }
+            }
+
+            toggleProviderSettings();
+            providerSelect.addEventListener('change', toggleProviderSettings);
+        });
+    </script>
+</body>
+</html>

@@ -17,7 +17,6 @@ import webbrowser
 from openai import OpenAI
 from dashscope.audio.tts_v2 import SpeechSynthesizer as SpeechSynthesizerV2
 from dashscope.audio.tts import SpeechSynthesizer as SpeechSynthesizerV1
-import ssl
 import ipaddress
 from cryptography import x509
 from cryptography.x509.oid import NameOID

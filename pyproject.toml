@@ -1,0 +1,67 @@
+[project]
+name = "nieTTS2.0"
+version = "2.0.0"
+description = "nieTTS2.0 - TTS Web Application with Edge TTS, Aliyun DashScope support"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "nieTTS2.0 Developer"}
+]
+keywords = ["tts", "text-to-speech", "edge-tts", "dashscope", "web"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: Microsoft :: Windows",
+]
+
+dependencies = [
+    "pygame-ce>=2.5.0",
+    "pywin32>=306",
+    "comtypes>=1.4.0",
+    "edge-tts>=6.1.0",
+    "python-osc>=1.8.0",
+    "quart>=0.19.0",
+    "httpx>=0.27.0",
+    "dashscope>=1.20.0",
+    "librosa>=0.10.0",
+    "pyyaml>=6.0.1",
+    "openai>=1.30.0",
+    "cryptography>=42.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
+]
+
+[project.scripts]
+nietts = "app:main"
+
+[project.urls]
+Homepage = "https://github.com/machinad/nieTTS2.0"
+Repository = "https://github.com/machinad/nieTTS2.0"
+
+[tool.uv]
+python-preference = "only-system"
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
