@@ -136,7 +136,13 @@ class TTSWebApp:
         self.setup_routes()
         self.osc_client = udp_client.SimpleUDPClient("127.0.0.1", 9000)
         atexit.register(self.cleanup)
+        self.play_audio_queue = asyncio.Queue()#用于存储待播放的音频文件路径的队列
+        self.config_lock = asyncio.Lock()#用于保护配置文件读写的锁，确保在多线程环境下不会发生竞争条件
+        self.app.before_serving(self.start_background_tasks)  # 注册函数
     os.makedirs('templates', exist_ok=True) 
+    async def start_background_tasks(self):
+        #启动播放音频的后台任务
+        asyncio.create_task(self._play_worker())
     def load_config(self):
         """
         加载配置
@@ -268,7 +274,8 @@ class TTSWebApp:
             "isTranslate":bool(data.get("isTranslate",True)),
             "isIndex_tts_flash":bool(data.get("isIndex_tts_flash",False))
         }
-        self.save_config(config_to_save)
+        async with self.config_lock:
+            self.save_config(config_to_save)
         self.user_config = config_to_save
         device = data.get('device', '')
         self.set_audio_device(device)
@@ -367,40 +374,28 @@ class TTSWebApp:
             })
         #播放音频并清理临时文件
         if isPlayAudio:
-            loop = asyncio.get_event_loop()
-            async def play_and_cleanup():
-                try:
-                    if await self.play_audio(temp_file):
-                        print(f"已播放音频文件: {temp_file}")
-                    else:
-                        print("播放音频文件失败")
-                        remove_file(temp_file)
-                finally:
-                    if hasattr(pygame.mixer, 'get_init') and pygame.mixer.get_init():
-                        pygame.mixer.quit()
-                    remove_file(temp_file)
-            loop.create_task(play_and_cleanup())
+            await self.play_audio_queue.put(temp_file)
         else:
             remove_file(temp_file)
         return response_data
 
-    async def play_audio(self, audio_file):
-        """
-        播放音频文件
-        """
-        try:
-            pygame.mixer.init(devicename=self.current_device)
-            print(f"已设置音频设备: {self.current_device}")
-            pygame.mixer.music.load(audio_file)
-            pygame.mixer.music.play()
-            while pygame.mixer.music.get_busy():
-                await asyncio.sleep(0.1)
-                # pygame.time.Clock().tick(10)
-            pygame.mixer.quit()
-            return True
-        except Exception as e:
-            print(f"播放音频文件失败: {e}")
-            return False
+    async def _play_worker(self):
+    # 后台任务，负责播放音频文件,从队列中获取文件路径，使用pygame播放，播放完成后删除文件
+        while True:
+            file_path = await self.play_audio_queue.get()
+            try:
+                pygame.mixer.init(devicename=self.current_device)
+                pygame.mixer.music.load(file_path)
+                pygame.mixer.music.play()
+                while pygame.mixer.music.get_busy():
+                    await asyncio.sleep(0.1)
+            except Exception as e:
+                print(f"播放音频文件失败: {e}")
+            finally:
+                pygame.mixer.quit()
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                self.play_audio_queue.task_done()
     async def use_edge_tts(self,data,temp_file):
         """
         使用Edge TTS服务转换文本
@@ -474,7 +469,7 @@ class TTSWebApp:
         sapi = win32com.client.Dispatch("SAPI.SpVoice")
         audio_outputs = sapi.GetAudioOutputs()  
         for i in range(audio_outputs.Count):
-            device_desc = audio_outputs.Item(i).GetDescription()#
+            device_desc = audio_outputs.Item(i).GetDescription()
             devices[device_desc] = i  
         print(f"已找到 {audio_outputs.Count} 个音频设备")
         print(f"已找到 {str(devices)} 个音频设备")
