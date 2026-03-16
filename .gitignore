@@ -39,6 +39,7 @@ ffprobe.*
 /outputs/
 /build/
 /venv/
+/uv.lock
 /Python
 /__pycache__
 *.egg-info
