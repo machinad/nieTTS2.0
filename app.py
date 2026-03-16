@@ -136,8 +136,8 @@ class TTSWebApp:
         self.setup_routes()
         self.osc_client = udp_client.SimpleUDPClient("127.0.0.1", 9000)
         atexit.register(self.cleanup)
-        self.play_audio_queue = asyncio.Queue()#用于存储待播放的音频文件路径的队列
         self.config_lock = asyncio.Lock()#用于保护配置文件读写的锁，确保在多线程环境下不会发生竞争条件
+        self.request_queue = asyncio.Queue()  # 队列中每个元素是一个音频队列（代表一个请求）
         self.app.before_serving(self.start_background_tasks)  # 注册函数
     os.makedirs('templates', exist_ok=True) 
     async def start_background_tasks(self):
@@ -159,7 +159,7 @@ class TTSWebApp:
             "isdownload":False,
             "isplayaudio":True,
             "isTranslate":True,
-            "isIndex_tts_flash":False
+            "isPlayTranslation":False
         }
         if self.config_file.exists():
             try:
@@ -272,7 +272,7 @@ class TTSWebApp:
             "isdownload":bool(data.get('isdownload', False)),
             "isplayaudio":bool(data.get('isplayaudio', True)),
             "isTranslate":bool(data.get("isTranslate",True)),
-            "isIndex_tts_flash":bool(data.get("isIndex_tts_flash",False))
+            "isPlayTranslation":bool(data.get("isPlayTranslation",False))
         }
         async with self.config_lock:
             self.save_config(config_to_save)
@@ -281,8 +281,16 @@ class TTSWebApp:
         self.set_audio_device(device)
         id = uuid.uuid4().hex
         isPlayAudio = bool(data.get('isplayaudio', True))
+        isPlayTranslation = bool(data.get('isPlayTranslation', False))
         isdownload = bool(data.get('isdownload', False))
         temp_file = self.savePath / f"save_voice_{id}.mp3"
+        translate_temp_file = self.savePath / f"save_translation_voice_{id}.mp3"
+        
+        # 创建当前请求的音频队列，并加入请求队列
+        # 这样可以确保每个请求的原文和译文连续播放
+        current_audio_queue = asyncio.Queue()
+        await self.request_queue.put(current_audio_queue)
+        
         # 定义清理临时文件函数
         def remove_file(path):
             if os.path.exists(path):
@@ -295,8 +303,9 @@ class TTSWebApp:
         attachment_filename = "audio.mp3"
 
         #判断是否翻译并且发送OSC消息
-        if(data.get("isTranslate",False)):
-            async def translate_and_send():
+        need_translate = data.get("isTranslate", False)
+        if need_translate:
+            async def translate_and_send(audio_queue: asyncio.Queue):
                 t = await self.useTranslate(text,data.get("tLanguage"),data.get("siliconflowApiKey"))
                 outText = text + ("\n" + t if t else "")
                 try:
@@ -304,13 +313,27 @@ class TTSWebApp:
                     print("已发送文本到VRChat OSC")
                 except Exception as e:
                     print(f"发送OSC消息失败: {e}")
-            asyncio.create_task(translate_and_send())
+                if isPlayTranslation and t:
+                    # 翻译文本使用Edge TTS转换
+                    communicate = edge_tts.Communicate(t,"ja-JP-NanamiNeural")
+                    await communicate.save(translate_temp_file)
+                    print(f"已转换译文: 生成临时文件{translate_temp_file}")
+                    # 将译文加入当前请求的音频队列（原文已经在前面的队列中）
+                    await audio_queue.put(str(translate_temp_file))
+                    print("已将译文加入播放队列")
+                # 标记该请求的音频列表结束
+                await audio_queue.put(None)
+            asyncio.create_task(translate_and_send(current_audio_queue))
         else:
             try:
                 self.osc_client.send_message("/chatbox/input", [text, True])
                 print("已发送文本到VRChat OSC")
             except Exception as e:
                 print(f"发送OSC消息失败: {e}")
+            # 不翻译时，如果不播放音频，立即发送结束标记
+            # 如果播放音频，在后面原文加入队列后再发送
+            if not isPlayAudio:
+                asyncio.create_task(current_audio_queue.put(None))
                 
         #选择TTS引擎进行转换
         tts_success = False
@@ -374,28 +397,47 @@ class TTSWebApp:
             })
         #播放音频并清理临时文件
         if isPlayAudio:
-            await self.play_audio_queue.put(temp_file)
+            # 将原文加入当前请求的音频队列
+            await current_audio_queue.put(str(temp_file))
+            print("已将原文加入播放队列")
+            # 如果不需要翻译，原文播放后发送结束标记
+            if not need_translate:
+                await current_audio_queue.put(None)
         else:
+            # 如果不播放原文，清理临时文件
             remove_file(temp_file)
         return response_data
 
     async def _play_worker(self):
-    # 后台任务，负责播放音频文件,从队列中获取文件路径，使用pygame播放，播放完成后删除文件
+    # 后台任务，负责播放音频文件
+    # 外层队列是请求队列，每个元素是一个音频队列（代表一个请求）
+    # 按请求顺序播放，每个请求内的音频（原文、译文）连续播放
         while True:
-            file_path = await self.play_audio_queue.get()
-            try:
-                pygame.mixer.init(devicename=self.current_device)
-                pygame.mixer.music.load(file_path)
-                pygame.mixer.music.play()
-                while pygame.mixer.music.get_busy():
-                    await asyncio.sleep(0.1)
-            except Exception as e:
-                print(f"播放音频文件失败: {e}")
-            finally:
-                pygame.mixer.quit()
-                if os.path.exists(file_path):
-                    os.remove(file_path)
-                self.play_audio_queue.task_done()
+            # 获取下一个请求的音频队列
+            audio_queue = await self.request_queue.get()
+            
+            # 依次播放该请求的所有音频
+            while True:
+                file_path = await audio_queue.get()
+                
+                # None 表示该请求的音频列表结束
+                if file_path is None:
+                    self.request_queue.task_done()
+                    break
+                
+                try:
+                    pygame.mixer.init(devicename=self.current_device)
+                    pygame.mixer.music.load(file_path)
+                    pygame.mixer.music.play()
+                    while pygame.mixer.music.get_busy():
+                        await asyncio.sleep(0.1)
+                except Exception as e:
+                    print(f"播放音频文件失败: {e}")
+                finally:
+                    pygame.mixer.quit()
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                    audio_queue.task_done()
     async def use_edge_tts(self,data,temp_file):
         """
         使用Edge TTS服务转换文本

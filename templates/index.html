@@ -372,6 +372,15 @@
                                 </span>
                             </label>
                         </div>
+                        <div style="display: flex; align-items: center;">
+                            <span style="margin-right: 10px;">是否播放译文</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="isPlayTranslation" {% if user_config.isPlayTranslation %}checked{% endif %}>
+                                <span class="toggle-switch-slider">
+                                    <span class="toggle-switch-inner"></span>
+                                </span>
+                            </label>
+                        </div>
                         <div class="form-group"id="tLanguageSelectGroup" style="display: flex; align-items: center;">
                             <label for="tLanguage" class="form-label" style="display: flex; margin-left: 10px;">目标语言</label>
                             <select class="form-select" id="tLanguage">
@@ -616,7 +625,8 @@
                 siliconflowApiKey: document.getElementById('siliconflowApiKey').value,
                 isdownload:document.getElementById('isDownload').checked,
                 isplayaudio:document.getElementById('isPlayAudio').checked,
-                isTranslate:document.getElementById('isTranslate').checked
+                isTranslate:document.getElementById('isTranslate').checked,
+                isPlayTranslation:document.getElementById('isPlayTranslation').checked
             };
 
             // 添加到日志
