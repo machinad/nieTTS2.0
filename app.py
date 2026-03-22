@@ -201,6 +201,7 @@ class TTSWebApp:
         """
         providers = self.tts_providers
         audio_devices = self.get_audio_devices()
+        current_version = "v2.1.2"  # 当前版本号
         return await render_template('index.html',
                                     providers=providers,
                                     edge_tts_voices=list(self.Edge_TTS_voices.keys()),
@@ -208,7 +209,8 @@ class TTSWebApp:
                                     tlanguages=self.tlanguages,
                                     ali_tts_voices=list(self.ali_tts_voices.keys()),
                                     sambert_tts_voices=list(self.sambert_tts_voices.keys()),
-                                    user_config = self.user_config
+                                    user_config = self.user_config,
+                                    current_version = current_version
                                     )
 
     async def serve_static(self, filename):

@@ -336,7 +336,7 @@
 </head>
 <body>
     <div class="container">
-        <h1 class="mb-4">nieTTS2.0</h1>
+        <h1 class="mb-4">nieTTS2.0 <small style="font-size:0.5em; color:#888;">{{ current_version }}</small></h1>
         
         <div class="row">
             <div class="col-md-12">
@@ -813,8 +813,66 @@
                 }
                 toggleProviderSettings();
                 providerSelect.addEventListener('change',toggleProviderSettings);
+                
+                // 版本检测
+                checkForUpdate();
         }
         );
+        
+        //--------版本检测代码块--------
+        const CURRENT_VERSION = "{{ current_version }}";  // 后端注入的当前版本号
+        const GITHUB_REPO = "machinad/nieTTS2.0";  // GitHub 仓库
+        
+        // 比较版本号，返回是否有更新
+        function compareVersions(latest, current) {
+            try {
+                // 移除 'v' 前缀
+                const latestNum = latest.replace(/^v/, '').split('.').map(Number);
+                const currentNum = current.replace(/^v/, '').split('.').map(Number);
+                
+                for (let i = 0; i < Math.max(latestNum.length, currentNum.length); i++) {
+                    const l = latestNum[i] || 0;
+                    const c = currentNum[i] || 0;
+                    if (l > c) return true;
+                    if (l < c) return false;
+                }
+                return false;
+            } catch (e) {
+                return false;
+            }
+        }
+        
+        // 检查更新
+        async function checkForUpdate() {
+            const apiUrl = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
+            
+            try {
+                const response = await fetch(apiUrl, {
+                    headers: {
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    addLog(`版本检查失败: HTTP ${response.status}`);
+                    return;
+                }
+                
+                const data = await response.json();
+                const latestVersion = data.tag_name || '';
+                const releaseUrl = data.html_url || `https://github.com/${GITHUB_REPO}/releases`;
+                
+                if (compareVersions(latestVersion, CURRENT_VERSION)) {
+                    addLog(`发现新版本 ${latestVersion}！当前版本 ${CURRENT_VERSION}`);
+                    addLog(`<a href="${releaseUrl}" target="_blank" style="color: var(--primary-color);">点击前往 GitHub 下载新版本</a>`);
+                } else {
+                    addLog(`当前已是最新版本 ${CURRENT_VERSION}`);
+                }
+            } catch (error) {
+                addLog(`版本检查失败: ${error.message}`);
+            }
+        }
+        //--------版本检测代码块结束--------
     </script>
 </body>
 </html>
