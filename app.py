@@ -303,31 +303,36 @@ class TTSWebApp:
         attachment_filename = "audio.mp3"
 
         #判断是否翻译并且发送OSC消息
+        translate_task = None
         need_translate = data.get("isTranslate", False)
         if need_translate:
             async def translate_and_send(audio_queue: asyncio.Queue):
-                t = await self.useTranslate(text,data.get("tLanguage"),data.get("siliconflowApiKey"))
-                outText = text + ("\n" + t if t else "")
                 try:
-                    self.osc_client.send_message("/chatbox/input", [outText, True])
-                    print("已发送文本到VRChat OSC")
+                    t = await self.useTranslate(text,data.get("tLanguage"),data.get("siliconflowApiKey"))
+                    outText = text + ("\n" + t if t else "")
+                    try:
+                        self.osc_client.send_message("/chatbox/input", [outText, True])
+                        print("已发送文本到VRChat OSC")
+                    except Exception as e:
+                        print(f"发送OSC消息失败: {e}")
+                    if isPlayTranslation and t:
+                        # 翻译文本使用Edge TTS转换
+                        if data.get("tLanguage") == "英语":
+                            edge_tts_voice = "en-US-AriaNeural"
+                        elif data.get("tLanguage") == "日语":
+                            edge_tts_voice = "ja-JP-NanamiNeural"
+                        communicate = edge_tts.Communicate(t, edge_tts_voice)
+                        await communicate.save(translate_temp_file)
+                        print(f"已转换译文: 生成临时文件{translate_temp_file}")
+                        # 将译文加入当前请求的音频队列（原文已经在前面的队列中）
+                        await audio_queue.put(str(translate_temp_file))
+                        print("已将译文加入播放队列")
                 except Exception as e:
-                    print(f"发送OSC消息失败: {e}")
-                if isPlayTranslation and t:
-                    # 翻译文本使用Edge TTS转换
-                    if data.get("tLanguage") == "英语":
-                        edge_tts_voice = "en-US-AriaNeural"
-                    elif data.get("tLanguage") == "日语":
-                        edge_tts_voice = "ja-JP-NanamiNeural"
-                    communicate = edge_tts.Communicate(t, edge_tts_voice)
-                    await communicate.save(translate_temp_file)
-                    print(f"已转换译文: 生成临时文件{translate_temp_file}")
-                    # 将译文加入当前请求的音频队列（原文已经在前面的队列中）
-                    await audio_queue.put(str(translate_temp_file))
-                    print("已将译文加入播放队列")
-                # 标记该请求的音频列表结束
-                await audio_queue.put(None)
-            asyncio.create_task(translate_and_send(current_audio_queue))
+                    print(f"翻译或TTS转换失败: {e}")
+                    if isPlayTranslation:
+                        print("译文播放已启用但翻译/TTS失败，跳过译文播放")
+                # 注意：不在这里发送 None，由主流程统一发送
+            translate_task = asyncio.create_task(translate_and_send(current_audio_queue))
         else:
             try:
                 self.osc_client.send_message("/chatbox/input", [text, True])
@@ -404,12 +409,18 @@ class TTSWebApp:
             # 将原文加入当前请求的音频队列
             await current_audio_queue.put(str(temp_file))
             print("已将原文加入播放队列")
-            # 如果不需要翻译，原文播放后发送结束标记
-            if not need_translate:
-                await current_audio_queue.put(None)
         else:
             # 如果不播放原文，清理临时文件
             remove_file(temp_file)
+        
+        # 如果有翻译任务，等待其完成后再发送结束标记
+        if translate_task:
+            await translate_task
+        
+        # 发送结束标记（原文和译文都已加入队列，或者都不播放）
+        if isPlayAudio or (translate_task and isPlayTranslation):
+            await current_audio_queue.put(None)
+        
         return response_data
 
     async def _play_worker(self):
@@ -418,15 +429,20 @@ class TTSWebApp:
     # 按请求顺序播放，每个请求内的音频（原文、译文）连续播放
         while True:
             # 获取下一个请求的音频队列
+            print("等待下一个播放请求...")
             audio_queue = await self.request_queue.get()
+            print("获取到播放队列")
             
             # 依次播放该请求的所有音频
             while True:
+                print("等待音频文件...")
                 file_path = await audio_queue.get()
+                print(f"获取到: {file_path}")
                 
                 # None 表示该请求的音频列表结束
                 if file_path is None:
                     self.request_queue.task_done()
+                    print("当前请求播放完成")
                     break
                 
                 try:
