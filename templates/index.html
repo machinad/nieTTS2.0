@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="data:,">
+    <!-- VAD 依赖库 -->
+    <script src="/templates/ort.min.js"></script>
+    <script src="/templates/vad.bundle.min.js"></script>
     <title>nieTTS - 文字转语音</title>
     <style>
         :root {
@@ -470,235 +473,199 @@
     </footer>
 
     <script>
-        //--------stt代码块，以下为语音转文字相关代码--------
- // --- 1. 获取 DOM 元素 ---
+        // 配置 ONNX Runtime WASM 路径
+        ort.env.wasm.wasmPaths = '/templates/';
+
+        //--------VAD + STT 代码块--------
+        // --- 1. 获取 DOM 元素 ---
         const recordButton = document.getElementById('recordButton');
 
         // --- 2. 定义状态变量 ---
-        let isRecording = false;
-        let userMediaStream = null;
-        
-        // 持续监听模式变量
-        let audioContext = null;
-        let analyser = null;
-        let volumeCheckInterval = null;
-        let isSpeaking = false;
-        let silenceStartTime = null;
-        let speechStartTime = null; // 说话开始时间
-        
-        // 录音器
-        let mediaRecorder = null;
-        let audioChunks = [];
-        
-        // 检测参数
-        const VOLUME_THRESHOLD = 0.08;
-        const SILENCE_DURATION = 500;
-        const MIN_SPEECH_TIME = 200; // 最小说话时长（过滤短暂噪音）
+        let myvad = null;           // VAD 实例
+        let isRecording = false;    // 是否正在录音
+        let isProcessing = false;   // 是否正在处理音频（发送到API）
+        let isInitialized = false;  // VAD 是否已初始化
+        let speechCount = 0;        // 语音段计数
 
         // --- 3. API 相关配置 ---
-        const apiUrl = 'https://api.siliconflow.cn/v1/audio/transcriptions';
-        // ！！！！重要！！！！
-        // ！！！！请将 <YOUR_TOKEN_HERE> 替换为您自己的 SiliconFlow API 密钥！！！！
-        // --- 4. 按钮点击事件处理 ---
+        const STT_API_URL = 'https://api.siliconflow.cn/v1/audio/transcriptions';
+        const STT_MODEL = 'TeleAI/TeleSpeechASR';
+
+        // --- 4. 工具函数：Float32Array 转 WAV ---
+        function float32ToWav(float32Array, sampleRate = 16000) {
+            const buffer = new ArrayBuffer(44 + float32Array.length * 2);
+            const view = new DataView(buffer);
+            
+            const writeString = (view, offset, string) => {
+                for (let i = 0; i < string.length; i++) {
+                    view.setUint8(offset + i, string.charCodeAt(i));
+                }
+            };
+            
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + float32Array.length * 2, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, float32Array.length * 2, true);
+            
+            for (let i = 0; i < float32Array.length; i++) {
+                const s = Math.max(-1, Math.min(1, float32Array[i]));
+                view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+            }
+            
+            return new Blob([buffer], { type: 'audio/wav' });
+        }
+
+        // --- 5. 初始化 VAD ---
+        async function initVAD() {
+            if (isInitialized) return true;
+            
+            try {
+                addLog('正在加载 VAD 模型...');
+                
+                myvad = await vad.MicVAD.new({
+                    workletURL: '/templates/vad.worklet.bundle.min.js',
+                    modelURL: '/templates/silero_vad.onnx',
+                    positiveSpeechThreshold: 0.5,
+                    negativeSpeechThreshold: 0.35,
+                    minSpeechFrames: 3,
+                    redemptionFrames: 8,
+                    onSpeechStart: () => {
+                        speechCount++;
+                        addLog(`检测到语音开始 (#${speechCount})`);
+                    },
+                    onSpeechEnd: async (audio) => {
+                        const duration = (audio.length / 16000).toFixed(2);
+                        addLog(`语音结束，时长: ${duration}秒`);
+                        
+                        // 异步处理，不阻塞 VAD
+                        processAudio(audio).catch(err => {
+                            addLog(`音频处理错误: ${err.message}`);
+                        });
+                    },
+                    onVADMisfire: () => {
+                        addLog('VAD 误触发，已忽略');
+                    }
+                });
+                
+                isInitialized = true;
+                addLog('VAD 模型加载完成');
+                return true;
+            } catch (error) {
+                addLog(`VAD 初始化失败: ${error.message}`);
+                return false;
+            }
+        }
+
+        // --- 6. 处理音频（发送到 STT API）---
+        async function processAudio(float32Audio) {
+            const apiToken = document.getElementById('siliconflowApiKey').value;
+            
+            if (!apiToken || apiToken.length < 10) {
+                addLog('错误: 请先配置有效的硅基流动 API Key');
+                return;
+            }
+            
+            isProcessing = true;
+            
+            try {
+                // 转换为 WAV
+                const wavBlob = float32ToWav(float32Audio, 16000);
+                addLog('正在发送语音到识别服务...');
+                
+                // 构建 FormData
+                const formData = new FormData();
+                formData.append('file', wavBlob, 'recording.wav');
+                formData.append('model', STT_MODEL);
+                
+                // 发送到硅基流动 API
+                const response = await fetch(STT_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiToken}`
+                    },
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    const errorMsg = errorData.error?.message || `HTTP ${response.status}`;
+                    throw new Error(errorMsg);
+                }
+                
+                const data = await response.json();
+                
+                if (data.text && data.text.trim()) {
+                    addLog(`识别结果: ${data.text}`);
+                    // 设置文本并推送到后端
+                    document.getElementById('textInput').value = data.text;
+                    convertToSpeech();
+                } else {
+                    addLog('识别结果为空，请重试');
+                }
+            } catch (error) {
+                addLog(`语音识别失败: ${error.message}`);
+            } finally {
+                isProcessing = false;
+            }
+        }
+
+        // --- 7. 按钮点击事件 ---
         recordButton.addEventListener('click', async () => {
             if (isRecording) {
-                stopRecording();
+                stopVAD();
             } else {
-                await startRecording();
+                await startVAD();
             }
         });
 
-        // --- 5. 开始持续监听函数 ---
-        async function startRecording() {
+        // --- 8. 开始 VAD 监听 ---
+        async function startVAD() {
+            // 先初始化 VAD（如果还没初始化）
+            if (!isInitialized) {
+                recordButton.textContent = '加载中...';
+                recordButton.disabled = true;
+                const success = await initVAD();
+                recordButton.disabled = false;
+                if (!success) {
+                    recordButton.textContent = '点击开始录音';
+                    return;
+                }
+            }
+            
             try {
-                userMediaStream = await navigator.mediaDevices.getUserMedia({ 
-                    audio: {
-                        echoCancellation: true,
-                        noiseSuppression: true,
-                        autoGainControl: true
-                    } 
-                });
-                recordButton.textContent = '监听中...（点击停止）';
-                recordButton.classList.add('recording');
+                await myvad.start();
                 isRecording = true;
-                isSpeaking = false;
-                silenceStartTime = null;
-                speechStartTime = null;
-                audioChunks = [];
-
-                // 创建音量分析器
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                analyser = audioContext.createAnalyser();
-                analyser.fftSize = 256;
-                const source = audioContext.createMediaStreamSource(userMediaStream);
-                source.connect(analyser);
-                
-                // 启动音量检测
-                volumeCheckInterval = setInterval(checkVolume, 100);
-                addLog('开始持续监听...');
-
+                speechCount = 0;
+                recordButton.textContent = '监听中...（点击停止）';
+                recordButton.style.backgroundColor = '#88ca31';
+                addLog('开始监听麦克风...');
             } catch (error) {
-                console.error('无法开始监听:', error);
-                addLog(`监听失败: ${error.message}`);
-                isRecording = false;
+                addLog(`启动监听失败: ${error.message}`);
                 recordButton.textContent = '点击开始录音';
-                recordButton.classList.remove('recording');
-            }
-        }
-        
-        // --- 5.1 音量检测函数 ---
-        function checkVolume() {
-            if (!analyser || !isRecording) return;
-            
-            const dataArray = new Uint8Array(analyser.frequencyBinCount);
-            analyser.getByteFrequencyData(dataArray);
-            
-            let sum = 0;
-            for (let i = 0; i < dataArray.length; i++) {
-                sum += dataArray[i];
-            }
-            const volume = (sum / dataArray.length) / 255;
-            
-            if (volume >= VOLUME_THRESHOLD) {
-                if (!isSpeaking) {
-                    // 开始说话
-                    isSpeaking = true;
-                    silenceStartTime = null;
-                    speechStartTime = Date.now();
-                    startSegmentRecording();
-                    addLog('检测到说话...');
-                }
-                silenceStartTime = null;
-            } else if (isSpeaking) {
-                if (silenceStartTime === null) {
-                    silenceStartTime = Date.now();
-                } else if (Date.now() - silenceStartTime >= SILENCE_DURATION) {
-                    const speechDuration = Date.now() - speechStartTime;
-                    isSpeaking = false;
-                    silenceStartTime = null;
-                    
-                    // 只有说话时间超过最小阈值才发送（过滤噪音）
-                    if (speechDuration >= MIN_SPEECH_TIME) {
-                        addLog('说话结束，发送识别...');
-                        stopSegmentRecording();
-                    } else {
-                        addLog('忽略短暂噪音');
-                        // 取消录音
-                        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                            mediaRecorder.stop();
-                        }
-                        audioChunks = [];
-                    }
-                }
-            }
-        }
-        
-        // --- 5.2 开始说话段录音 ---
-        function startSegmentRecording() {
-            audioChunks = [];
-            mediaRecorder = new MediaRecorder(userMediaStream);
-            
-            mediaRecorder.addEventListener('dataavailable', event => {
-                if (event.data.size > 0) {
-                    audioChunks.push(event.data);
-                }
-            });
-            
-            mediaRecorder.addEventListener('stop', () => {
-                if (audioChunks.length > 0) {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    sendAudioToServer(audioBlob);
-                }
-                mediaRecorder = null;
-                audioChunks = [];
-            });
-            
-            mediaRecorder.start();
-        }
-        
-        // --- 5.3 停止说话段录音 ---
-        function stopSegmentRecording() {
-            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                mediaRecorder.stop();
             }
         }
 
-        // --- 6. 停止监听函数 ---
-        function stopRecording() {
-            if (volumeCheckInterval) {
-                clearInterval(volumeCheckInterval);
-                volumeCheckInterval = null;
+        // --- 9. 停止 VAD 监听 ---
+        function stopVAD() {
+            if (myvad) {
+                myvad.pause();
             }
-            
-            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                mediaRecorder.stop();
-            }
-            
-            if (userMediaStream) {
-                userMediaStream.getTracks().forEach(track => track.stop());
-            }
-            
-            if (audioContext) {
-                audioContext.close();
-                audioContext = null;
-            }
-            
             isRecording = false;
-            isSpeaking = false;
-            mediaRecorder = null;
-            audioChunks = [];
             recordButton.textContent = '点击开始录音';
-            recordButton.classList.remove('recording');
+            recordButton.style.backgroundColor = '';
             addLog('停止监听');
         }
 
-        // --- 7. 发送音频到服务器的函数 ---
-        async function sendAudioToServer(audioBlob) {
-            const formData = new FormData();
-            const apiToken =document.getElementById('siliconflowApiKey').value;
-            // 关键点：这里的'file'字段的值是 Blob 对象本身，而不是一个字符串
-            // 第三个参数是文件名，对于 API 来说可能是必需的
-            formData.append('file', audioBlob, 'recording.webm');
-            formData.append('model', 'TeleAI/TeleSpeechASR');
-            
-            const options = {
-                method: 'POST',
-                headers: {
-                    // 注意：当 body 是 FormData 时, Fetch API 会自动设置 'Content-Type' 为 'multipart/form-data'
-                    // 所以不要手动设置它，否则会破坏 boundary 的定义。
-                    'Authorization': `Bearer ${apiToken}`
-                },
-                body: formData
-            };
-
-            try {
-                const response = await fetch(apiUrl, options);
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    // 如果服务器返回了错误信息，优先显示它
-                    const errorMsg = data.error ? data.error.message : `HTTP 错误: ${response.status}`;
-                    throw new Error(errorMsg);
-                }
-
-                // 成功，格式化并显示结果
-                addLog('识别成功！');
-                document.getElementById('textInput').value = data.text;
-                convertToSpeech();
-            } catch (error) {
-                console.error('API 请求失败:', error);
-                addLog(`识别失败: ${error.message}`);
-                if (typeof resultDisplay !== 'undefined') {
-                    resultDisplay.textContent = `请求失败: ${error.message}`;
-                }
-                if (typeof statusDisplay !== 'undefined') {
-                    statusDisplay.textContent = '处理失败，请重试。';
-                }
-            }
-        }
-
-        //--------stt代码块--------
+        //--------VAD + STT 代码块结束--------
         let currentAudioUrl = null;
         function addLog(text){
             const logArea = document.getElementById("logArea")
@@ -786,7 +753,6 @@
             .catch(error => {
                 console.error('Error:', error);
                 addLog(`错误: ${error.message}`);
-                alert('转换失败，请查看日志获取详细信息');
             });
         }
 

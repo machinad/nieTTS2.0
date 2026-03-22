@@ -1,4 +1,4 @@
-from quart import Quart,render_template,request,jsonify,send_file
+from quart import Quart,render_template,request,jsonify,send_file,send_from_directory
 import os
 import win32com.client
 import edge_tts
@@ -190,6 +190,10 @@ class TTSWebApp:
         /tts,POST请求，处理tts请求,
         """
         self.app.route('/tts', methods=['POST'])(self.tts_endpoint)
+        """
+        静态文件路由，提供VAD相关资源
+        """
+        self.app.route('/templates/<path:filename>')(self.serve_static)
 
     async def index(self):
         """
@@ -206,6 +210,33 @@ class TTSWebApp:
                                     sambert_tts_voices=list(self.sambert_tts_voices.keys()),
                                     user_config = self.user_config
                                     )
+
+    async def serve_static(self, filename):
+        """
+        提供静态文件服务（VAD相关资源）
+        """
+        from quart import Response
+        
+        templates_dir = Path('./templates')
+        file_path = templates_dir / filename
+        
+        if not file_path.exists():
+            return jsonify({'error': f'文件不存在: {filename}'}), 404
+        
+        # 设置正确的 MIME 类型
+        mime_types = {
+            '.js': 'application/javascript',
+            '.wasm': 'application/wasm',
+            '.onnx': 'application/octet-stream',
+        }
+        
+        ext = Path(filename).suffix.lower()
+        mimetype = mime_types.get(ext, 'application/octet-stream')
+        
+        with open(file_path, 'rb') as f:
+            data = f.read()
+        
+        return Response(data, mimetype=mimetype)
     async def useTranslate(self,text,tLanguage,apikey):
         url = "https://api.siliconflow.cn/v1"
         def call_api():
@@ -320,6 +351,7 @@ class TTSWebApp:
                             edge_tts_voice = "en-US-AriaNeural"
                         elif data.get("tLanguage") == "日语":
                             edge_tts_voice = "ja-JP-NanamiNeural"
+                        print(f"使用Edge TTS转换译文: {t}")
                         communicate = edge_tts.Communicate(t, edge_tts_voice)
                         await communicate.save(translate_temp_file)
                         print(f"已转换译文: 生成临时文件{translate_temp_file}")
@@ -379,7 +411,7 @@ class TTSWebApp:
              print("不需要播放原文，跳过TTS转换")
              tts_success = True  # 不需要生成音频文件也算成功
         #检查音频文件是否生成成功
-        if not tts_success or not os.path.exists(temp_file):
+        if not tts_success and not os.path.exists(temp_file):
             print(f"原文TTS转换失败或被跳过，未生成音频文件: {temp_file}")
             remove_file(temp_file)
             await current_audio_queue.put(None)
@@ -461,6 +493,8 @@ class TTSWebApp:
                         await asyncio.sleep(0.1)
                 except Exception as e:
                     print(f"播放音频文件失败: {e}")
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
                 finally:
                     pygame.mixer.quit()
                     if os.path.exists(file_path):
