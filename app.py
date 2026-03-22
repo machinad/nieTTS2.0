@@ -115,7 +115,6 @@ class TTSWebApp:
             "Waan-泰语女声-通用场景":"sambert-waan-v1"
         }
         self.config_file = Path("./config.json")
-        self.local_tts_process = None
         self.savePath = Path("./save").resolve()
         self.cert_path = Path("./certificates").resolve()
         try:
@@ -135,7 +134,7 @@ class TTSWebApp:
 
         self.setup_routes()
         self.osc_client = udp_client.SimpleUDPClient("127.0.0.1", 9000)
-        atexit.register(self.cleanup)
+        atexit.register(self.cleanup)#注册程序退出时的清理函数，确保在程序结束时能够执行必要的清理操作，如删除临时文件等
         self.config_lock = asyncio.Lock()#用于保护配置文件读写的锁，确保在多线程环境下不会发生竞争条件
         self.request_queue = asyncio.Queue()  # 队列中每个元素是一个音频队列（代表一个请求）
         self.app.before_serving(self.start_background_tasks)  # 注册函数
@@ -330,6 +329,7 @@ class TTSWebApp:
                 except Exception as e:
                     print(f"翻译或TTS转换失败: {e}")
                     if isPlayTranslation:
+                        await audio_queue.put(None)  # 即使翻译或TTS失败，也要发送结束标记，避免播放队列卡住
                         print("译文播放已启用但翻译/TTS失败，跳过译文播放")
                 # 注意：不在这里发送 None，由主流程统一发送
             translate_task = asyncio.create_task(translate_and_send(current_audio_queue))
@@ -339,55 +339,64 @@ class TTSWebApp:
                 print("已发送文本到VRChat OSC")
             except Exception as e:
                 print(f"发送OSC消息失败: {e}")
-            # 不翻译时，如果不播放音频，立即发送结束标记
-            # 如果播放音频，在后面原文加入队列后再发送
-            if not isPlayAudio:
-                asyncio.create_task(current_audio_queue.put(None))
                 
         #选择TTS引擎进行转换
         tts_success = False
-
-        if provider == "Edge TTS":
-            print("使用Edge TTS转换文本")
-            if await self.use_edge_tts(data,temp_file):
-                print(f"已转换文本: 生成临时文件{temp_file}")
-                tts_success = True
+        if isdownload or isPlayAudio:
+            if provider == "Edge TTS":
+                print("使用Edge TTS转换文本")
+                if await self.use_edge_tts(data,temp_file):
+                    print(f"已转换文本: 生成临时文件{temp_file}")
+                    tts_success = True
+                else:
+                    print("Edge TTS转换失败")
+                    remove_file(temp_file)
+                    await current_audio_queue.put(None)
+                    return jsonify({'error': "tts转换失败"}), 400
+            elif provider == "阿里百炼cosyvice":
+                if await self.use_ali_tts(data,temp_file):
+                    print(f"已转使用阿里百炼换文本: 生成临时文件{temp_file}")
+                    tts_success = True
+                else:
+                    print("阿里百炼转换失败")
+                    remove_file(temp_file)
+                    await current_audio_queue.put(None)
+                    return jsonify({'error': "tts转换失败"}), 400
+            elif provider == "阿里百炼sambert":
+                if await self.use_sambert_tts(data,temp_file):
+                    print(f"已转使用阿里百炼sambert模型换文本: 生成临时文件{temp_file}")
+                    tts_success = True
+                else:
+                    print("阿里百炼sambert模型转换失败")
+                    remove_file(temp_file)
+                    await current_audio_queue.put(None)
+                    return jsonify({'error': "tts转换失败"}), 400
             else:
-                print("Edge TTS转换失败")
-                remove_file(temp_file)
-                return jsonify({'error': "tts转换失败"}), 400
-        elif provider == "阿里百炼cosyvice":
-            if await self.use_ali_tts(data,temp_file):
-                print(f"已转使用阿里百炼换文本: 生成临时文件{temp_file}")
-                tts_success = True
-            else:
-                print("阿里百炼转换失败")
-                remove_file(temp_file)
-                return jsonify({'error': "tts转换失败"}), 400
-        elif provider == "阿里百炼sambert":
-            if await self.use_sambert_tts(data,temp_file):
-                print(f"已转使用阿里百炼sambert模型换文本: 生成临时文件{temp_file}")
-                tts_success = True
-            else:
-                print("阿里百炼sambert模型转换失败")
-                remove_file(temp_file)
-                return jsonify({'error': "tts转换失败"}), 400
+                print(f"无效的TTS引擎: {provider}")
+                await current_audio_queue.put(None)
+                return jsonify({'error': f"无效的TTS引擎: {provider}"}), 400
         else:
-            print(f"无效的TTS引擎: {provider}")
-            return jsonify({'error': f"无效的TTS引擎: {provider}"}), 400
-
+             print("不需要播放原文，跳过TTS转换")
+             tts_success = True  # 不需要生成音频文件也算成功
         #检查音频文件是否生成成功
         if not tts_success or not os.path.exists(temp_file):
-            print(f"TTS转换失败，未生成音频文件: {temp_file}")
+            print(f"原文TTS转换失败或被跳过，未生成音频文件: {temp_file}")
             remove_file(temp_file)
-            return jsonify({'error': "TTS转换失败，未生成音频文件"}), 400
+            await current_audio_queue.put(None)
+            return jsonify({'error': "TTS转换失败"}), 400
+        # 获取音频文件大小（无论是否下载都需要）
+        audio_size = 0
+        if os.path.exists(temp_file):
+            try:
+                audio_size = os.path.getsize(temp_file)
+            except Exception as e:
+                print(f"获取文件大小失败: {e}")
+                audio_size = 0
 
-        #读取生成的音频文件
-        with open(temp_file,'rb') as audio_file:
-            audio_data = audio_file.read()
-        response_data = None
         #根据是否下载返回不同响应
         if isdownload:
+            with open(temp_file, 'rb') as f:
+                audio_data = f.read()
             response_data = await send_file(
                 io.BytesIO(audio_data),
                 mimetype=mimetype,
@@ -399,7 +408,7 @@ class TTSWebApp:
                 "status":"success",
                 "message": "tts转换成功",
                 "audio_info":{
-                    "size":len(audio_data),
+                    "size":audio_size,
                     "mimetype":mimetype,
                     "attachment_filename":attachment_filename
                 }
@@ -410,16 +419,15 @@ class TTSWebApp:
             await current_audio_queue.put(str(temp_file))
             print("已将原文加入播放队列")
         else:
-            # 如果不播放原文，清理临时文件
+            # 如果不播放原文，清理临时文件（在获取文件大小之后）
             remove_file(temp_file)
         
         # 如果有翻译任务，等待其完成后再发送结束标记
         if translate_task:
             await translate_task
         
-        # 发送结束标记（原文和译文都已加入队列，或者都不播放）
-        if isPlayAudio or (translate_task and isPlayTranslation):
-            await current_audio_queue.put(None)
+        # 发送结束标记，确保队列能被正确处理
+        await current_audio_queue.put(None)
         
         return response_data
 
@@ -540,19 +548,7 @@ class TTSWebApp:
         """
         清理
         """
-        if self.local_tts_process is not None:
-            try:
-                if os.name == 'nt':
-                    subprocess.run(["taskkill", "/F", "/T", "/PID", str(self.local_tts_process.pid)],stderr=subprocess.PIPE,stdout=subprocess.PIPE)
-                else:
-                    self.local_tts_process.terminate()
-                self.local_tts_process.wait(timeout=5)
-            except Exception as e:
-                print(f"清理本地TTS服务失败: {e}")
-                self.local_tts_process.kill()
-            finally:
-                self.local_tts_process = None
-
+        print("正在清理资源...")
         # 清理证书文件
         self.cleanup_certificates()
 
