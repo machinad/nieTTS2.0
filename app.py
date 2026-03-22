@@ -315,7 +315,11 @@ class TTSWebApp:
                     print(f"发送OSC消息失败: {e}")
                 if isPlayTranslation and t:
                     # 翻译文本使用Edge TTS转换
-                    communicate = edge_tts.Communicate(t,"ja-JP-NanamiNeural")
+                    if data.get("tLanguage") == "英语":
+                        edge_tts_voice = "en-US-AriaNeural"
+                    elif data.get("tLanguage") == "日语":
+                        edge_tts_voice = "ja-JP-NanamiNeural"
+                    communicate = edge_tts.Communicate(t, edge_tts_voice)
                     await communicate.save(translate_temp_file)
                     print(f"已转换译文: 生成临时文件{translate_temp_file}")
                     # 将译文加入当前请求的音频队列（原文已经在前面的队列中）

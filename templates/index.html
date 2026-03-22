@@ -476,9 +476,20 @@
 
         // --- 2. 定义状态变量 ---
         let isRecording = false;
-        let mediaRecorder = null;
-        let audioChunks = []; // 用于存储录音数据块
         let userMediaStream = null; // 用于存储麦克风流，以便后续关闭
+        
+        // 持续监听模式变量
+        let audioContext = null;
+        let analyser = null;
+        let volumeCheckInterval = null;
+        let isSpeaking = false; // 当前是否在说话
+        let silenceStartTime = null; // 静音开始时间
+        let segmentRecorder = null; // 当前说话段的录音器
+        let segmentChunks = []; // 当前说话段的音频数据
+        
+        // 检测参数
+        const VOLUME_THRESHOLD = 0.03; // 音量阈值 3%
+        const SILENCE_DURATION = 1500; // 静音时长 1.5秒
 
         // --- 3. API 相关配置 ---
         const apiUrl = 'https://api.siliconflow.cn/v1/audio/transcriptions';
@@ -493,60 +504,149 @@
             }
         });
 
-        // --- 5. 开始录音函数 ---
+        // --- 5. 开始持续监听函数 ---
         async function startRecording() {
             try {
                 // 请求用户麦克风权限
                 userMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                recordButton.textContent = '停止录音';
+                recordButton.textContent = '监听中...（点击停止）';
                 recordButton.classList.add('recording');
                 isRecording = true;
-                audioChunks = []; // 清空上一次的录音数据
+                isSpeaking = false;
+                silenceStartTime = null;
+                segmentRecorder = null;
+                segmentChunks = [];
 
-                // 创建 MediaRecorder 实例
-                mediaRecorder = new MediaRecorder(userMediaStream);
-
-                // 当有数据可用时，存入 audioChunks 数组
-                mediaRecorder.addEventListener('dataavailable', event => {
-                    audioChunks.push(event.data);
-                });
-
-                // 当录音停止时，处理数据并发送到服务器
-                mediaRecorder.addEventListener('stop', () => {
-                    // 关闭麦克风轨道，这样浏览器的“使用中”图标就会消失
-                    userMediaStream.getTracks().forEach(track => track.stop());
-
-                    // 将收集到的音频数据块整合成一个 Blob 对象
-                    // 浏览器通常默认录制为 webm 格式
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    
-                    // 发送音频到服务器
-                    sendAudioToServer(audioBlob);
-                });
-
-                // 开始录音
-                mediaRecorder.start();
+                // 创建 AudioContext 和 AnalyserNode 用于音量检测
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                const source = audioContext.createMediaStreamSource(userMediaStream);
+                source.connect(analyser);
+                
+                // 启动音量检测（每100ms检测一次）
+                volumeCheckInterval = setInterval(checkVolume, 100);
+                addLog('开始持续监听，说话后静音1.5秒自动发送...');
 
             } catch (error) {
-                console.error('无法开始录音:', error);
-                addLog(`录音失败: ${error.message}`);
-                if (typeof statusDisplay !== 'undefined') {
-                    statusDisplay.textContent = `错误: ${error.message}. 请确保已授予麦克风权限并且页面在 https 环境下。`;
-                }
-                isRecording = false; // 重置状态
-                recordButton.textContent = '点击开始录音';
-                recordButton.classList.remove('recording');
-            }
-        }
-
-        // --- 6. 停止录音函数 ---
-        function stopRecording() {
-            if (mediaRecorder) {
-                mediaRecorder.stop(); // 这会触发 'stop' 事件
+                console.error('无法开始监听:', error);
+                addLog(`监听失败: ${error.message}`);
                 isRecording = false;
                 recordButton.textContent = '点击开始录音';
                 recordButton.classList.remove('recording');
             }
+        }
+        
+        // --- 5.1 开始说话段录音 ---
+        function startSegmentRecording() {
+            if (!userMediaStream) return;
+            
+            segmentChunks = [];
+            segmentRecorder = new MediaRecorder(userMediaStream);
+            
+            segmentRecorder.addEventListener('dataavailable', event => {
+                if (event.data.size > 0) {
+                    segmentChunks.push(event.data);
+                }
+            });
+            
+            segmentRecorder.addEventListener('stop', () => {
+                if (segmentChunks.length > 0) {
+                    const audioBlob = new Blob(segmentChunks, { type: 'audio/webm' });
+                    sendAudioToServer(audioBlob);
+                }
+                segmentRecorder = null;
+                segmentChunks = [];
+            });
+            
+            segmentRecorder.start();
+        }
+        
+        // --- 5.2 停止说话段录音 ---
+        function stopSegmentRecording() {
+            if (segmentRecorder && segmentRecorder.state !== 'inactive') {
+                segmentRecorder.stop();
+            }
+        }
+        
+        // --- 5.3 音量检测函数 ---
+        function checkVolume() {
+            if (!analyser || !isRecording) return;
+            
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            analyser.getByteFrequencyData(dataArray);
+            
+            // 计算平均音量
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+                sum += dataArray[i];
+            }
+            const average = sum / dataArray.length;
+            const volume = average / 255; // 归一化到 0-1
+            
+            if (volume >= VOLUME_THRESHOLD) {
+                // 有声音
+                if (!isSpeaking) {
+                    // 开始说话，启动新的录音段
+                    isSpeaking = true;
+                    silenceStartTime = null;
+                    startSegmentRecording();
+                    addLog('检测到说话...');
+                }
+                // 说话中，重置静音计时
+                silenceStartTime = null;
+            } else {
+                // 静音状态
+                if (isSpeaking) {
+                    // 正在说话中检测到静音
+                    if (silenceStartTime === null) {
+                        silenceStartTime = Date.now();
+                    } else {
+                        const silenceDuration = Date.now() - silenceStartTime;
+                        if (silenceDuration >= SILENCE_DURATION) {
+                            // 静音超过阈值，结束当前说话段并发送
+                            isSpeaking = false;
+                            silenceStartTime = null;
+                            addLog('说话结束，发送识别...');
+                            stopSegmentRecording();
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- 6. 停止监听函数 ---
+        function stopRecording() {
+            // 停止音量检测
+            if (volumeCheckInterval) {
+                clearInterval(volumeCheckInterval);
+                volumeCheckInterval = null;
+            }
+            
+            // 停止当前说话段的录音
+            if (segmentRecorder && segmentRecorder.state !== 'inactive') {
+                segmentRecorder.stop();
+            }
+            
+            // 关闭麦克风
+            if (userMediaStream) {
+                userMediaStream.getTracks().forEach(track => track.stop());
+            }
+            
+            // 清理 AudioContext
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+            
+            // 重置状态
+            isRecording = false;
+            isSpeaking = false;
+            segmentRecorder = null;
+            segmentChunks = [];
+            recordButton.textContent = '点击开始录音';
+            recordButton.classList.remove('recording');
+            addLog('停止监听');
         }
 
         // --- 7. 发送音频到服务器的函数 ---
