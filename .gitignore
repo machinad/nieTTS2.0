@@ -1,6 +1,7 @@
 __pycache__
 .venv
 uv.lock
+config.json
 /certificates
 /save
 /build
