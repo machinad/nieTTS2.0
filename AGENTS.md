@@ -2,7 +2,9 @@
 
 ## 项目概述
 
-nieTTS2.0 是一个现代化的文本转语音（TTS）Web 应用，支持多种 TTS 引擎，提供 Web 界面和 REST API 接口。主要用于语音合成、语音识别、文本翻译，并通过 OSC 协议与 VRChat 集成。
+nieTTS2.0 是一个现代化的文本转语音（TTS）Web 应用，支持多种 TTS 引擎，提供 Web 界面和 REST API 接口。主要功能包括语音合成、语音识别、文本翻译，并通过 OSC 协议与 VRChat 集成。
+
+**当前版本**: v2.1.2
 
 ## 技术栈
 
@@ -14,8 +16,9 @@ nieTTS2.0 是一个现代化的文本转语音（TTS）Web 应用，支持多种
 | OSC 通信 | python-osc |
 | 翻译服务 | 硅基流动 API (OpenAI 兼容) |
 | 语音识别 | 硅基流动 ASR (TeleSpeechASR) |
+| 语音检测 | Silero VAD (浏览器端本地运行) |
 | HTTP/HTTPS | 自签名证书支持 (cryptography) |
-| 前端 | 原生 HTML/CSS/JavaScript |
+| 前端 | 原生 HTML/CSS/JavaScript + ONNX Runtime Web |
 
 ## 项目结构
 
@@ -26,7 +29,13 @@ nieTTS2.0/
 ├── pyproject.toml      # 项目依赖和元数据
 ├── uv.lock             # uv 包管理器锁文件
 ├── templates/
-│   └── index.html      # Web 前端界面
+│   ├── index.html      # Web 前端界面
+│   ├── ort.min.js      # ONNX Runtime Web 运行时
+│   ├── ort-wasm-simd.wasm  # WebAssembly 二进制文件
+│   ├── vad.bundle.min.js   # VAD 核心库
+│   ├── vad.worklet.bundle.min.js  # AudioWorklet 模块
+│   ├── silero_vad.onnx # Silero VAD 模型文件
+│   └── VAD_SDK.md      # VAD 开发文档
 ├── save/               # 临时音频文件存储
 ├── certificates/       # HTTPS 证书目录（运行时生成，退出时清理）
 └── .venv/              # Python 虚拟环境
@@ -46,6 +55,7 @@ nieTTS2.0/
 - **主要路由**:
   - `GET /`: 渲染 Web 界面
   - `POST /tts`: 文本转语音 API
+  - `GET /templates/<path:filename>`: 静态文件服务（VAD 资源）
 
 - **关键方法**:
   - `use_edge_tts()`: Edge TTS 转换
@@ -53,6 +63,7 @@ nieTTS2.0/
   - `use_sambert_tts()`: 阿里百炼 SamBert 转换
   - `useTranslate()`: 调用翻译 API
   - `_play_worker()`: 后台音频播放队列
+  - `serve_static()`: 静态文件服务
   - `cleanup_certificates()`: 程序退出时清理证书文件
 
 - **音频队列机制**:
@@ -67,9 +78,23 @@ nieTTS2.0/
 ### templates/index.html - 前端
 
 - 单页应用，原生 JavaScript
-- 支持语音识别 (MediaRecorder API + 硅基流动 ASR)
+- **VAD 语音检测**: 基于 Silero VAD 模型，浏览器端本地运行
+- **语音识别**: VAD 检测语音段后，发送到硅基流动 ASR API
 - 动态切换 TTS 服务商界面
+- **版本检测**: 启动时自动检查 GitHub 最新版本
 - ASCII 艺术启动横幅 "NIE"
+
+### VAD 模块 (templates/)
+
+浏览器端语音活动检测组件，文件说明：
+
+| 文件 | 说明 |
+|------|------|
+| `ort.min.js` | ONNX Runtime Web 运行时 (v1.14.0) |
+| `ort-wasm-simd.wasm` | WebAssembly SIMD 二进制文件 |
+| `vad.bundle.min.js` | VAD 核心库 (v0.0.18) |
+| `vad.worklet.bundle.min.js` | AudioWorklet 处理模块 |
+| `silero_vad.onnx` | Silero VAD 模型文件 (~1.8MB) |
 
 ## 依赖项
 
@@ -103,6 +128,7 @@ nieTTS2.0/
 |------|------|--------|
 | 文本翻译 | Qwen/Qwen3-8B | 硅基流动 |
 | 语音识别 (ASR) | TeleAI/TeleSpeechASR | 硅基流动 |
+| 语音检测 (VAD) | Silero VAD | 本地运行 |
 
 ## 发音人列表
 
@@ -140,6 +166,7 @@ nieTTS2.0/
 
 - Python 3.10-3.13
 - Windows 系统（音频设备依赖）
+- 现代浏览器（支持 WebAssembly SIMD）
 
 ### 安装依赖
 
@@ -201,7 +228,7 @@ python app.py
 | `ali_tts_voice` | string | 条件 | CosyVoice 发音人（provider=阿里百炼cosyvice 时必填） |
 | `sambert_tts_voice` | string | 条件 | SamBert 发音人（provider=阿里百炼sambert 时必填） |
 | `ali_api_key` | string | 条件 | 阿里百炼 API 密钥（使用阿里百炼时必填） |
-| `siliconflowApiKey` | string | 条件 | 硅基流动 API 密钥（启用翻译时必填） |
+| `siliconflowApiKey` | string | 条件 | 硅基流动 API 密钥（启用翻译或语音识别时必填） |
 | `device` | string | 否 | 音频输出设备名称 |
 | `tLanguage` | string | 否 | 翻译目标语言（默认：英语） |
 | `isdownload` | boolean | 否 | 是否下载音频文件（默认：false） |
@@ -212,6 +239,10 @@ python app.py
 **响应**:
 - `isdownload=true`: 返回音频文件下载
 - `isdownload=false`: 返回 JSON 状态信息
+
+### GET /templates/<path:filename>
+
+静态文件服务，提供 VAD 相关资源（JS、WASM、ONNX 文件）。
 
 ## 配置文件 (config.json)
 
@@ -231,6 +262,38 @@ python app.py
   "isPlayTranslation": false
 }
 ```
+
+## 前端功能模块
+
+### VAD 语音检测模块
+
+```javascript
+// 初始化 VAD
+const myvad = await vad.MicVAD.new({
+    workletURL: '/templates/vad.worklet.bundle.min.js',
+    modelURL: '/templates/silero_vad.onnx',
+    onSpeechStart: () => { /* 语音开始 */ },
+    onSpeechEnd: (audio) => { /* audio: Float32Array, 16kHz */ }
+});
+
+// 控制检测
+myvad.start();  // 开始
+myvad.pause();  // 停止
+```
+
+### Float32Array 转 WAV
+
+```javascript
+function float32ToWav(float32Array, sampleRate = 16000) {
+    // 返回 WAV 格式 Blob
+}
+```
+
+### 版本检测
+
+启动时自动检查 GitHub 最新版本：
+- API: `https://api.github.com/repos/machinad/nieTTS2.0/releases/latest`
+- 比较版本号并提示用户更新
 
 ## 开发约定
 
@@ -294,9 +357,13 @@ port = int(os.environ.get('APP_PORT', 1145))
 | API 认证失败 | 验证 API 密钥有效性和配额 |
 | HTTPS 证书警告 | 自签名证书，选择"继续访问" |
 | API 密钥泄露风险 | `config.json` 存储明文密钥，请勿提交到版本控制系统，建议添加到 `.gitignore` |
+| VAD 模型加载失败 | 检查 templates 目录下文件完整性，确保 WASM 文件完整下载 |
+| 语音识别返回空 | 检查麦克风权限，确保硅基流动 API Key 有效 |
+| 版本检测失败 | 网络问题，不影响正常使用 |
 
 ## 相关链接
 
 - GitHub: https://github.com/machinad/nieTTS2.0
 - 阿里百炼: https://dashscope.aliyun.com/
 - 硅基流动: https://siliconflow.cn/
+- VAD 库: https://github.com/ricky0123/vad-web
