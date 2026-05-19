@@ -3,6 +3,7 @@ from engines.base import BaseTTS, TTSResult
 from engines.edge_tts import EdgeTTS
 from engines.cosyvoice_tts import CosyVoiceTTS
 from engines.sambert_tts import SambertTTS
+from engines.matcha_tts import MatchaTTS
 
 
 class TTSService:
@@ -14,6 +15,15 @@ class TTSService:
 
         self._engines: dict[str, BaseTTS] = {
             "Edge TTS": EdgeTTS(save_dir),
+            "MatchaTTS": MatchaTTS(
+                save_dir,
+                acoustic_model=config.get("matcha_acoustic_model", ""),
+                vocoder=config.get("matcha_vocoder", ""),
+                tokens_path=config.get("matcha_tokens", ""),
+                lexicon_path=config.get("matcha_lexicon", ""),
+                data_dir=config.get("matcha_data_dir", ""),
+                dict_dir=config.get("matcha_dict_dir", ""),
+            ),
             "阿里百炼cosyvoice": CosyVoiceTTS(save_dir, ali_key),
             "阿里百炼Sambert": SambertTTS(save_dir, ali_key),
         }

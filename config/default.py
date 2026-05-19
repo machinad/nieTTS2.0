@@ -4,7 +4,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 default_config = {
-    "provider": "Edge TTS",
+    "provider": "MatchaTTS",
     "edge_tts_voice": "汉语女声-晓晓-新闻小说-温柔",
     "device": "CABLE Input (VB-Audio Virtual Cable)",
     "ali_tts_voice": "",
@@ -12,10 +12,16 @@ default_config = {
     "ali_api_key": "",
     "siliconflowApiKey": "",
     "tLanguage": "英语",
-    "isdownload": False,
     "isplayaudio": True,
     "isTranslate": True,
-    "isPlayTranslation": True
+    "isPlayTranslation": True,
+    "matcha_acoustic_model": "models/matcha-icefall-zh-en/matcha-icefall-zh-en/model-steps-3.onnx",
+    "matcha_vocoder": "models/vocos-22khz-univ.onnx",
+    "matcha_tokens": "models/matcha-icefall-zh-en/tokens.txt",
+    "matcha_lexicon": "models/matcha-icefall-zh-en/lexicon.txt",
+    "matcha_data_dir": "models/matcha-icefall-zh-en",
+    "matcha_dict_dir": "",
+    "matcha_voice": "0",
 }
 
 
