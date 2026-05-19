@@ -2,7 +2,8 @@ __pycache__
 .venv
 uv.lock
 config.json
-/certificates
+/certificates/*.pem
 /save
 /build
 /dist
+/docs/原始代码(已废弃)
