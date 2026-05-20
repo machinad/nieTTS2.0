@@ -1,7 +1,7 @@
 import logging
 import dashscope
 from dashscope.audio.tts import SpeechSynthesizer as SpeechSynthesizerV1
-from engines.base import BaseTTS, TTSResult
+from engines.tts.base import BaseTTS, TTSResult
 
 logger = logging.getLogger(__name__)
 

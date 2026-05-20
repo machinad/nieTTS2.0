@@ -4,24 +4,41 @@ import logging
 logger = logging.getLogger(__name__)
 
 default_config = {
-    "provider": "MatchaTTS",
-    "edge_tts_voice": "汉语女声-晓晓-新闻小说-温柔",
+    "tts_provider": {
+        "provider":"edge_tts",
+        "providers":[
+            {
+                "name": "edge_tts",
+                "voice":"汉语女声-晓晓-新闻小说-温柔"
+            },
+            {
+                "name": "cosyvoice",
+                "voice": "龙婉-普通话-语音助手、导航播报、聊天数字人",
+            },
+            {
+                "name":"sambert",
+                "voice":"知琪-温柔女声-通用场景",
+            },
+            {
+                "name":"MatchaTTS",
+                "voice":"0",
+                "matcha_acoustic_model": "models/matcha-icefall-zh-en/matcha-icefall-zh-en/model-steps-3.onnx",
+                "matcha_vocoder": "models/vocos-16khz-univ.onnx",
+                "matcha_tokens": "models/matcha-icefall-zh-en/tokens.txt",
+                "matcha_lexicon": "models/matcha-icefall-zh-en/lexicon.txt",
+                "matcha_data_dir": "models/matcha-icefall-zh-en",
+                "matcha_dict_dir": "",
+            }
+
+        ]
+    },
     "device": "CABLE Input (VB-Audio Virtual Cable)",
-    "ali_tts_voice": "",
-    "sambert_tts_voice": "",
     "ali_api_key": "",
     "siliconflowApiKey": "",
     "tLanguage": "英语",
     "isplayaudio": True,
     "isTranslate": True,
     "isPlayTranslation": True,
-    "matcha_acoustic_model": "models/matcha-icefall-zh-en/matcha-icefall-zh-en/model-steps-3.onnx",
-    "matcha_vocoder": "models/vocos-22khz-univ.onnx",
-    "matcha_tokens": "models/matcha-icefall-zh-en/tokens.txt",
-    "matcha_lexicon": "models/matcha-icefall-zh-en/lexicon.txt",
-    "matcha_data_dir": "models/matcha-icefall-zh-en",
-    "matcha_dict_dir": "",
-    "matcha_voice": "0",
 }
 
 
@@ -79,8 +96,29 @@ class ConfigManager:
             return False
 
     def get(self, key, default=None):
-        return self.config.get(key, default)
+        keys = key.split(".")
+        value = self.config
+        for k in keys:
+            if isinstance(value, dict) and k in value:
+                value = value[k]
+            else:
+                return default
+        return value
+
+    def get_provider_config(self, name):
+        providers = self.config.get("tts_provider", {}).get("providers", [])
+        for p in providers:
+            if p.get("name") == name:
+                return p
+        return {}
+
+    def _deep_update(self, target, source):
+        for key, value in source.items():
+            if key in target and isinstance(target[key], dict) and isinstance(value, dict):
+                self._deep_update(target[key], value)
+            else:
+                target[key] = value
 
     def update(self, data):
-        self.config.update(data)
+        self._deep_update(self.config, data)
         return self.save_config()

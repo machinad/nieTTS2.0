@@ -1,6 +1,6 @@
 import logging
 import edge_tts as edge
-from engines.base import BaseTTS, TTSResult
+from engines.tts.base import BaseTTS, TTSResult
 
 logger = logging.getLogger(__name__)
 

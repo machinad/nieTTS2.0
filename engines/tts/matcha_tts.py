@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 import sherpa_onnx
-from engines.base import BaseTTS, TTSResult
+from engines.tts.base import BaseTTS, TTSResult
 
 logger = logging.getLogger(__name__)
 
