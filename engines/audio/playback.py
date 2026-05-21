@@ -1,6 +1,6 @@
 import asyncio
-import threading
 import logging
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -25,13 +25,11 @@ def get_playback_devices() -> list[dict]:
 
 
 def _play_file_sync(path: Path, device_id=None) -> None:
-    finished = threading.Event()
-
     stream = miniaudio.stream_file(str(path))
     device = miniaudio.PlaybackDevice(device_id=device_id)
-    device.stop_callback = finished.set
     device.start(stream)
-    finished.wait()
+    while device.callback_generator is not None:
+        time.sleep(0.01)
     device.close()
 
 

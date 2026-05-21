@@ -62,6 +62,7 @@ class WebServer:
             tts_provider=data.get("tts_provider", ""),
             voice=data.get("voice", ""),
             translate=bool(data.get("translate", True)),
+            play_audio=bool(data.get("play_audio", True)),
             play_translation=bool(data.get("play_translation", True)),
             osc_enabled=bool(data.get("osc_enabled", True)),
             source_lang=data.get("source_lang", "中文"),
@@ -78,19 +79,21 @@ class WebServer:
             sambert_tts_voices,
         )
         engines = self.tts.get_available_engines()
+        all_engines = self.tts.get_all_engines()
         translate_engines = self.translate.get_available_engines()
 
         return jsonify({
             "tts_engines": engines,
+            "all_tts_engines": all_engines,
             "translate_engines": translate_engines,
             "voices": {
                 "edge_tts": list(Edge_TTS_voices.keys()),
                 "cosyvoice": list(ali_tts_voices.keys()),
                 "sambert": list(sambert_tts_voices.keys()),
-                "matcha_tts": ["0"],
+                "MatchaTTS": ["0"],
             },
             "source_languages": ["中文", "英语", "日语"],
-            "target_languages": self.config.get("tLanguage", ["英语", "日语"]),
+            "target_languages": [self.config.get("tLanguage", "英语")],
         })
 
     async def get_config(self):
@@ -108,10 +111,15 @@ class WebServer:
         if not data:
             return jsonify({"error": "无效的配置数据"}), 400
         ok = self.config.update(data)
+        if ok:
+            self.tts.reload_engines()
+            self.translate.reload_engines()
+            self.osc.reload()
         return jsonify({"success": ok})
 
     async def ws_handler(self):
-        _WSS.add(websocket._get_current_object())
+        ws_obj = websocket._get_current_object()
+        _WSS.add(ws_obj)
         try:
             while True:
                 raw = await websocket.receive()
@@ -130,7 +138,7 @@ class WebServer:
         except Exception as e:
             logger.info(f"WS 断开: {e}")
         finally:
-            _WSS.discard(websocket._get_current_object())
+            _WSS.discard(ws_obj)
 
     async def serve_assets(self, filename):
         return await send_from_directory(str(self._templates / "assets"), filename)

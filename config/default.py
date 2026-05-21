@@ -1,3 +1,4 @@
+import copy
 import json
 from pathlib import Path
 import logging
@@ -22,7 +23,7 @@ default_config = {
             {
                 "name":"MatchaTTS",
                 "voice":"0",
-                "matcha_acoustic_model": "models/matcha-icefall-zh-en/matcha-icefall-zh-en/model-steps-3.onnx",
+                "matcha_acoustic_model": "models/matcha-icefall-zh-en/model-steps-3.onnx",
                 "matcha_vocoder": "models/vocos-16khz-univ.onnx",
                 "matcha_tokens": "models/matcha-icefall-zh-en/tokens.txt",
                 "matcha_lexicon": "models/matcha-icefall-zh-en/lexicon.txt",
@@ -91,7 +92,7 @@ class ConfigManager:
             p.mkdir(parents=True, exist_ok=True)
 
     def _init_config(self):
-        config = dict(default_config)
+        config = copy.deepcopy(default_config)
         if self.config_file.exists():
             try:
                 with open(self.config_file, 'r', encoding='utf-8') as f:
@@ -103,7 +104,7 @@ class ConfigManager:
         return config
 
     def _create_default_config(self):
-        return dict(default_config)
+        return copy.deepcopy(default_config)
 
     def _save_file(self, config):
         with open(self.config_file, 'w', encoding='utf-8') as f:

@@ -30,6 +30,17 @@ class TranslateService:
     def get_available_engines(self) -> list[str]:
         return [name for name, engine in self._engines.items() if engine.is_available()]
 
+    def reload_engines(self):
+        provider_cfgs = self.config.get("translation_provider", {}).get("providers", [])
+        for p in provider_cfgs:
+            name = p.get("name", "")
+            if name in self._engines:
+                self._engines[name].update_config(
+                    api_key=p.get("api_key", ""),
+                    base_url=p.get("url", ""),
+                    model=p.get("model", ""),
+                )
+
     async def translate(self, text: str, provider: str = None,
                         source_lang: str = "中文", target_lang: str = "",
                         **kwargs) -> TranslateResult:

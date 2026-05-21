@@ -16,6 +16,15 @@ class OpenAITranslate(BaseTranslate):
     def is_available(self) -> bool:
         return bool(self.api_key)
 
+    def update_config(self, api_key: str = "", base_url: str = "", model: str = ""):
+        self.api_key = api_key
+        if model:
+            self.model = model
+        if api_key:
+            self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+        else:
+            self.client = None
+
     async def translate(self, text: str, source_lang: str, target_lang: str, **kwargs) -> TranslateResult:
         model = kwargs.get("model", self.model)
         try:

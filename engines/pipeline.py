@@ -23,6 +23,7 @@ class TTSRequest:
     tts_provider: str = ""
     voice: str = ""
     translate: bool = True
+    play_audio: bool = True
     play_translation: bool = True
     osc_enabled: bool = True
     source_lang: str = "中文"
@@ -114,14 +115,29 @@ class RequestPipeline:
         else:
             await tts_original_task
 
-        original_result: TTSResult = tts_original_task.result()
+        # Get original TTS result safely
+        try:
+            original_result: TTSResult = tts_original_task.result()
+        except Exception as e:
+            logger.exception(f"TTS(原文) 执行异常: {e}")
+            original_result = TTSResult(success=False, text=req.text, error=str(e))
+
         translated_audio: Optional[Path] = None
         if translate_future:
-            translated_audio = translate_future.result()
+            try:
+                translated_audio = translate_future.result()
+            except Exception as e:
+                logger.exception(f"翻译任务执行异常: {e}")
 
-        # Push to PlayQueue in fixed order: original first, then translated
+        # Push to PlayQueue: original first, then translated
         if original_result.is_success and original_result.path:
-            await self._play_queue.put(original_result.path)
+            if req.play_audio:
+                await self._play_queue.put(original_result.path)
+            else:
+                try:
+                    original_result.path.unlink(missing_ok=True)
+                except OSError:
+                    pass
         else:
             logger.error(f"TTS(原文) 失败: {original_result.error}")
 
@@ -179,3 +195,4 @@ class RequestPipeline:
                 break
             except Exception as e:
                 logger.exception(f"_play_worker 异常: {e}")
+                self._play_queue.task_done()
