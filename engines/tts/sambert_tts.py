@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import dashscope
 from dashscope.audio.tts import SpeechSynthesizer as SpeechSynthesizerV1
@@ -20,11 +21,13 @@ class SambertTTS(BaseTTS):
         save_path = self._make_path(".mp3")
         try:
             dashscope.api_key = self.api_key
-            result = SpeechSynthesizerV1.call(model=voice, text=text,
-                                              sample_rate=48000, format="mp3")
+            result = await asyncio.to_thread(
+                SpeechSynthesizerV1.call, model=voice, text=text,
+                sample_rate=48000, format="mp3",
+            )
             audio_data = result.get_audio_data()
             if audio_data is not None:
-                save_path.write_bytes(audio_data)
+                await asyncio.to_thread(save_path.write_bytes, audio_data)
                 logger.info(f"Sambert TTS 生成成功: {save_path}")
                 return TTSResult(success=True, path=save_path, voice=voice, text=text)
             else:

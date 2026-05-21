@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from pathlib import Path
 import sherpa_onnx
@@ -67,12 +68,12 @@ class MatchaTTS(BaseTTS):
                 gc.speed = speed
                 gc.sid = sid
                 gc.num_steps = num_steps
-                audio = self._tts.generate(text, config=gc)
+                audio = await asyncio.to_thread(self._tts.generate, text, config=gc)
             else:
-                audio = self._tts.generate(text, sid=sid, speed=speed)
+                audio = await asyncio.to_thread(self._tts.generate, text, sid=sid, speed=speed)
 
             save_path = self._make_path(".wav")
-            sherpa_onnx.write_wave(str(save_path), audio.samples, audio.sample_rate)
+            await asyncio.to_thread(sherpa_onnx.write_wave, str(save_path), audio.samples, audio.sample_rate)
             logger.info(f"MatchaTTS 生成成功: {save_path} ({len(audio.samples)} samples)")
             return TTSResult(success=True, path=save_path, voice=str(sid), text=text)
         except Exception as e:

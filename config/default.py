@@ -13,11 +13,11 @@ default_config = {
             },
             {
                 "name": "cosyvoice",
-                "voice": "龙婉-普通话-语音助手、导航播报、聊天数字人",
+                "voice": "龙婉-普通话-语音助手、导航播报、聊天数字人"
             },
             {
                 "name":"sambert",
-                "voice":"知琪-温柔女声-通用场景",
+                "voice":"知琪-温柔女声-通用场景"
             },
             {
                 "name":"MatchaTTS",
@@ -27,9 +27,29 @@ default_config = {
                 "matcha_tokens": "models/matcha-icefall-zh-en/tokens.txt",
                 "matcha_lexicon": "models/matcha-icefall-zh-en/lexicon.txt",
                 "matcha_data_dir": "models/matcha-icefall-zh-en",
-                "matcha_dict_dir": "",
+                "matcha_dict_dir": ""
             }
 
+        ]
+    },
+    "stt_provider": {
+        "provider":"",
+        "providers":[
+            {
+                "name": "",
+                "model": "",
+            }
+        ]
+    },
+    "translation_provider": {
+        "provider":"openai",
+        "providers":[
+            {
+                "name": "openai",
+                "model": "",
+                "api_key": "",
+                "url": ""
+            },
         ]
     },
     "device": "CABLE Input (VB-Audio Virtual Cable)",
@@ -107,6 +127,20 @@ class ConfigManager:
 
     def get_provider_config(self, name):
         providers = self.config.get("tts_provider", {}).get("providers", [])
+        for p in providers:
+            if p.get("name") == name:
+                return p
+        return {}
+
+    def get_stt_provider_config(self, name):
+        providers = self.config.get("stt_provider", {}).get("providers", [])
+        for p in providers:
+            if p.get("name") == name:
+                return p
+        return {}
+
+    def get_translation_provider_config(self, name):
+        providers = self.config.get("translation_provider", {}).get("providers", [])
         for p in providers:
             if p.get("name") == name:
                 return p

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import dashscope
 from dashscope.audio.tts_v2 import SpeechSynthesizer as SpeechSynthesizerV2
@@ -21,8 +22,8 @@ class CosyVoiceTTS(BaseTTS):
         try:
             dashscope.api_key = self.api_key
             synthesizer = SpeechSynthesizerV2(model="cosyvoice-v1", voice=voice)
-            audio = synthesizer.call(text)
-            save_path.write_bytes(audio)
+            audio = await asyncio.to_thread(synthesizer.call, text)
+            await asyncio.to_thread(save_path.write_bytes, audio)
             logger.info(f"CosyVoice TTS 生成成功: {save_path}")
             return TTSResult(success=True, path=save_path, voice=voice, text=text)
         except Exception as e:
