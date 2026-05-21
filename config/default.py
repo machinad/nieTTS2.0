@@ -59,6 +59,9 @@ default_config = {
     "isplayaudio": True,
     "isTranslate": True,
     "isPlayTranslation": True,
+    "osc_enabled": True,
+    "osc_host": "127.0.0.1",
+    "osc_port": 9000,
 }
 
 
