@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -9,11 +10,33 @@ from config.default import ConfigManager
 from engines.tts.service import TTSService
 from engines.tts.base import TTSResult
 from engines.translate.service import TranslateService
-from engines.translate.base import TranslateResult
 from engines.osc.service import OSCService
 from engines.audio.playback import play_file
 
 logger = logging.getLogger(__name__)
+
+_LANG_EDGE_VOICE = {
+    "英语": "en-US-AriaNeural",
+    "日语": "ja-JP-NanamiNeural",
+    "韩语": "ko-KR-SunHiNeural",
+    "中文": "zh-CN-XiaoxiaoNeural",
+    "法语": "fr-FR-DeniseNeural",
+    "德语": "de-DE-KatjaNeural",
+    "西班牙语": "es-ES-ElviraNeural",
+    "俄语": "ru-RU-SvetlanaNeural",
+    "葡萄牙语": "pt-BR-FranciscaNeural",
+    "意大利语": "it-IT-ElsaNeural",
+    "阿拉伯语": "ar-SA-ZariyahNeural",
+    "印尼语": "id-ID-GadisNeural",
+    "泰语": "th-TH-PremwadeeNeural",
+    "越南语": "vi-VN-HoaiMyNeural",
+    "粤语": "zh-HK-HiuGaaiNeural",
+}
+_DEFAULT_EDGE_VOICE = "en-US-AriaNeural"
+
+
+def _resolve_edge_voice(target_lang: str) -> str:
+    return _LANG_EDGE_VOICE.get(target_lang, _DEFAULT_EDGE_VOICE)
 
 
 @dataclass
@@ -90,46 +113,18 @@ class RequestPipeline:
                 break
             except Exception as e:
                 logger.exception(f"_request_worker 异常: {e}")
+                self._request_queue.task_done()
 
     async def _process(self, req: TTSRequest) -> None:
-        tts_original_task = asyncio.create_task(
-            self.tts.synthesize(req.text, provider=req.tts_provider, voice=req.voice)
-        )
-
-        translate_future: Optional[asyncio.Task] = None
-
-        if req.translate:
-            translate_future = asyncio.create_task(
-                self._handle_translate(req)
-            )
-        elif req.osc_enabled:
-            translate_future = asyncio.create_task(
-                self._handle_osc_only(req)
-            )
-
-        if translate_future:
-            done, _ = await asyncio.wait(
-                [tts_original_task, translate_future],
-                return_when=asyncio.ALL_COMPLETED,
-            )
-        else:
-            await tts_original_task
-
-        # Get original TTS result safely
+        original_result: TTSResult
         try:
-            original_result: TTSResult = tts_original_task.result()
+            original_result = await self.tts.synthesize(
+                req.text, provider=req.tts_provider, voice=req.voice
+            )
         except Exception as e:
             logger.exception(f"TTS(原文) 执行异常: {e}")
             original_result = TTSResult(success=False, text=req.text, error=str(e))
 
-        translated_audio: Optional[Path] = None
-        if translate_future:
-            try:
-                translated_audio = translate_future.result()
-            except Exception as e:
-                logger.exception(f"翻译任务执行异常: {e}")
-
-        # Push to PlayQueue: original first, then translated
         if original_result.is_success and original_result.path:
             if req.play_audio:
                 await self._play_queue.put(original_result.path)
@@ -141,38 +136,41 @@ class RequestPipeline:
         else:
             logger.error(f"TTS(原文) 失败: {original_result.error}")
 
-        if translated_audio:
-            await self._play_queue.put(translated_audio)
+        if req.translate:
+            asyncio.create_task(self._handle_translate_bg(req))
+        elif req.osc_enabled:
+            asyncio.create_task(self._handle_osc_only_bg(req))
 
-    async def _handle_translate(self, req: TTSRequest) -> Optional[Path]:
-        translate_result: TranslateResult = await self.translate.translate(
-            req.text,
-            source_lang=req.source_lang,
-            target_lang=req.target_lang,
-        )
+    async def _handle_translate_bg(self, req: TTSRequest) -> None:
+        try:
+            translate_result = await self.translate.translate(
+                req.text,
+                source_lang=req.source_lang,
+                target_lang=req.target_lang,
+            )
 
-        if translate_result.is_success and translate_result.text:
-            if req.osc_enabled:
-                self.osc.send_translated(req.text, translate_result.text)
+            if translate_result.is_success and translate_result.text:
+                if req.osc_enabled:
+                    self.osc.send_translated(req.text, translate_result.text)
 
-            if req.play_translation:
-                tts_result = await self.tts.synthesize(
-                    translate_result.text,
-                    provider=req.tts_provider,
-                    voice=req.voice,
-                )
-                if tts_result.is_success and tts_result.path:
-                    return tts_result.path
-        else:
-            logger.error(f"翻译失败: {translate_result.error}")
-            if req.osc_enabled:
-                self.osc.send_original(req.text)
+                if req.play_translation:
+                    voice = _resolve_edge_voice(req.target_lang)
+                    tts_result = await self.tts.synthesize(
+                        translate_result.text,
+                        provider="edge_tts",
+                        voice=voice,
+                    )
+                    if tts_result.is_success and tts_result.path:
+                        await self._play_queue.put(tts_result.path)
+            else:
+                logger.error(f"翻译失败: {translate_result.error}")
+                if req.osc_enabled:
+                    self.osc.send_original(req.text)
+        except Exception as e:
+            logger.exception(f"_handle_translate_bg 异常: {e}")
 
-        return None
-
-    async def _handle_osc_only(self, req: TTSRequest) -> Optional[Path]:
+    async def _handle_osc_only_bg(self, req: TTSRequest) -> None:
         self.osc.send_original(req.text)
-        return None
 
     async def _play_worker(self):
         while self._running:
@@ -186,10 +184,12 @@ class RequestPipeline:
                     await play_file(path, device_name=device_name)
                 else:
                     logger.warning(f"音频文件不存在，跳过播放: {path}")
-                try:
-                    path.unlink(missing_ok=True)
-                except OSError:
-                    pass
+                for _ in range(10):
+                    try:
+                        path.unlink(missing_ok=True)
+                        break
+                    except PermissionError:
+                        time.sleep(0.05)
                 self._play_queue.task_done()
             except asyncio.CancelledError:
                 break
