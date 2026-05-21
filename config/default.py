@@ -54,7 +54,6 @@ default_config = {
     },
     "device": "CABLE Input (VB-Audio Virtual Cable)",
     "ali_api_key": "",
-    "siliconflowApiKey": "",
     "tLanguage": "英语",
     "isplayaudio": True,
     "isTranslate": True,
@@ -92,26 +91,29 @@ class ConfigManager:
             p.mkdir(parents=True, exist_ok=True)
 
     def _init_config(self):
+        config = dict(default_config)
         if self.config_file.exists():
             try:
                 with open(self.config_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                    disk = json.load(f)
+                self._deep_update(config, disk)
             except Exception as e:
                 logger.error(f"加载配置失败: {e}")
-        return self._create_default_config()
+        self._save_file(config)
+        return config
 
     def _create_default_config(self):
-        with open(self.config_file, 'w', encoding='utf-8') as f:
-            json.dump(default_config, f, ensure_ascii=False, indent=4)
-        logger.info(f"已创建默认配置文件: {self.config_file}")
         return dict(default_config)
+
+    def _save_file(self, config):
+        with open(self.config_file, 'w', encoding='utf-8') as f:
+            json.dump(config, f, ensure_ascii=False, indent=4)
 
     def save_config(self, config=None):
         if config is None:
             config = self.config
         try:
-            with open(self.config_file, 'w', encoding='utf-8') as f:
-                json.dump(config, f, ensure_ascii=False, indent=4)
+            self._save_file(config)
             self.config = config
             return True
         except Exception as e:

@@ -2,7 +2,7 @@ import json
 import logging
 from pathlib import Path
 
-from quart import Quart, render_template, request, jsonify, websocket
+from quart import Quart, request, jsonify, websocket, send_from_directory
 from quart_cors import cors
 
 from config.default import ConfigManager
@@ -10,6 +10,7 @@ from engines.tts.service import TTSService
 from engines.translate.service import TranslateService
 from engines.osc.service import OSCService
 from engines.pipeline import RequestPipeline
+from engines.audio.playback import get_playback_devices
 
 logger = logging.getLogger(__name__)
 
@@ -27,8 +28,9 @@ class WebServer:
         self.osc = osc
         self.pipeline = pipeline
 
-        self.app = Quart(__name__)
+        self.app = Quart(__name__, static_folder=None)
         self.app = cors(self.app)
+        self._templates = self.config.project_root / "templates"
 
         self.app.route("/")(self.index)
         self.app.route("/tts", methods=["POST"])(self.tts_endpoint)
@@ -36,10 +38,13 @@ class WebServer:
         self.app.route("/config", methods=["GET"])(self.get_config)
         self.app.route("/config", methods=["POST"])(self.update_config)
         self.app.route("/ws")(self.ws_handler)
-        self.app.route("/<path:filename>")(self.static_file)
+        self.app.route("/assets/<path:filename>")(self.serve_assets)
 
     async def index(self):
-        return await render_template("index.html")
+        index_path = self._templates / "index.html"
+        if index_path.exists():
+            return await send_from_directory(str(self._templates), "index.html")
+        return "<h1>nieTTS 2.0</h1><p>请运行 <code>cd frontend && npm run build</code></p>"
 
     async def tts_endpoint(self):
         data = await request.get_json()
@@ -89,7 +94,14 @@ class WebServer:
         })
 
     async def get_config(self):
-        return jsonify(self.config.config)
+        cfg = dict(self.config.config)
+        try:
+            cfg["available_devices"] = [
+                {"name": d["name"]} for d in get_playback_devices()
+            ]
+        except Exception:
+            cfg["available_devices"] = []
+        return jsonify(cfg)
 
     async def update_config(self):
         data = await request.get_json()
@@ -120,11 +132,12 @@ class WebServer:
         finally:
             _WSS.discard(websocket._get_current_object())
 
-    async def static_file(self, filename):
-        return await self.app.send_static_file(filename)
+    async def serve_assets(self, filename):
+        return await send_from_directory(str(self._templates / "assets"), filename)
 
 
 async def _broadcast(msg: dict):
+    global _WSS
     data = json.dumps(msg, ensure_ascii=False)
     dead = set()
     for ws in _WSS:

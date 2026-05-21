@@ -67,6 +67,9 @@ class RequestPipeline:
         })
         if not req.tts_provider:
             req.tts_provider = self.config.get("tts_provider.provider", "edge_tts")
+        if not req.voice:
+            provider_cfg = self.config.get_provider_config(req.tts_provider)
+            req.voice = provider_cfg.get("voice", "")
         if not req.target_lang:
             req.target_lang = self.config.get("tLanguage", "英语")
         await self._request_queue.put(req)

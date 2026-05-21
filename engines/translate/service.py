@@ -18,7 +18,7 @@ class TranslateService:
             if not name:
                 continue
             if name == "openai":
-                api_key = p.get("api_key", "") or config.get("siliconflowApiKey", "")
+                api_key = p.get("api_key", "")
                 base_url = p.get("url", "")
                 model = p.get("model", "") or "gpt-4o-mini"
                 self._engines[name] = OpenAITranslate(
