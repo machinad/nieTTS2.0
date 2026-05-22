@@ -9,6 +9,7 @@ from config.default import ConfigManager
 from engines.tts.service import TTSService
 from engines.translate.service import TranslateService
 from engines.osc.service import OSCService
+from engines.stt.service import STTService
 from engines.pipeline import RequestPipeline
 from web_server import WebServer
 from certificates.certificates_server import CertificateServer
@@ -38,8 +39,9 @@ class nieTTS:
         self.tts = TTSService(self.config)
         self.translate = TranslateService(self.config)
         self.osc = OSCService(self.config)
+        self.stt = STTService(self.config)
         self.pipeline = RequestPipeline(self.config, self.tts, self.translate, self.osc)
-        self.web = WebServer(self.config, self.tts, self.translate, self.osc, self.pipeline)
+        self.web = WebServer(self.config, self.tts, self.translate, self.osc, self.pipeline, self.stt)
         self.cert = CertificateServer()
 
         self._host = self.config.get("host", "0.0.0.0")

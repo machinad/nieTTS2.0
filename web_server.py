@@ -9,7 +9,10 @@ from config.default import ConfigManager
 from engines.tts.service import TTSService
 from engines.translate.service import TranslateService
 from engines.osc.service import OSCService
+from engines.stt.service import STTService
+from engines.stt.vad.silero_vad import SileroVAD
 from engines.pipeline import RequestPipeline
+import numpy as np
 from engines.audio.playback import get_playback_devices
 
 logger = logging.getLogger(__name__)
@@ -21,12 +24,13 @@ class WebServer:
 
     def __init__(self, config: ConfigManager, tts: TTSService,
                  translate: TranslateService, osc: OSCService,
-                 pipeline: RequestPipeline):
+                 pipeline: RequestPipeline, stt: STTService | None = None):
         self.config = config
         self.tts = tts
         self.translate = translate
         self.osc = osc
         self.pipeline = pipeline
+        self.stt = stt
 
         self.app = Quart(__name__, static_folder=None)
         self.app = cors(self.app)
@@ -37,8 +41,22 @@ class WebServer:
         self.app.route("/voices")(self.voices_endpoint)
         self.app.route("/config", methods=["GET"])(self.get_config)
         self.app.route("/config", methods=["POST"])(self.update_config)
-        self.app.route("/ws")(self.ws_handler)
+        self.app.websocket("/ws")(self.ws_handler)
         self.app.route("/assets/<path:filename>")(self.serve_assets)
+
+        self._vad_instances: dict = {}
+
+    def _make_vad(self) -> SileroVAD:
+        vad_cfg = self.config.config.get("vad", {})
+        return SileroVAD(
+            model_path=vad_cfg.get("model_path", "models/silero_vad.onnx"),
+            sample_rate=vad_cfg.get("sample_rate", 16000),
+            threshold=vad_cfg.get("threshold", 0.5),
+            min_silence_duration=vad_cfg.get("min_silence_duration", 0.25),
+            min_speech_duration=vad_cfg.get("min_speech_duration", 0.25),
+            max_speech_duration=vad_cfg.get("max_speech_duration", 15.0),
+            window_size=vad_cfg.get("window_size", 512),
+        )
 
     async def index(self):
         index_path = self._templates / "index.html"
@@ -81,11 +99,13 @@ class WebServer:
         engines = self.tts.get_available_engines()
         all_engines = self.tts.get_all_engines()
         translate_engines = self.translate.get_available_engines()
+        stt_engines = self.stt.get_available_engines() if self.stt else []
 
         return jsonify({
             "tts_engines": engines,
             "all_tts_engines": all_engines,
             "translate_engines": translate_engines,
+            "stt_engines": stt_engines,
             "voices": {
                 "edge_tts": list(Edge_TTS_voices.keys()),
                 "cosyvoice": list(ali_tts_voices.keys()),
@@ -114,12 +134,15 @@ class WebServer:
         if ok:
             self.tts.reload_engines()
             self.translate.reload_engines()
+            if self.stt:
+                self.stt.reload_engines()
             self.osc.reload()
         return jsonify({"success": ok})
 
     async def ws_handler(self):
         ws_obj = websocket._get_current_object()
         _WSS.add(ws_obj)
+        vad: SileroVAD | None = None
         try:
             while True:
                 raw = await websocket.receive()
@@ -130,15 +153,46 @@ class WebServer:
                         continue
                     typ = msg.get("type")
                     if typ == "start":
-                        logger.info("WS: 客户端请求开始音频流")
+                        logger.info("WS: audio stream start")
+                        vad = self._make_vad()
+                        self._vad_instances[id(ws_obj)] = vad
                     elif typ == "stop":
-                        logger.info("WS: 客户端请求停止音频流")
+                        logger.info("WS: audio stream stop")
+                        if vad is not None and self.stt is not None:
+                            vad.flush()
+                            while not vad.empty():
+                                seg = vad.front
+                                result = await self.stt.transcribe(seg.samples, seg.sample_rate)
+                                if result.is_success and result.text:
+                                    await ws_obj.send(json.dumps({
+                                        "type": "stt_result",
+                                        "text": result.text,
+                                    }, ensure_ascii=False))
+                                vad.pop()
+                        vad = None
+                        self._vad_instances.pop(id(ws_obj), None)
                 elif isinstance(raw, bytes):
-                    logger.debug(f"WS: 收到音频数据 {len(raw)} bytes")
+                    if vad is None or self.stt is None:
+                        continue
+                    try:
+                        samples = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+                        vad.accept_waveform(samples)
+                        while not vad.empty():
+                            seg = vad.front
+                            result = await self.stt.transcribe(seg.samples, seg.sample_rate)
+                            if result.is_success and result.text:
+                                await ws_obj.send(json.dumps({
+                                    "type": "stt_result",
+                                    "text": result.text,
+                                }, ensure_ascii=False))
+                            vad.pop()
+                    except Exception as e:
+                        logger.error("WS audio error: %s", e)
         except Exception as e:
-            logger.info(f"WS 断开: {e}")
+            logger.info("WS disconnected: %s", e)
         finally:
             _WSS.discard(ws_obj)
+            self._vad_instances.pop(id(ws_obj), None)
 
     async def serve_assets(self, filename):
         return await send_from_directory(str(self._templates / "assets"), filename)

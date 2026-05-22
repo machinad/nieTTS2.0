@@ -34,11 +34,14 @@ default_config = {
         ]
     },
     "stt_provider": {
-        "provider":"",
+        "provider":"Qwen3",
         "providers":[
             {
-                "name": "",
-                "model": "",
+                "name": "Qwen3",
+                "conv_frontend": "models/qwen3-asr-0.6B-int8/conv_frontend.onnx",
+                "encoder": "models/qwen3-asr-0.6B-int8/encoder.int8.onnx",
+                "decoder": "models/qwen3-asr-0.6B-int8/decoder.int8.onnx",
+                "tokenizer": "models/qwen3-asr-0.6B-int8/tokenizer",
             }
         ]
     },
@@ -62,6 +65,15 @@ default_config = {
     "osc_enabled": True,
     "osc_host": "127.0.0.1",
     "osc_port": 9000,
+    "vad": {
+        "model_path": "models/silero_vad.onnx",
+        "sample_rate": 16000,
+        "threshold": 0.5,
+        "min_silence_duration": 0.25,
+        "min_speech_duration": 0.25,
+        "max_speech_duration": 15.0,
+        "window_size": 512,
+    },
 }
 
 
