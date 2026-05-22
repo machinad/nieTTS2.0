@@ -1,10 +1,10 @@
+import asyncio
 import json
 import logging
 from pathlib import Path
-
+import numpy as np
 from quart import Quart, request, jsonify, websocket, send_from_directory
 from quart_cors import cors
-
 from config.default import ConfigManager
 from engines.tts.service import TTSService
 from engines.translate.service import TranslateService
@@ -12,9 +12,7 @@ from engines.osc.service import OSCService
 from engines.stt.service import STTService
 from engines.stt.vad.silero_vad import SileroVAD
 from engines.pipeline import RequestPipeline
-import numpy as np
 from engines.audio.playback import get_playback_devices
-
 logger = logging.getLogger(__name__)
 
 _WSS = set()
@@ -41,7 +39,7 @@ class WebServer:
         self.app.route("/voices")(self.voices_endpoint)
         self.app.route("/config", methods=["GET"])(self.get_config)
         self.app.route("/config", methods=["POST"])(self.update_config)
-        self.app.websocket("/ws")(self.ws_handler)
+        self.app.route("/ws")(self.ws_handler)
         self.app.route("/assets/<path:filename>")(self.serve_assets)
 
         self._vad_instances: dict = {}
@@ -153,11 +151,9 @@ class WebServer:
                         continue
                     typ = msg.get("type")
                     if typ == "start":
-                        logger.info("WS: audio stream start")
-                        vad = self._make_vad()
-                        self._vad_instances[id(ws_obj)] = vad
+                        logger.info("WS: 客户端请求开始音频流")
                     elif typ == "stop":
-                        logger.info("WS: audio stream stop")
+                        logger.info("WS: audio stream stop requested")
                         if vad is not None and self.stt is not None:
                             vad.flush()
                             while not vad.empty():
@@ -187,7 +183,7 @@ class WebServer:
                                 }, ensure_ascii=False))
                             vad.pop()
                     except Exception as e:
-                        logger.error("WS audio error: %s", e)
+                        logger.error("WS audio processing error: %s", e)
         except Exception as e:
             logger.info("WS disconnected: %s", e)
         finally:
