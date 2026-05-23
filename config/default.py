@@ -1,4 +1,4 @@
-import copy
+﻿import copy
 import json
 from pathlib import Path
 import logging
@@ -56,15 +56,6 @@ default_config = {
             },
         ]
     },
-    "device": "CABLE Input (VB-Audio Virtual Cable)",
-    "ali_api_key": "",
-    "tLanguage": "英语",
-    "isplayaudio": True,
-    "isTranslate": True,
-    "isPlayTranslation": True,
-    "osc_enabled": True,
-    "osc_host": "127.0.0.1",
-    "osc_port": 9000,
     "vad": {
         "model_path": "models/silero_vad.onnx",
         "sample_rate": 16000,
@@ -74,6 +65,15 @@ default_config = {
         "max_speech_duration": 15.0,
         "window_size": 512,
     },
+    "device": "CABLE Input (VB-Audio Virtual Cable)",
+    "ali_api_key": "",
+    "tLanguage": "英语",
+    "isplayaudio": True,
+    "isTranslate": True,
+    "isPlayTranslation": True,
+    "osc_enabled": True,
+    "osc_host": "127.0.0.1",
+    "osc_port": 9000,
 }
 
 
@@ -86,7 +86,7 @@ class ConfigManager:
         return cls._instance
 
     def __init__(self):
-        if hasattr(self, '_initialized'):
+        if hasattr(self, "_initialized"):
             return
         self._initialized = True
 
