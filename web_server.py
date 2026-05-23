@@ -39,7 +39,7 @@ class WebServer:
         self.app.route("/voices")(self.voices_endpoint)
         self.app.route("/config", methods=["GET"])(self.get_config)
         self.app.route("/config", methods=["POST"])(self.update_config)
-        self.app.route("/ws")(self.ws_handler)
+        self.app.websocket("/ws")(self.ws_handler)
         self.app.route("/assets/<path:filename>")(self.serve_assets)
 
         self._vad_instances: dict = {}
@@ -152,6 +152,8 @@ class WebServer:
                     typ = msg.get("type")
                     if typ == "start":
                         logger.info("WS: 客户端请求开始音频流")
+                        vad = self._make_vad()
+                        self._vad_instances[id(ws_obj)] = vad
                     elif typ == "stop":
                         logger.info("WS: audio stream stop requested")
                         if vad is not None and self.stt is not None:
@@ -164,6 +166,17 @@ class WebServer:
                                         "type": "stt_result",
                                         "text": result.text,
                                     }, ensure_ascii=False))
+                                    await self.pipeline.submit_tts(
+                                        text=result.text,
+                                        tts_provider=self.config.get("tts_provider.provider", "edge_tts"),
+                                        voice=self.config.get("tts_provider.voice", ""),
+                                        translate=bool(self.config.get("isTranslate", True)),
+                                        play_audio=bool(self.config.get("isplayaudio", True)),
+                                        play_translation=bool(self.config.get("isPlayTranslation", True)),
+                                        osc_enabled=bool(self.config.get("osc_enabled", True)),
+                                        source_lang="中文",
+                                        target_lang=self.config.get("tLanguage", "英语"),
+                                    )
                                 vad.pop()
                         vad = None
                         self._vad_instances.pop(id(ws_obj), None)
@@ -181,6 +194,17 @@ class WebServer:
                                     "type": "stt_result",
                                     "text": result.text,
                                 }, ensure_ascii=False))
+                                await self.pipeline.submit_tts(
+                                    text=result.text,
+                                    tts_provider=self.config.get("tts_provider.provider", "edge_tts"),
+                                    voice=self.config.get("tts_provider.voice", ""),
+                                    translate=bool(self.config.get("isTranslate", True)),
+                                    play_audio=bool(self.config.get("isplayaudio", True)),
+                                    play_translation=bool(self.config.get("isPlayTranslation", True)),
+                                    osc_enabled=bool(self.config.get("osc_enabled", True)),
+                                    source_lang="中文",
+                                    target_lang=self.config.get("tLanguage", "英语"),
+                                )
                             vad.pop()
                     except Exception as e:
                         logger.error("WS audio processing error: %s", e)

@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.venv/Scripts/python.exe -c \"import pytest; print\\('pytest', pytest.__version__\\)\")",
+      "Bash(.venv/Scripts/python.exe -c \"import numpy; print\\('numpy', numpy.__version__\\)\")",
+      "Bash(.venv/Scripts/python.exe -c \"import pytest_asyncio; print\\('pytest-asyncio', pytest_asyncio.__version__\\)\")",
+      "Bash(.venv/Scripts/pip list *)",
+      "Bash(.venv/Scripts/pip install *)",
+      "Bash(uv pip *)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/ -v --tb=short)",
+      "Bash(.venv/Scripts/python.exe -c ' *)",
+      "Bash(.venv/Scripts/python.exe -c \"import edge_tts; print\\('edge_tts OK'\\)\")",
+      "Bash(.venv/Scripts/python.exe -c \"import sherpa_onnx; print\\('sherpa_onnx OK'\\)\")",
+      "Bash(.venv/Scripts/python.exe -c \"import scipy; print\\('scipy', scipy.__version__\\)\")",
+      "Bash(.venv/Scripts/python.exe -c \"import soundfile; print\\('soundfile', soundfile.__version__\\)\")",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/test_integration_pipeline.py -v -m integration --tb=long -s)",
+      "Bash(.venv/Scripts/python.exe -c \"import quart; print\\('quart', quart.__version__\\); from quart.testing import QuartClient; print\\('QuartClient available'\\)\")"
+    ]
+  }
+}

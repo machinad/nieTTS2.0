@@ -27,8 +27,8 @@ class Qwen3STT(BaseSTT):
         enc = Path(self._encoder) if self._encoder else None
         dec = Path(self._decoder) if self._decoder else None
         tok = Path(self._tokenizer) if self._tokenizer else None
-        return (cf and enc and dec and tok
-                and cf.exists() and enc.exists() and dec.exists() and tok.is_dir())
+        return bool(cf and enc and dec and tok
+                    and cf.exists() and enc.exists() and dec.exists() and tok.is_dir())
 
     def _lazy_init(self):
         if self._recognizer is not None:
