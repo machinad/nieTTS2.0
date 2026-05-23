@@ -48,6 +48,7 @@ class nieTTS:
         self._port = int(self.config.get("port", 11451))
 
     async def start(self):
+        self._cleanup_orphan_files()
         logger.info("正在启动 Pipeline ...")
         await self.pipeline.start()
 
@@ -68,23 +69,36 @@ class nieTTS:
         while True:
             await asyncio.sleep(3600)
 
+    def _cleanup_orphan_files(self):
+        save_dir = self.config.save_path
+        try:
+            for f in save_dir.iterdir():
+                if f.is_file():
+                    f.unlink(missing_ok=True)
+        except Exception:
+            pass
+
     async def stop(self):
         await self.pipeline.stop()
         logger.info("nieTTS 已停止")
 
 
-def main():
+async def _run():
     logger.info(BANNER)
     logger.info(f"nieTTS {VERSION} 启动中...")
 
     app = nieTTS()
-
     try:
-        asyncio.run(app.start())
+        await app.start()
+    finally:
+        await app.stop()
+
+
+def main():
+    try:
+        asyncio.run(_run())
     except KeyboardInterrupt:
         logger.info("收到退出信号")
-    finally:
-        asyncio.run(app.stop())
 
 
 if __name__ == "__main__":

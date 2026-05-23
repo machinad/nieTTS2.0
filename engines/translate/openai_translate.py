@@ -10,7 +10,7 @@ class OpenAITranslate(BaseTranslate):
 
     def __init__(self, api_key: str = "", base_url: str = "", model: str = "gpt-4o-mini"):
         self.api_key = api_key
-        self.client = AsyncOpenAI(api_key=api_key, base_url=base_url) if api_key else None
+        self.client = AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=30.0) if api_key else None
         self.model = model
 
     def is_available(self) -> bool:
@@ -21,7 +21,7 @@ class OpenAITranslate(BaseTranslate):
         if model:
             self.model = model
         if api_key:
-            self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+            self.client = AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=30.0)
         else:
             self.client = None
 

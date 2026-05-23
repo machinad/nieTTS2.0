@@ -68,7 +68,7 @@ default_config = {
     "device": "CABLE Input (VB-Audio Virtual Cable)",
     "ali_api_key": "",
     "tLanguage": "英语",
-    "isplayaudio": True,
+    "isPlayAudio": True,
     "isTranslate": True,
     "isPlayTranslation": True,
     "osc_enabled": True,

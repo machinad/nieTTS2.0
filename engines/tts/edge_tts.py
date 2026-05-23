@@ -9,6 +9,7 @@ class EdgeTTS(BaseTTS):
     engine_name = "Edge TTS"
 
     def is_available(self) -> bool:
+        # Edge TTS is a cloud service with no local model — always listed as available
         return True
 
     async def synthesize(self, text: str, voice: str, **kwargs) -> TTSResult:

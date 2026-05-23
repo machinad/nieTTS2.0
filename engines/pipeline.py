@@ -68,6 +68,7 @@ class RequestPipeline:
         self._running = False
         self._request_task: Optional[asyncio.Task] = None
         self._play_task: Optional[asyncio.Task] = None
+        self._bg_tasks: set[asyncio.Task] = set()
 
     async def start(self):
         if self._running:
@@ -82,6 +83,12 @@ class RequestPipeline:
         for task in (self._request_task, self._play_task):
             if task and not task.done():
                 task.cancel()
+        for task in list(self._bg_tasks):
+            if not task.done():
+                task.cancel()
+        if self._bg_tasks:
+            await asyncio.gather(*self._bg_tasks, return_exceptions=True)
+            self._bg_tasks.clear()
         logger.info("RequestPipeline 已停止")
 
     async def submit_tts(self, text: str, **opts) -> str:
@@ -137,9 +144,13 @@ class RequestPipeline:
             logger.error(f"TTS(原文) 失败: {original_result.error}")
 
         if req.translate:
-            asyncio.create_task(self._handle_translate_bg(req))
+            task = asyncio.create_task(self._handle_translate_bg(req))
+            self._bg_tasks.add(task)
+            task.add_done_callback(self._bg_tasks.discard)
         elif req.osc_enabled:
-            asyncio.create_task(self._handle_osc_only_bg(req))
+            task = asyncio.create_task(self._handle_osc_only_bg(req))
+            self._bg_tasks.add(task)
+            task.add_done_callback(self._bg_tasks.discard)
 
     async def _handle_translate_bg(self, req: TTSRequest) -> None:
         try:

@@ -88,20 +88,28 @@ class TTSService:
             self._engines["cosyvoice"].api_key = ali_key
         if "sambert" in self._engines:
             self._engines["sambert"].api_key = ali_key
-        try:
-            if "MatchaTTS" in self._engines:
-                MatchaTTS = _import_matcha()
-                self._engines["MatchaTTS"] = MatchaTTS(
-                    self.config.save_path,
-                    acoustic_model=self.config.get_provider_config("MatchaTTS").get("matcha_acoustic_model", ""),
-                    vocoder=self.config.get_provider_config("MatchaTTS").get("matcha_vocoder", ""),
-                    tokens_path=self.config.get_provider_config("MatchaTTS").get("matcha_tokens", ""),
-                    lexicon_path=self.config.get_provider_config("MatchaTTS").get("matcha_lexicon", ""),
-                    data_dir=self.config.get_provider_config("MatchaTTS").get("matcha_data_dir", ""),
-                    dict_dir=self.config.get_provider_config("MatchaTTS").get("matcha_dict_dir", ""),
-                )
-        except Exception:
-            pass
+        if "MatchaTTS" in self._engines:
+            matcha_cfg = self.config.get_provider_config("MatchaTTS")
+            cur = self._engines["MatchaTTS"]
+            if (cur.acoustic_model != matcha_cfg.get("matcha_acoustic_model", "")
+                    or cur.vocoder != matcha_cfg.get("matcha_vocoder", "")
+                    or cur.tokens_path != matcha_cfg.get("matcha_tokens", "")
+                    or cur.lexicon_path != matcha_cfg.get("matcha_lexicon", "")
+                    or cur.data_dir != matcha_cfg.get("matcha_data_dir", "")
+                    or cur.dict_dir != matcha_cfg.get("matcha_dict_dir", "")):
+                try:
+                    MatchaTTS = _import_matcha()
+                    self._engines["MatchaTTS"] = MatchaTTS(
+                        self.config.save_path,
+                        acoustic_model=matcha_cfg.get("matcha_acoustic_model", ""),
+                        vocoder=matcha_cfg.get("matcha_vocoder", ""),
+                        tokens_path=matcha_cfg.get("matcha_tokens", ""),
+                        lexicon_path=matcha_cfg.get("matcha_lexicon", ""),
+                        data_dir=matcha_cfg.get("matcha_data_dir", ""),
+                        dict_dir=matcha_cfg.get("matcha_dict_dir", ""),
+                    )
+                except Exception:
+                    pass
 
     async def synthesize(self, text: str, provider: str = None,
                          voice: str = "", **kwargs) -> TTSResult:

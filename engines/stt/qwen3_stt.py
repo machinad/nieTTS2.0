@@ -30,11 +30,12 @@ class Qwen3STT(BaseSTT):
         return bool(cf and enc and dec and tok
                     and cf.exists() and enc.exists() and dec.exists() and tok.is_dir())
 
-    def _lazy_init(self):
+    async def _lazy_init(self):
         if self._recognizer is not None:
             return
         logger.info("Loading Qwen3 ASR model...")
-        self._recognizer = sherpa_onnx.OfflineRecognizer.from_qwen3_asr(
+        self._recognizer = await asyncio.to_thread(
+            sherpa_onnx.OfflineRecognizer.from_qwen3_asr,
             conv_frontend=self._conv_frontend,
             encoder=self._encoder,
             decoder=self._decoder,
@@ -54,7 +55,7 @@ class Qwen3STT(BaseSTT):
         if samples is None or len(samples) == 0:
             return STTResult(success=False, error="Audio data is empty")
         try:
-            self._lazy_init()
+            await self._lazy_init()
             stream = self._recognizer.create_stream()
             stream.accept_waveform(sample_rate, samples)
             await asyncio.to_thread(self._recognizer.decode_stream, stream)

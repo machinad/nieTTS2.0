@@ -16,6 +16,7 @@ from engines.audio.playback import get_playback_devices
 logger = logging.getLogger(__name__)
 
 _WSS = set()
+_WSS_LOCK = asyncio.Lock()
 
 
 class WebServer:
@@ -139,7 +140,8 @@ class WebServer:
 
     async def ws_handler(self):
         ws_obj = websocket._get_current_object()
-        _WSS.add(ws_obj)
+        async with _WSS_LOCK:
+            _WSS.add(ws_obj)
         vad: SileroVAD | None = None
         try:
             while True:
@@ -171,7 +173,7 @@ class WebServer:
                                         tts_provider=self.config.get("tts_provider.provider", "edge_tts"),
                                         voice=self.config.get("tts_provider.voice", ""),
                                         translate=bool(self.config.get("isTranslate", True)),
-                                        play_audio=bool(self.config.get("isplayaudio", True)),
+                                        play_audio=bool(self.config.get("isPlayAudio", True)),
                                         play_translation=bool(self.config.get("isPlayTranslation", True)),
                                         osc_enabled=bool(self.config.get("osc_enabled", True)),
                                         source_lang="中文",
@@ -199,7 +201,7 @@ class WebServer:
                                     tts_provider=self.config.get("tts_provider.provider", "edge_tts"),
                                     voice=self.config.get("tts_provider.voice", ""),
                                     translate=bool(self.config.get("isTranslate", True)),
-                                    play_audio=bool(self.config.get("isplayaudio", True)),
+                                    play_audio=bool(self.config.get("isPlayAudio", True)),
                                     play_translation=bool(self.config.get("isPlayTranslation", True)),
                                     osc_enabled=bool(self.config.get("osc_enabled", True)),
                                     source_lang="中文",
@@ -211,7 +213,8 @@ class WebServer:
         except Exception as e:
             logger.info("WS disconnected: %s", e)
         finally:
-            _WSS.discard(ws_obj)
+            async with _WSS_LOCK:
+                _WSS.discard(ws_obj)
             self._vad_instances.pop(id(ws_obj), None)
 
     async def serve_assets(self, filename):
@@ -222,9 +225,13 @@ async def _broadcast(msg: dict):
     global _WSS
     data = json.dumps(msg, ensure_ascii=False)
     dead = set()
-    for ws in _WSS:
+    async with _WSS_LOCK:
+        targets = list(_WSS)
+    for ws in targets:
         try:
             await ws.send(data)
         except Exception:
             dead.add(ws)
-    _WSS -= dead
+    if dead:
+        async with _WSS_LOCK:
+            _WSS -= dead
