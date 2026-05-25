@@ -58,9 +58,14 @@ class WebServer:
         )
 
     async def index(self):
+        from quart import make_response
         index_path = self._templates / "index.html"
         if index_path.exists():
-            return await send_from_directory(str(self._templates), "index.html")
+            response = await make_response(
+                await send_from_directory(str(self._templates), "index.html")
+            )
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            return response
         return "<h1>nieTTS 2.0</h1><p>请运行 <code>cd frontend && npm run build</code></p>"
 
     async def tts_endpoint(self):
