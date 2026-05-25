@@ -2,9 +2,6 @@
 import logging
 import sys
 
-from hypercorn.config import Config as HypercornConfig
-from hypercorn.asyncio import serve
-
 from config.default import ConfigManager
 from engines.tts.service import TTSService
 from engines.translate.service import TranslateService
@@ -55,15 +52,16 @@ class nieTTS:
         cert_path = str(self.cert.cert_file_path)
         key_path = str(self.cert.key_path)
 
-        hc = HypercornConfig()
-        hc.bind = [f"{self._host}:{self._port}"]
-        hc.certfile = cert_path
-        hc.keyfile = key_path
-
         logger.info(f"nieTTS {VERSION} 运行在 https://{self._host}:{self._port}")
         logger.info(f"局域网地址: https://{self.cert.ip_address}:{self._port}")
 
-        await serve(self.web.app, hc, shutdown_trigger=self._shutdown_trigger)
+        await self.web.app.run_task(
+            host=self._host,
+            port=self._port,
+            certfile=cert_path,
+            keyfile=key_path,
+            shutdown_trigger=self._shutdown_trigger,
+        )
 
     async def _shutdown_trigger(self):
         while True:
