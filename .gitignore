@@ -10,4 +10,4 @@ config.json
 /docs/sherpa_extracted.txt
 /docs/sherpa_full.txt
 /models*
-/frontend*
+/frontend/node_modules

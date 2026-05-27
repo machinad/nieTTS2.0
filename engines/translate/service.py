@@ -50,5 +50,5 @@ class TranslateService:
                 success=False,
                 error=f"翻译引擎 {provider} 不可用（未配置 API Key）",
             )
-        target_lang = target_lang or self.config.get("tLanguage", "英语")
+        target_lang = target_lang or self.config.get("target_lang", "英语")
         return await engine.translate(text, source_lang, target_lang, **kwargs)

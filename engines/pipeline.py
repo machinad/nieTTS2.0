@@ -102,7 +102,7 @@ class RequestPipeline:
             provider_cfg = self.config.get_provider_config(req.tts_provider)
             req.voice = provider_cfg.get("voice", "")
         if not req.target_lang:
-            req.target_lang = self.config.get("tLanguage", "英语")
+            req.target_lang = self.config.get("target_lang", "英语")
         await self._request_queue.put(req)
         logger.info(f"请求入队: {req.request_id}  text={text[:40]}")
         return req.request_id

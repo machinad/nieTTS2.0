@@ -117,7 +117,7 @@ class WebServer:
                 "MatchaTTS": ["0"],
             },
             "source_languages": ["中文", "英语", "日语"],
-            "target_languages": [self.config.get("tLanguage", "英语")],
+            "target_languages": [self.config.get("target_lang", "英语")],
         })
 
     async def get_config(self):
@@ -182,7 +182,7 @@ class WebServer:
                                         play_translation=bool(self.config.get("isPlayTranslation", True)),
                                         osc_enabled=bool(self.config.get("osc_enabled", True)),
                                         source_lang="中文",
-                                        target_lang=self.config.get("tLanguage", "英语"),
+                                        target_lang=self.config.get("target_lang", "英语"),
                                     )
                                 vad.pop()
                         vad = None
@@ -210,7 +210,7 @@ class WebServer:
                                     play_translation=bool(self.config.get("isPlayTranslation", True)),
                                     osc_enabled=bool(self.config.get("osc_enabled", True)),
                                     source_lang="中文",
-                                    target_lang=self.config.get("tLanguage", "英语"),
+                                    target_lang=self.config.get("target_lang", "英语"),
                                 )
                             vad.pop()
                     except Exception as e:
