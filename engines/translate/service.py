@@ -5,41 +5,35 @@ from engines.translate.openai_translate import OpenAITranslate
 
 logger = logging.getLogger(__name__)
 
+_REGISTRY: dict[str, type[BaseTranslate]] = {
+    "openai": OpenAITranslate,
+}
+
 
 class TranslateService:
 
     def __init__(self, config: ConfigManager):
         self.config = config
-        provider_cfgs = config.get("translation_provider", {}).get("providers", [])
+        self._build_engines()
 
+    def _build_engines(self):
+        providers = self.config.get("translation_provider", {}).get("providers", [])
         self._engines: dict[str, BaseTranslate] = {}
-        for p in provider_cfgs:
+        for p in providers:
             name = p.get("name", "")
-            if not name:
+            cls = _REGISTRY.get(name)
+            if cls is None:
                 continue
-            if name == "openai":
-                api_key = p.get("api_key", "")
-                base_url = p.get("url", "")
-                model = p.get("model", "") or "gpt-4o-mini"
-                self._engines[name] = OpenAITranslate(
-                    api_key=api_key,
-                    base_url=base_url,
-                    model=model,
-                )
+            try:
+                self._engines[name] = cls.from_config(p)
+            except Exception as e:
+                logger.warning("%s translate init skipped: %s", name, e)
 
     def get_available_engines(self) -> list[str]:
         return [name for name, engine in self._engines.items() if engine.is_available()]
 
     def reload_engines(self):
-        provider_cfgs = self.config.get("translation_provider", {}).get("providers", [])
-        for p in provider_cfgs:
-            name = p.get("name", "")
-            if name in self._engines:
-                self._engines[name].update_config(
-                    api_key=p.get("api_key", ""),
-                    base_url=p.get("url", ""),
-                    model=p.get("model", ""),
-                )
+        self._build_engines()
 
     async def translate(self, text: str, provider: str = None,
                         source_lang: str = "中文", target_lang: str = "",

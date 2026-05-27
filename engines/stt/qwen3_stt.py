@@ -11,6 +11,15 @@ logger = logging.getLogger(__name__)
 class Qwen3STT(BaseSTT):
     engine_name = "Qwen3"
 
+    @classmethod
+    def from_config(cls, cfg: dict):
+        return cls(
+            conv_frontend=cfg.get("conv_frontend", ""),
+            encoder=cfg.get("encoder", ""),
+            decoder=cfg.get("decoder", ""),
+            tokenizer=cfg.get("tokenizer", ""),
+        )
+
     def __init__(self, conv_frontend: str = "", encoder: str = "",
                  decoder: str = "", tokenizer: str = "",
                  sample_rate: int = 16000, num_threads: int = 4):

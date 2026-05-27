@@ -1,8 +1,13 @@
+import logging
 from config.default import ConfigManager
 from config.provider_voice import Edge_TTS_voices, ali_tts_voices, sambert_tts_voices
 from engines.tts.base import BaseTTS, TTSResult
 from engines.tts.edge_tts import EdgeTTS
+from engines.tts.matcha_tts import MatchaTTS
+from engines.tts.cosyvoice_tts import CosyVoiceTTS
+from engines.tts.sambert_tts import SambertTTS
 
+logger = logging.getLogger(__name__)
 
 _VOICE_MAPS = {
     "edge_tts": Edge_TTS_voices,
@@ -10,20 +15,12 @@ _VOICE_MAPS = {
     "sambert": sambert_tts_voices,
 }
 
-
-def _import_cosyvoice():
-    from engines.tts.cosyvoice_tts import CosyVoiceTTS
-    return CosyVoiceTTS
-
-
-def _import_sambert():
-    from engines.tts.sambert_tts import SambertTTS
-    return SambertTTS
-
-
-def _import_matcha():
-    from engines.tts.matcha_tts import MatchaTTS
-    return MatchaTTS
+_REGISTRY: dict[str, type[BaseTTS]] = {
+    "edge_tts": EdgeTTS,
+    "MatchaTTS": MatchaTTS,
+    "cosyvoice": CosyVoiceTTS,
+    "sambert": SambertTTS,
+}
 
 
 class TTSService:
@@ -34,38 +31,17 @@ class TTSService:
 
     def _build_engines(self):
         save_dir = self.config.save_path
-        ali_key = self.config.get("ali_api_key", "")
-        matcha_cfg = self.config.get_provider_config("MatchaTTS")
-
-        self._engines: dict[str, BaseTTS] = {
-            "edge_tts": EdgeTTS(save_dir),
-        }
-
-        try:
-            MatchaTTS = _import_matcha()
-            self._engines["MatchaTTS"] = MatchaTTS(
-                save_dir,
-                acoustic_model=matcha_cfg.get("matcha_acoustic_model", ""),
-                vocoder=matcha_cfg.get("matcha_vocoder", ""),
-                tokens_path=matcha_cfg.get("matcha_tokens", ""),
-                lexicon_path=matcha_cfg.get("matcha_lexicon", ""),
-                data_dir=matcha_cfg.get("matcha_data_dir", ""),
-                dict_dir=matcha_cfg.get("matcha_dict_dir", ""),
-            )
-        except Exception:
-            pass
-
-        try:
-            CosyVoiceTTS = _import_cosyvoice()
-            self._engines["cosyvoice"] = CosyVoiceTTS(save_dir, ali_key)
-        except Exception:
-            pass
-
-        try:
-            SambertTTS = _import_sambert()
-            self._engines["sambert"] = SambertTTS(save_dir, ali_key)
-        except Exception:
-            pass
+        providers = self.config.get("tts_provider", {}).get("providers", [])
+        self._engines: dict[str, BaseTTS] = {}
+        for p in providers:
+            name = p.get("name", "")
+            cls = _REGISTRY.get(name)
+            if cls is None:
+                continue
+            try:
+                self._engines[name] = cls.from_config(p, save_dir)
+            except Exception as e:
+                logger.warning("%s TTS init skipped: %s", name, e)
 
     def _resolve_voice(self, engine_name: str, voice: str) -> str:
         if not voice:
@@ -83,33 +59,7 @@ class TTSService:
         return [p["name"] for p in providers if p.get("name")]
 
     def reload_engines(self):
-        ali_key = self.config.get("ali_api_key", "")
-        if "cosyvoice" in self._engines:
-            self._engines["cosyvoice"].api_key = ali_key
-        if "sambert" in self._engines:
-            self._engines["sambert"].api_key = ali_key
-        if "MatchaTTS" in self._engines:
-            matcha_cfg = self.config.get_provider_config("MatchaTTS")
-            cur = self._engines["MatchaTTS"]
-            if (cur.acoustic_model != matcha_cfg.get("matcha_acoustic_model", "")
-                    or cur.vocoder != matcha_cfg.get("matcha_vocoder", "")
-                    or cur.tokens_path != matcha_cfg.get("matcha_tokens", "")
-                    or cur.lexicon_path != matcha_cfg.get("matcha_lexicon", "")
-                    or cur.data_dir != matcha_cfg.get("matcha_data_dir", "")
-                    or cur.dict_dir != matcha_cfg.get("matcha_dict_dir", "")):
-                try:
-                    MatchaTTS = _import_matcha()
-                    self._engines["MatchaTTS"] = MatchaTTS(
-                        self.config.save_path,
-                        acoustic_model=matcha_cfg.get("matcha_acoustic_model", ""),
-                        vocoder=matcha_cfg.get("matcha_vocoder", ""),
-                        tokens_path=matcha_cfg.get("matcha_tokens", ""),
-                        lexicon_path=matcha_cfg.get("matcha_lexicon", ""),
-                        data_dir=matcha_cfg.get("matcha_data_dir", ""),
-                        dict_dir=matcha_cfg.get("matcha_dict_dir", ""),
-                    )
-                except Exception:
-                    pass
+        self._build_engines()
 
     async def synthesize(self, text: str, provider: str = None,
                          voice: str = "", **kwargs) -> TTSResult:

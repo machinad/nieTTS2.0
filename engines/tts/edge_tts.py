@@ -8,6 +8,10 @@ logger = logging.getLogger(__name__)
 class EdgeTTS(BaseTTS):
     engine_name = "Edge TTS"
 
+    @classmethod
+    def from_config(cls, cfg: dict, save_dir):
+        return cls(save_dir)
+
     def is_available(self) -> bool:
         # Edge TTS is a cloud service with no local model — always listed as available
         return True

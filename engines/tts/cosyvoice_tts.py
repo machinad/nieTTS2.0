@@ -10,6 +10,10 @@ logger = logging.getLogger(__name__)
 class CosyVoiceTTS(BaseTTS):
     engine_name = "阿里百炼cosyvoice"
 
+    @classmethod
+    def from_config(cls, cfg: dict, save_dir,):
+        return cls(save_dir, api_key=cfg.get("ali_api_key", ""))
+
     def __init__(self, save_dir, api_key: str = ""):
         super().__init__(save_dir)
         self.api_key = api_key

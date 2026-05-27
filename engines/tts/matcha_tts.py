@@ -10,6 +10,18 @@ logger = logging.getLogger(__name__)
 class MatchaTTS(BaseTTS):
     engine_name = "MatchaTTS"
 
+    @classmethod
+    def from_config(cls, cfg: dict, save_dir):
+        return cls(
+            save_dir,
+            acoustic_model=cfg.get("matcha_acoustic_model", ""),
+            vocoder=cfg.get("matcha_vocoder", ""),
+            tokens_path=cfg.get("matcha_tokens", ""),
+            lexicon_path=cfg.get("matcha_lexicon", ""),
+            data_dir=cfg.get("matcha_data_dir", ""),
+            dict_dir=cfg.get("matcha_dict_dir", ""),
+        )
+
     def __init__(self, save_dir: Path, acoustic_model: str = "",
                  vocoder: str = "", tokens_path: str = "", lexicon_path: str = "",
                  data_dir: str = "", dict_dir: str = ""):

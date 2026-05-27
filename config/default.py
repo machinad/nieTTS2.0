@@ -14,11 +14,13 @@ default_config = {
             },
             {
                 "name": "cosyvoice",
-                "voice": "龙婉-普通话-语音助手、导航播报、聊天数字人"
+                "voice": "龙婉-普通话-语音助手、导航播报、聊天数字人",
+                "ali_api_key": ""
             },
             {
                 "name":"sambert",
-                "voice":"知琪-温柔女声-通用场景"
+                "voice":"知琪-温柔女声-通用场景",
+                "ali_api_key": ""
             },
             {
                 "name":"MatchaTTS",
@@ -66,8 +68,8 @@ default_config = {
         "window_size": 512,
     },
     "device": "CABLE Input (VB-Audio Virtual Cable)",
-    "ali_api_key": "",
-    "tLanguage": "英语",
+    "source_lang": "中文",
+    "target_lang": "英语",
     "isPlayAudio": True,
     "isTranslate": True,
     "isPlayTranslation": True,

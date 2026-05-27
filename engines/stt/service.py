@@ -1,13 +1,13 @@
 import logging
 from config.default import ConfigManager
 from engines.stt.base import BaseSTT, STTResult
+from engines.stt.qwen3_stt import Qwen3STT
 
 logger = logging.getLogger(__name__)
 
-
-def _import_qwen3():
-    from engines.stt.qwen3_stt import Qwen3STT
-    return Qwen3STT
+_REGISTRY: dict[str, type[BaseSTT]] = {
+    "Qwen3": Qwen3STT,
+}
 
 
 class STTService:
@@ -17,18 +17,17 @@ class STTService:
         self._build_engines()
 
     def _build_engines(self):
+        providers = self.config.get("stt_provider", {}).get("providers", [])
         self._engines: dict[str, BaseSTT] = {}
-        qwen3_cfg = self.config.get_stt_provider_config("Qwen3")
-        try:
-            Qwen3STT = _import_qwen3()
-            self._engines["Qwen3"] = Qwen3STT(
-                conv_frontend=qwen3_cfg.get("conv_frontend", ""),
-                encoder=qwen3_cfg.get("encoder", ""),
-                decoder=qwen3_cfg.get("decoder", ""),
-                tokenizer=qwen3_cfg.get("tokenizer", ""),
-            )
-        except Exception as e:
-            logger.warning("Qwen3 STT init skipped: %s", e)
+        for p in providers:
+            name = p.get("name", "")
+            cls = _REGISTRY.get(name)
+            if cls is None:
+                continue
+            try:
+                self._engines[name] = cls.from_config(p)
+            except Exception as e:
+                logger.warning("%s STT init skipped: %s", name, e)
 
     def get_available_engines(self) -> list[str]:
         return [n for n, e in self._engines.items() if e.is_available()]
