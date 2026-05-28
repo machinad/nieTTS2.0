@@ -103,13 +103,17 @@ class WebServer:
         engines = self.tts.get_available_engines()
         all_engines = self.tts.get_all_engines()
         translate_engines = self.translate.get_available_engines()
+        all_translate_engines = self.translate.get_all_engines()
         stt_engines = self.stt.get_available_engines() if self.stt else []
+        all_stt_engines = self.stt.get_all_engines() if self.stt else []
 
         return jsonify({
             "tts_engines": engines,
             "all_tts_engines": all_engines,
             "translate_engines": translate_engines,
+            "all_translate_engines": all_translate_engines,
             "stt_engines": stt_engines,
+            "all_stt_engines": all_stt_engines,
             "voices": {
                 "edge_tts": list(Edge_TTS_voices.keys()),
                 "cosyvoice": list(ali_tts_voices.keys()),
@@ -117,7 +121,7 @@ class WebServer:
                 "MatchaTTS": ["0"],
             },
             "source_languages": ["中文", "英语", "日语"],
-            "target_languages": [self.config.get("target_lang", "英语")],
+            "target_languages": ["中文", "英语", "日语", "法语", "德语", "韩语", "俄语", "西班牙语"],
         })
 
     async def get_config(self):

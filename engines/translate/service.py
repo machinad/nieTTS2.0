@@ -34,6 +34,10 @@ class TranslateService:
     def get_available_engines(self) -> list[str]:
         return [name for name, engine in self._engines.items() if engine.is_available()]
 
+    def get_all_engines(self) -> list[str]:
+        providers = self.config.get("translation_provider", {}).get("providers", [])
+        return [p["name"] for p in providers if p.get("name")]
+
     def reload_engines(self):
         self._build_engines()
 

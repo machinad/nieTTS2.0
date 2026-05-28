@@ -150,8 +150,16 @@ async function onSend() {
       source_lang: sourceLang.value,
       target_lang: targetLang.value,
     })
+    text.value = ""
     ElMessage.success("已提交")
   } catch (e: any) { ElMessage.error(`发送失败: ${e.message}`) }
+}
+
+function onTextareaKeydown(e: KeyboardEvent) {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault()
+    onSend()
+  }
 }
 </script>
 
@@ -163,7 +171,8 @@ async function onSend() {
       :autosize="{ minRows: 6, maxRows: 12 }"
       maxlength="5000"
       show-word-limit
-      placeholder="请输入要合成的文本..."
+      placeholder="请输入要合成的文本... (Enter 发送, Shift+Enter 换行)"
+      @keydown="onTextareaKeydown"
     />
 
     <div style="display: flex; gap: 12px; align-items: center">

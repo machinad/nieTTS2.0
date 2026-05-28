@@ -19,7 +19,9 @@ export interface VoiceData {
   tts_engines: string[]
   all_tts_engines: string[]
   translate_engines: string[]
+  all_translate_engines: string[]
   stt_engines: string[]
+  all_stt_engines: string[]
   voices: Record<string, string[]>
   source_languages: string[]
   target_languages: string[]
@@ -57,7 +59,9 @@ export const appStore = reactive({
     tts_engines: [],
     all_tts_engines: [],
     translate_engines: [],
+    all_translate_engines: [],
     stt_engines: [],
+    all_stt_engines: [],
     voices: {},
     source_languages: [],
     target_languages: [],
