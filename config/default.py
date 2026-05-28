@@ -56,6 +56,12 @@ default_config = {
                 "api_key": "",
                 "url": ""
             },
+            {
+                "name": "hy_mt15",
+                "model_path": "models/HY-mt/HY-MT1.5-1.8B-Q8_0.gguf",
+                "server_url": "http://127.0.0.1:8081",
+                "llama_cpp_path": "llama-cpp",
+            },
         ]
     },
     "vad": {
@@ -96,6 +102,7 @@ class ConfigManager:
         self.config_dir = self.project_root / "config"
         self.models_path = self.project_root / "models"
         self.save_path = self.project_root / "save"
+        self.llama_cpp_path = self.project_root / "llama-cpp"
         self.templates_path = self.project_root / "templates"
         self.config_file = self.config_dir / "config.json"
         self._ensure_dirs()
@@ -114,6 +121,11 @@ class ConfigManager:
                 self._deep_update(config, disk)
             except Exception as e:
                 logger.error(f"加载配置失败: {e}")
+        # 追加新增的 translation provider（兼容已有 config.json）
+        disk_names = {p.get("name") for p in config["translation_provider"]["providers"]}
+        for p in default_config["translation_provider"]["providers"]:
+            if p.get("name") not in disk_names:
+                config["translation_provider"]["providers"].append(copy.deepcopy(p))
         self._save_file(config)
         return config
 

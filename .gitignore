@@ -11,3 +11,4 @@ config.json
 /docs/sherpa_full.txt
 /models*
 /frontend/node_modules
+/llama-cpp

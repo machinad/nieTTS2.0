@@ -123,6 +123,12 @@ class RequestPipeline:
                 self._request_queue.task_done()
 
     async def _process(self, req: TTSRequest) -> None:
+        # 先启动翻译（异步），与原文 TTS 并行执行
+        if req.translate:
+            task = asyncio.create_task(self._handle_translate_bg(req))
+            self._bg_tasks.add(task)
+            task.add_done_callback(self._bg_tasks.discard)
+
         original_result: TTSResult
         try:
             original_result = await self.tts.synthesize(
@@ -143,14 +149,8 @@ class RequestPipeline:
         else:
             logger.error(f"TTS(原文) 失败: {original_result.error}")
 
-        if req.translate:
-            task = asyncio.create_task(self._handle_translate_bg(req))
-            self._bg_tasks.add(task)
-            task.add_done_callback(self._bg_tasks.discard)
-        elif req.osc_enabled:
-            task = asyncio.create_task(self._handle_osc_only_bg(req))
-            self._bg_tasks.add(task)
-            task.add_done_callback(self._bg_tasks.discard)
+        if not req.translate and req.osc_enabled:
+            self.osc.send_original(req.text)
 
     async def _handle_translate_bg(self, req: TTSRequest) -> None:
         try:

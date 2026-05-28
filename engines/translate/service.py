@@ -2,11 +2,13 @@ import logging
 from config.default import ConfigManager
 from engines.translate.base import BaseTranslate, TranslateResult
 from engines.translate.openai_translate import OpenAITranslate
+from engines.translate.hy_mt15_translate import HyMT15Translate
 
 logger = logging.getLogger(__name__)
 
 _REGISTRY: dict[str, type[BaseTranslate]] = {
     "openai": OpenAITranslate,
+    "hy_mt15": HyMT15Translate,
 }
 
 

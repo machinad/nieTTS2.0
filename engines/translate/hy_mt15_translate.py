@@ -1,0 +1,134 @@
+import asyncio
+import logging
+import re
+import subprocess
+from pathlib import Path
+
+import httpx
+
+from engines.translate.base import BaseTranslate, TranslateResult
+
+logger = logging.getLogger(__name__)
+
+LANGUAGES = {
+    "zh": "中文", "zh-Hant": "繁體中文", "en": "English", "ja": "日本語",
+    "ko": "한국어", "fr": "Français", "de": "Deutsch", "es": "Español",
+    "ru": "Русский", "ar": "العربية", "pt": "Português", "it": "Italiano",
+    "th": "ไทย", "vi": "Tiếng Việt", "tr": "Türkçe", "pl": "Polski",
+    "nl": "Nederlands", "id": "Bahasa Indonesia", "yue": "粤语",
+}
+
+
+class HyMT15Translate(BaseTranslate):
+    engine_name = "HY-MT1.5"
+
+    @classmethod
+    def from_config(cls, cfg: dict):
+        return cls(
+            model_path=cfg.get("model_path", "models/HY-mt/HY-MT1.5-1.8B-Q8_0.gguf"),
+            server_url=cfg.get("server_url", "http://127.0.0.1:8081"),
+            llama_cpp_path=cfg.get("llama_cpp_path", "llama-cpp"),
+        )
+
+    def __init__(self, model_path: str, server_url: str, llama_cpp_path: str):
+        self.model_path = Path(model_path)
+        self.server_url = server_url.rstrip("/")
+        self.llama_cpp_path = Path(llama_cpp_path)
+        self._process = None
+
+    def is_available(self) -> bool:
+        return self.model_path.exists()
+
+    def _build_prompt(self, text: str, source_lang: str, target_lang: str) -> str:
+        target_name = LANGUAGES.get(target_lang, target_lang)
+        is_zh = source_lang in ("zh", "zh-Hant", "auto") or target_lang in ("zh", "zh-Hant")
+        if is_zh:
+            return (
+                f"将以下文本翻译为{target_name}，"
+                f"注意只需要输出翻译后的结果，不要额外解释：\n\n"
+                f"{text}"
+            )
+        return (
+            f"Translate the following segment into {target_name}, "
+            f"without additional explanation.\n\n"
+            f"{text}"
+        )
+
+    def _start_server(self):
+        server_exe = self.llama_cpp_path / "llama-server.exe"
+        cmd = [
+            str(server_exe),
+            "-m", str(self.model_path),
+            "--host", "127.0.0.1",
+            "--port", "8081",
+            "-ngl", "99",
+            "-c", "4096",
+            "--no-warmup",
+        ]
+        self._process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        logger.info("llama-server 已启动 (PID: %s)", self._process.pid)
+
+    async def _wait_ready(self, timeout: int = 15) -> bool:
+        for _ in range(int(timeout / 0.5)):
+            await asyncio.sleep(0.5)
+            try:
+                r = httpx.get(f"{self.server_url}/health", timeout=3)
+                if r.status_code == 200:
+                    return True
+            except Exception:
+                continue
+        return False
+
+    async def translate(self, text: str, source_lang: str, target_lang: str, **kwargs) -> TranslateResult:
+        try:
+            if self._process is None or self._process.poll() is not None:
+                self._start_server()
+                if not await self._wait_ready():
+                    return TranslateResult(
+                        success=False,
+                        source_lang=source_lang,
+                        target_lang=target_lang,
+                        error="llama-server 启动超时",
+                    )
+
+            prompt = self._build_prompt(text, source_lang, target_lang)
+            payload = {
+                "messages": [
+                    {"role": "user", "content": prompt},
+                ],
+                "temperature": 0.7,
+                "top_k": 20,
+                "top_p": 0.6,
+                "repeat_penalty": 1.05,
+            }
+
+            async with httpx.AsyncClient(timeout=120) as client:
+                resp = await client.post(
+                    f"{self.server_url}/v1/chat/completions",
+                    json=payload,
+                )
+                resp.raise_for_status()
+                result = resp.json()
+                translated = result["choices"][0]["message"]["content"]
+                translated = re.sub(r'<[^>]+>', '', translated).strip()
+
+            logger.info("HY-MT1.5 翻译成功: %s -> %s", source_lang, target_lang)
+            return TranslateResult(
+                success=True,
+                text=translated,
+                source_lang=source_lang,
+                target_lang=target_lang,
+            )
+        except Exception as e:
+            logger.error("HY-MT1.5 翻译失败: %s", e)
+            return TranslateResult(
+                success=False,
+                source_lang=source_lang,
+                target_lang=target_lang,
+                error=str(e),
+            )
