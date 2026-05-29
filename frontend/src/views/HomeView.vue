@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from "vue"
+import { ref, computed, watch } from "vue"
 import { useRouter } from "vue-router"
 import { ElMessage } from "element-plus"
 import { appStore } from "../store"
@@ -11,6 +11,8 @@ const router = useRouter()
 const text = ref("")
 const sourceLang = ref(appStore.langs.source)
 const targetLang = ref(appStore.langs.target)
+watch(() => appStore.langs.source, (v) => { sourceLang.value = v })
+watch(() => appStore.langs.target, (v) => { targetLang.value = v })
 
 const isRecording = ref(false)
 const canvasRef = ref<HTMLCanvasElement | null>(null)

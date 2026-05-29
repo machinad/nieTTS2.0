@@ -180,12 +180,20 @@ class RequestPipeline:
                     self.osc.send_translated(req.text, translate_result.text)
 
                 if req.play_translation:
-                    voice = _resolve_edge_voice(req.target_lang)
-                    tts_result = await self.tts.synthesize(
-                        translate_result.text,
-                        provider="edge_tts",
-                        voice=voice,
-                    )
+                    if _engine_supports_lang(req.tts_provider, req.target_lang):
+                        tts_result = await self.tts.synthesize(
+                            translate_result.text,
+                            provider=req.tts_provider,
+                            voice=req.voice,
+                        )
+                    else:
+                        logger.warning(f"{req.tts_provider} 不支持{req.target_lang}，译文自动使用 edge_tts")
+                        voice = _resolve_edge_voice(req.target_lang)
+                        tts_result = await self.tts.synthesize(
+                            translate_result.text,
+                            provider="edge_tts",
+                            voice=voice,
+                        )
                     if tts_result.is_success and tts_result.path:
                         await self._play_queue.put(tts_result.path)
             else:

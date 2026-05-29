@@ -36,6 +36,9 @@ export async function getConfig() {
     )
     if (active?.voice) appStore.voice = active.voice
   }
+  if (data.source_lang) {
+    appStore.langs.source = data.source_lang
+  }
   if (data.target_lang) {
     appStore.langs.target = data.target_lang
   }
