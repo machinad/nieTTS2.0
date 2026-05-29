@@ -140,6 +140,7 @@ class RequestPipeline:
             task = asyncio.create_task(self._handle_translate_bg(req))
             self._bg_tasks.add(task)
             task.add_done_callback(self._bg_tasks.discard)
+            await asyncio.sleep(0)  # 让出控制权，确保翻译任务立即启动
 
         if req.play_audio:
             original_result: TTSResult

@@ -55,6 +55,7 @@ class HyMT15Translate(BaseTranslate):
         )
 
     def _start_server(self):
+        self._stop_server()
         server_exe = self.llama_cpp_path / "llama-server.exe"
         cmd = [
             str(server_exe),
@@ -67,11 +68,19 @@ class HyMT15Translate(BaseTranslate):
         ]
         self._process = subprocess.Popen(
             cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
         logger.info("llama-server 已启动 (PID: %s)", self._process.pid)
+
+    def _stop_server(self):
+        if self._process is not None:
+            try:
+                self._process.kill()
+                self._process.wait(timeout=5)
+            except Exception:
+                pass
+            self._process = None
 
     async def _wait_ready(self, timeout: int = 15) -> bool:
         for _ in range(int(timeout / 0.5)):
