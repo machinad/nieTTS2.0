@@ -34,9 +34,21 @@ _LANG_EDGE_VOICE = {
 }
 _DEFAULT_EDGE_VOICE = "en-US-AriaNeural"
 
+_ENGINE_LANGS = {
+    "edge_tts": None,
+    "MatchaTTS": {"中文", "英语"},
+    "cosyvoice": {"中文", "英语", "日语", "韩语"},
+    "sambert": {"中文", "英语"},
+}
+
 
 def _resolve_edge_voice(target_lang: str) -> str:
     return _LANG_EDGE_VOICE.get(target_lang, _DEFAULT_EDGE_VOICE)
+
+
+def _engine_supports_lang(engine: str, lang: str) -> bool:
+    langs = _ENGINE_LANGS.get(engine)
+    return langs is None or lang in langs
 
 
 @dataclass
@@ -132,9 +144,16 @@ class RequestPipeline:
         if req.play_audio:
             original_result: TTSResult
             try:
-                original_result = await self.tts.synthesize(
-                    req.text, provider=req.tts_provider, voice=req.voice
-                )
+                if _engine_supports_lang(req.tts_provider, req.source_lang):
+                    original_result = await self.tts.synthesize(
+                        req.text, provider=req.tts_provider, voice=req.voice
+                    )
+                else:
+                    logger.warning(f"{req.tts_provider} 不支持{req.source_lang}，自动使用 edge_tts")
+                    edge_voice = _resolve_edge_voice(req.source_lang)
+                    original_result = await self.tts.synthesize(
+                        req.text, provider="edge_tts", voice=edge_voice
+                    )
             except Exception as e:
                 logger.exception(f"TTS(原文) 执行异常: {e}")
                 original_result = TTSResult(success=False, text=req.text, error=str(e))

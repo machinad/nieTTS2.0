@@ -8,7 +8,7 @@ from engines.translate.service import TranslateService
 from engines.osc.service import OSCService
 from engines.stt.service import STTService
 from engines.pipeline import RequestPipeline
-from web_server import WebServer
+from web_server import WebServer, WSLogHandler
 from certificates.certificates_server import CertificateServer
 
 logging.basicConfig(
@@ -16,6 +16,9 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+_ws_log_handler = WSLogHandler()
+logging.getLogger().addHandler(_ws_log_handler)
 
 BANNER = r"""
 ███╗   ██╗  ██╗  ███████╗  ████████╗  ████████╗  ███████╗
@@ -45,6 +48,7 @@ class nieTTS:
         self._port = int(self.config.get("port", 11451))
 
     async def start(self):
+        _ws_log_handler.set_loop(asyncio.get_running_loop())
         self._cleanup_orphan_files()
         logger.info("正在启动 Pipeline ...")
         await self.pipeline.start()

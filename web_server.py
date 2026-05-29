@@ -19,6 +19,30 @@ _WSS = set()
 _WSS_LOCK = asyncio.Lock()
 
 
+class WSLogHandler(logging.Handler):
+    """将 Python 日志通过 WebSocket 广播到前端"""
+
+    def __init__(self):
+        super().__init__()
+        self._loop = None
+
+    def set_loop(self, loop):
+        self._loop = loop
+
+    def emit(self, record):
+        if self._loop is None:
+            return
+        try:
+            level = record.levelname.lower()
+            if level == "warning":
+                level = "warn"
+            message = f"[{record.name}] {record.getMessage()}"
+            coro = _broadcast({"type": "log", "level": level, "message": message})
+            self._loop.create_task(coro)
+        except Exception:
+            self.handleError(record)
+
+
 class WebServer:
 
     def __init__(self, config: ConfigManager, tts: TTSService,
