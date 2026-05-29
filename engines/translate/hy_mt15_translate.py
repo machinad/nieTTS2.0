@@ -10,12 +10,11 @@ from engines.translate.base import BaseTranslate, TranslateResult
 
 logger = logging.getLogger(__name__)
 
-LANGUAGES = {
-    "zh": "中文", "zh-Hant": "繁體中文", "en": "English", "ja": "日本語",
-    "ko": "한국어", "fr": "Français", "de": "Deutsch", "es": "Español",
-    "ru": "Русский", "ar": "العربية", "pt": "Português", "it": "Italiano",
-    "th": "ไทย", "vi": "Tiếng Việt", "tr": "Türkçe", "pl": "Polski",
-    "nl": "Nederlands", "id": "Bahasa Indonesia", "yue": "粤语",
+
+_ZH_TO_EN = {
+    "中文": "Chinese", "英语": "English", "日语": "Japanese",
+    "韩语": "Korean", "法语": "French", "德语": "German",
+    "西班牙语": "Spanish", "俄语": "Russian",
 }
 
 
@@ -40,17 +39,18 @@ class HyMT15Translate(BaseTranslate):
         return self.model_path.exists()
 
     def _build_prompt(self, text: str, source_lang: str, target_lang: str) -> str:
-        target_name = LANGUAGES.get(target_lang, target_lang)
-        is_zh = source_lang in ("zh", "zh-Hant", "auto") or target_lang in ("zh", "zh-Hant")
+        is_zh = source_lang == "中文"
         if is_zh:
             return (
-                f"将以下文本翻译为{target_name}，"
+                f"将以下文本翻译为{target_lang}，"
                 f"注意只需要输出翻译后的结果，不要额外解释：\n\n"
                 f"{text}"
             )
+        en_name = _ZH_TO_EN.get(target_lang, target_lang)
         return (
-            f"Translate the following segment into {target_name}, "
-            f"without additional explanation.\n\n"
+            f"Translate the following text into {en_name}. "
+            f"Note that you should only output the translated result "
+            f"without any additional explanation:\n\n"
             f"{text}"
         )
 
@@ -117,7 +117,7 @@ class HyMT15Translate(BaseTranslate):
                 translated = result["choices"][0]["message"]["content"]
                 translated = re.sub(r'<[^>]+>', '', translated).strip()
 
-            logger.info("HY-MT1.5 翻译成功: %s -> %s", source_lang, target_lang)
+            logger.info("HY-MT1.5 翻译成功: %s -> %s.译文: %s", source_lang, target_lang, translated)
             return TranslateResult(
                 success=True,
                 text=translated,

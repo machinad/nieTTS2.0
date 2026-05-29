@@ -120,8 +120,8 @@ class WebServer:
                 "sambert": list(sambert_tts_voices.keys()),
                 "MatchaTTS": ["0"],
             },
-            "source_languages": ["中文", "英语", "日语"],
-            "target_languages": ["中文", "英语", "日语", "法语", "德语", "韩语", "俄语", "西班牙语"],
+            "source_languages": ["中文", "英语", "日语", "韩语", "法语", "德语", "西班牙语", "俄语"],
+            "target_languages": ["中文", "英语", "日语", "韩语", "法语", "德语", "西班牙语", "俄语"],
         })
 
     async def get_config(self):

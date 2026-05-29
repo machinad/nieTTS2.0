@@ -124,30 +124,25 @@ class RequestPipeline:
 
     async def _process(self, req: TTSRequest) -> None:
         # 先启动翻译（异步），与原文 TTS 并行执行
-        if req.translate:
+        if req.translate or req.play_translation:
             task = asyncio.create_task(self._handle_translate_bg(req))
             self._bg_tasks.add(task)
             task.add_done_callback(self._bg_tasks.discard)
 
-        original_result: TTSResult
-        try:
-            original_result = await self.tts.synthesize(
-                req.text, provider=req.tts_provider, voice=req.voice
-            )
-        except Exception as e:
-            logger.exception(f"TTS(原文) 执行异常: {e}")
-            original_result = TTSResult(success=False, text=req.text, error=str(e))
+        if req.play_audio:
+            original_result: TTSResult
+            try:
+                original_result = await self.tts.synthesize(
+                    req.text, provider=req.tts_provider, voice=req.voice
+                )
+            except Exception as e:
+                logger.exception(f"TTS(原文) 执行异常: {e}")
+                original_result = TTSResult(success=False, text=req.text, error=str(e))
 
-        if original_result.is_success and original_result.path:
-            if req.play_audio:
+            if original_result.is_success and original_result.path:
                 await self._play_queue.put(original_result.path)
             else:
-                try:
-                    original_result.path.unlink(missing_ok=True)
-                except OSError:
-                    pass
-        else:
-            logger.error(f"TTS(原文) 失败: {original_result.error}")
+                logger.error(f"TTS(原文) 失败: {original_result.error}")
 
         if not req.translate and req.osc_enabled:
             self.osc.send_original(req.text)
@@ -179,9 +174,6 @@ class RequestPipeline:
                     self.osc.send_original(req.text)
         except Exception as e:
             logger.exception(f"_handle_translate_bg 异常: {e}")
-
-    async def _handle_osc_only_bg(self, req: TTSRequest) -> None:
-        self.osc.send_original(req.text)
 
     async def _play_worker(self):
         while self._running:

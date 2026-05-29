@@ -127,11 +127,13 @@ const engineLabel = computed(() => {
 })
 
 async function onSourceLangChange(lang: string) {
+  sourceLang.value = lang
   appStore.langs.source = lang
   try { await postConfig({ source_lang: lang }) } catch (e: any) { ElMessage.error(`保存语言失败: ${e.message}`) }
 }
 
 async function onTargetLangChange(lang: string) {
+  targetLang.value = lang
   appStore.langs.target = lang
   try { await postConfig({ target_lang: lang }) } catch (e: any) { ElMessage.error(`保存语言失败: ${e.message}`) }
 }
