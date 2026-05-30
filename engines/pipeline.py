@@ -35,7 +35,7 @@ _LANG_EDGE_VOICE = {
 _DEFAULT_EDGE_VOICE = "en-US-AriaNeural"
 
 _ENGINE_LANGS = {
-    "edge_tts": None,
+    "edge_tts": {"中文", "英语"},
     "MatchaTTS": {"中文", "英语"},
     "cosyvoice": {"中文", "英语", "日语", "韩语"},
     "sambert": {"中文", "英语"},
