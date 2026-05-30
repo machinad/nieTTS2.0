@@ -2,7 +2,7 @@
 import { ref, computed } from "vue"
 import { useRouter } from "vue-router"
 import { ElMessage } from "element-plus"
-import { appStore, getActiveEngine, getActiveVoice, getSourceLang, getTargetLang } from "../store"
+import { appStore, getActiveEngine, getActiveVoice, getSourceLang, getTargetLang, addLog } from "../store"
 import { postTTS, postConfig } from "../api"
 import { wsManager } from "../ws"
 import LogBar from "../components/LogBar.vue"
@@ -134,23 +134,24 @@ async function onTargetLangChange(lang: string) {
   try { await postConfig({ target_lang: lang }) } catch (e: any) { ElMessage.error(`保存语言失败: ${e.message}`) }
 }
 
-async function onSend() {
-  if (!text.value.trim()) { ElMessage.warning("请输入文本"); return }
-  try {
-    await postTTS({
-      text: text.value,
-      tts_provider: getActiveEngine(),
-      voice: getActiveVoice(),
-      translate: appStore.config.isTranslate,
-      play_audio: appStore.config.isPlayAudio,
-      play_translation: appStore.config.isPlayTranslation,
-      osc_enabled: appStore.config.osc_enabled,
-      source_lang: getSourceLang(),
-      target_lang: getTargetLang(),
-    })
-    text.value = ""
-    ElMessage.success("已提交")
-  } catch (e: any) { ElMessage.error(`发送失败: ${e.message}`) }
+function onSend() {
+  const payload = {
+    text: text.value,
+    tts_provider: getActiveEngine(),
+    voice: getActiveVoice(),
+    translate: appStore.config.isTranslate,
+    play_audio: appStore.config.isPlayAudio,
+    play_translation: appStore.config.isPlayTranslation,
+    osc_enabled: appStore.config.osc_enabled,
+    source_lang: getSourceLang(),
+    target_lang: getTargetLang(),
+  }
+  if (!payload.text.trim()) { ElMessage.warning("请输入文本"); return }
+  text.value = ""
+  ElMessage.success("已提交")
+  postTTS(payload).catch((e: any) => {
+    addLog("error", `发送失败: ${e.message}`)
+  })
 }
 
 function onTextareaKeydown(e: KeyboardEvent) {
