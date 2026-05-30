@@ -15,21 +15,6 @@ export interface WSMessage {
   message?: string
 }
 
-export interface VoiceData {
-  tts_engines: string[]
-  all_tts_engines: string[]
-  tts_engine_descriptions: Record<string, string>
-  translate_engines: string[]
-  all_translate_engines: string[]
-  translate_engine_descriptions: Record<string, string>
-  stt_engines: string[]
-  all_stt_engines: string[]
-  stt_engine_descriptions: Record<string, string>
-  voices: Record<string, string[]>
-  source_languages: string[]
-  target_languages: string[]
-}
-
 export interface ProviderConfig {
   name: string
   voice: string
@@ -41,6 +26,7 @@ export interface AppConfig {
   stt_provider: { provider: string; providers: any[] }
   translation_provider: { provider: string; providers: any[] }
   device: string
+  source_lang: string
   target_lang: string
   isPlayAudio: boolean
   isTranslate: boolean
@@ -49,32 +35,46 @@ export interface AppConfig {
   osc_host: string
   osc_port: number
   vad: Record<string, number>
-  ali_api_key: string
   available_devices: { name: string }[]
+  voices: Record<string, string[]>
+  source_languages: string[]
+  target_languages: string[]
+  [key: string]: any
 }
 
 export const appStore = reactive({
-  engine: "edge_tts",
-  voice: "",
-  langs: { source: "中文", target: "英语" },
-  config: {} as Record<string, any>,
-  voices: {
-    tts_engines: [],
-    all_tts_engines: [],
-    tts_engine_descriptions: {},
-    translate_engines: [],
-    all_translate_engines: [],
-    translate_engine_descriptions: {},
-    stt_engines: [],
-    all_stt_engines: [],
-    stt_engine_descriptions: {},
-    voices: {},
-    source_languages: [],
-    target_languages: [],
-  } as VoiceData,
+  config: {} as AppConfig,
   logs: [] as LogEntry[],
   wsConnected: false,
 })
+
+// Settings tab 状态（跨页面保持）
+export const settingsTab = reactive({
+  tts: "",
+  stt: "",
+  translate: "",
+})
+
+// ---- Computed getters: config 是唯一真实来源 ----
+
+export function getActiveEngine(): string {
+  return appStore.config?.tts_provider?.provider || "edge_tts"
+}
+
+export function getActiveVoice(): string {
+  const provider = appStore.config?.tts_provider?.provider || "edge_tts"
+  const providers = appStore.config?.tts_provider?.providers || []
+  const active = providers.find((p: ProviderConfig) => p.name === provider)
+  return active?.voice || ""
+}
+
+export function getSourceLang(): string {
+  return appStore.config?.source_lang || "中文"
+}
+
+export function getTargetLang(): string {
+  return appStore.config?.target_lang || "英语"
+}
 
 export function addLog(level: LogEntry["level"], message: string) {
   const d = new Date()

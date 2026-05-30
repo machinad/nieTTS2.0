@@ -1,16 +1,11 @@
 <script setup lang="ts">
 import { onMounted } from "vue"
-import { getVoices, getConfig } from "./api"
+import { getConfig } from "./api"
 import { wsManager } from "./ws"
 import { addLog } from "./store"
 import AppLayout from "./components/AppLayout.vue"
 
 onMounted(async () => {
-  try {
-    await getVoices()
-  } catch (e: any) {
-    addLog("error", `获取音色列表失败: ${e.message}`)
-  }
   try {
     await getConfig()
   } catch (e: any) {

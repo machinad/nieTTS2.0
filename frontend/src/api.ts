@@ -1,4 +1,4 @@
-import { appStore } from "./store"
+import { appStore, settingsTab } from "./store"
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -12,35 +12,18 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   return res.json()
 }
 
-export async function getVoices() {
-  const data = await request<import("./store").VoiceData>("/voices")
-  appStore.voices = data
-  if (data.tts_engines.length > 0) {
-    const engine = data.tts_engines[0]
-    const voiceList = data.voices[engine]
-    if (voiceList && voiceList.length > 0) {
-      appStore.voice = voiceList[0]
-    }
-  }
-  return data
-}
-
 export async function getConfig() {
-  const data = await request<Record<string, any>>("/config")
+  const data = await request<import("./store").AppConfig>("/config")
   appStore.config = data
-  if (data.tts_provider) {
-    appStore.engine = data.tts_provider.provider || "edge_tts"
-    const providers = data.tts_provider.providers || []
-    const active = providers.find(
-      (p: any) => p.name === data.tts_provider.provider
-    )
-    if (active?.voice) appStore.voice = active.voice
+  // 初始化 settings tab 状态（仅首次）
+  if (!settingsTab.tts) {
+    settingsTab.tts = data.tts_provider?.provider || "edge_tts"
   }
-  if (data.source_lang) {
-    appStore.langs.source = data.source_lang
+  if (!settingsTab.stt) {
+    settingsTab.stt = data.stt_provider?.provider || "Qwen3"
   }
-  if (data.target_lang) {
-    appStore.langs.target = data.target_lang
+  if (!settingsTab.translate) {
+    settingsTab.translate = data.translation_provider?.provider || ""
   }
   return data
 }

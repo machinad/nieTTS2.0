@@ -1,16 +1,19 @@
 <script setup lang="ts">
-import { ref, computed, watch } from "vue"
+import { computed } from "vue"
 import { updateConfigAndStore } from "../useConfig"
-import { appStore } from "../store"
+import { appStore, settingsTab } from "../store"
 
-const activeTab = ref("edge_tts")
+const activeTab = computed({
+  get: () => settingsTab.tts,
+  set: (v: string) => { settingsTab.tts = v },
+})
 
 const engines = computed(() => {
-  return appStore.voices.all_tts_engines || []
+  return (appStore.config.tts_provider?.providers || []).map((p: any) => p.name)
 })
 
 const engineVoices = computed(() => {
-  const voices = (appStore.voices as any)?.voices || {}
+  const voices = appStore.config.voices || {}
   return (voices[activeTab.value] || []) as string[]
 })
 
@@ -18,7 +21,7 @@ const isDefault = computed(() => {
   return appStore.config.tts_provider?.provider === activeTab.value
 })
 
-const currentProvider = computed(() => {
+const currentProvider = computed((): Record<string, any> => {
   const providers = appStore.config.tts_provider?.providers || []
   return providers.find((p: any) => p.name === activeTab.value) || {}
 })
@@ -75,8 +78,9 @@ const needsApiKey = computed(() =>
 const isMatcha = computed(() => activeTab.value === "MatchaTTS")
 
 const engineDescription = computed(() => {
-  const descriptions = (appStore.voices as any)?.tts_engine_descriptions || {}
-  return descriptions[activeTab.value] || ""
+  const providers = appStore.config.tts_provider?.providers || []
+  const p = providers.find((p: any) => p.name === activeTab.value)
+  return p?.description || ""
 })
 </script>
 

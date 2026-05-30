@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { computed, ref } from "vue"
+import { computed } from "vue"
 import { ElMessage } from "element-plus"
-import { appStore } from "../store"
+import { appStore, settingsTab } from "../store"
 import { postConfig, getConfig } from "../api"
 import { updateConfigAndStore } from "../useConfig"
 
-const activeTab = ref(appStore.config.stt_provider?.provider || "Qwen3")
+const activeTab = computed({
+  get: () => settingsTab.stt,
+  set: (v: string) => { settingsTab.stt = v },
+})
 
-const engines = computed(() => appStore.voices.all_stt_engines || [])
+const engines = computed(() => (appStore.config.stt_provider?.providers || []).map((p: any) => p.name))
 
 const sttProvider = computed(() => appStore.config.stt_provider)
 const currentConfig = computed(() => {
@@ -16,8 +19,9 @@ const currentConfig = computed(() => {
 })
 
 const engineDescription = computed(() => {
-  const descriptions = (appStore.voices as any)?.stt_engine_descriptions || {}
-  return descriptions[activeTab.value] || ""
+  const providers = appStore.config.stt_provider?.providers || []
+  const p = providers.find((p: any) => p.name === activeTab.value)
+  return p?.description || ""
 })
 
 const isDefault = computed(() => sttProvider.value?.provider === activeTab.value)

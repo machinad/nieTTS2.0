@@ -1,18 +1,14 @@
 <script setup lang="ts">
-import { ref, computed, watch } from "vue"
+import { ref, computed } from "vue"
 import { useRouter } from "vue-router"
 import { ElMessage } from "element-plus"
-import { appStore } from "../store"
+import { appStore, getActiveEngine, getActiveVoice, getSourceLang, getTargetLang } from "../store"
 import { postTTS, postConfig } from "../api"
 import { wsManager } from "../ws"
 import LogBar from "../components/LogBar.vue"
 
 const router = useRouter()
 const text = ref("")
-const sourceLang = ref(appStore.langs.source)
-const targetLang = ref(appStore.langs.target)
-watch(() => appStore.langs.source, (v) => { sourceLang.value = v })
-watch(() => appStore.langs.target, (v) => { targetLang.value = v })
 
 const isRecording = ref(false)
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -119,24 +115,22 @@ function toggleRecording() {
   if (isRecording.value) { stopRecording() } else { startRecording() }
 }
 
-const sourceOptions = computed(() => appStore.voices.source_languages || [])
-const targetOptions = computed(() => appStore.voices.target_languages || [])
+const sourceOptions = computed(() => appStore.config.source_languages || [])
+const targetOptions = computed(() => appStore.config.target_languages || [])
 
 const engineLabel = computed(() => {
-  const engine = appStore.engine || "edge_tts"
-  const voice = appStore.voice || ""
+  const engine = getActiveEngine()
+  const voice = getActiveVoice()
   return `${engine}${voice ? " / " + voice : ""}`
 })
 
 async function onSourceLangChange(lang: string) {
-  sourceLang.value = lang
-  appStore.langs.source = lang
+  appStore.config.source_lang = lang
   try { await postConfig({ source_lang: lang }) } catch (e: any) { ElMessage.error(`保存语言失败: ${e.message}`) }
 }
 
 async function onTargetLangChange(lang: string) {
-  targetLang.value = lang
-  appStore.langs.target = lang
+  appStore.config.target_lang = lang
   try { await postConfig({ target_lang: lang }) } catch (e: any) { ElMessage.error(`保存语言失败: ${e.message}`) }
 }
 
@@ -145,14 +139,14 @@ async function onSend() {
   try {
     await postTTS({
       text: text.value,
-      tts_provider: appStore.config.tts_provider?.provider || appStore.engine,
-      voice: appStore.voice,
+      tts_provider: getActiveEngine(),
+      voice: getActiveVoice(),
       translate: appStore.config.isTranslate,
       play_audio: appStore.config.isPlayAudio,
       play_translation: appStore.config.isPlayTranslation,
       osc_enabled: appStore.config.osc_enabled,
-      source_lang: sourceLang.value,
-      target_lang: targetLang.value,
+      source_lang: getSourceLang(),
+      target_lang: getTargetLang(),
     })
     text.value = ""
     ElMessage.success("已提交")
@@ -181,11 +175,11 @@ function onTextareaKeydown(e: KeyboardEvent) {
 
     <div style="display: flex; gap: 12px; align-items: center">
       <span style="font-size: 14px; white-space: nowrap; color: var(--el-text-color-secondary)">源语言</span>
-      <el-select :model-value="sourceLang" @change="onSourceLangChange" style="flex: 1">
+      <el-select :model-value="getSourceLang()" @change="onSourceLangChange" style="flex: 1">
         <el-option v-for="lang in sourceOptions" :key="lang" :label="lang" :value="lang" />
       </el-select>
       <span style="font-size: 14px; white-space: nowrap; color: var(--el-text-color-secondary)">目标语言</span>
-      <el-select :model-value="targetLang" @change="onTargetLangChange" style="flex: 1">
+      <el-select :model-value="getTargetLang()" @change="onTargetLangChange" style="flex: 1">
         <el-option v-for="lang in targetOptions" :key="lang" :label="lang" :value="lang" />
       </el-select>
     </div>

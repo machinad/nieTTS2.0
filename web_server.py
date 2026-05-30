@@ -61,7 +61,6 @@ class WebServer:
 
         self.app.route("/")(self.index)
         self.app.route("/tts", methods=["POST"])(self.tts_endpoint)
-        self.app.route("/voices")(self.voices_endpoint)
         self.app.route("/config", methods=["GET"])(self.get_config)
         self.app.route("/config", methods=["POST"])(self.update_config)
         self.app.websocket("/ws")(self.ws_handler)
@@ -118,43 +117,12 @@ class WebServer:
         await _broadcast({"type": "status", "request_id": req_id, "state": "queued"})
         return jsonify({"request_id": req_id}), 202
 
-    async def voices_endpoint(self):
+    async def get_config(self):
         from config.provider_voice import (
             Edge_TTS_voices,
             ali_tts_voices,
             sambert_tts_voices,
         )
-        engines = self.tts.get_available_engines()
-        all_engines = self.tts.get_all_engines()
-        tts_descriptions = self.tts.get_engine_descriptions()
-        translate_engines = self.translate.get_available_engines()
-        all_translate_engines = self.translate.get_all_engines()
-        translate_descriptions = self.translate.get_engine_descriptions()
-        stt_engines = self.stt.get_available_engines() if self.stt else []
-        all_stt_engines = self.stt.get_all_engines() if self.stt else []
-        stt_descriptions = self.stt.get_engine_descriptions() if self.stt else {}
-
-        return jsonify({
-            "tts_engines": engines,
-            "all_tts_engines": all_engines,
-            "tts_engine_descriptions": tts_descriptions,
-            "translate_engines": translate_engines,
-            "all_translate_engines": all_translate_engines,
-            "translate_engine_descriptions": translate_descriptions,
-            "stt_engines": stt_engines,
-            "all_stt_engines": all_stt_engines,
-            "stt_engine_descriptions": stt_descriptions,
-            "voices": {
-                "edge_tts": list(Edge_TTS_voices.keys()),
-                "cosyvoice": list(ali_tts_voices.keys()),
-                "sambert": list(sambert_tts_voices.keys()),
-                "MatchaTTS": ["0"],
-            },
-            "source_languages": ["中文", "英语", "日语", "韩语", "法语", "德语", "西班牙语", "俄语"],
-            "target_languages": ["中文", "英语", "日语", "韩语", "法语", "德语", "西班牙语", "俄语"],
-        })
-
-    async def get_config(self):
         cfg = dict(self.config.config)
         try:
             cfg["available_devices"] = [
@@ -162,6 +130,14 @@ class WebServer:
             ]
         except Exception:
             cfg["available_devices"] = []
+        cfg["voices"] = {
+            "edge_tts": list(Edge_TTS_voices.keys()),
+            "cosyvoice": list(ali_tts_voices.keys()),
+            "sambert": list(sambert_tts_voices.keys()),
+            "MatchaTTS": ["0"],
+        }
+        cfg["source_languages"] = ["中文", "英语", "日语", "韩语", "法语", "德语", "西班牙语", "俄语"]
+        cfg["target_languages"] = ["中文", "英语", "日语", "韩语", "法语", "德语", "西班牙语", "俄语"]
         return jsonify(cfg)
 
     async def update_config(self):
