@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed } from "vue"
+import { computed, ref, watch } from "vue"
 import { ElMessage } from "element-plus"
+import { Check } from "@element-plus/icons-vue"
 import { appStore, settingsTab } from "../store"
 import { updateConfigAndStore } from "../useConfig"
 
@@ -40,33 +41,29 @@ function updateProviderField(key: string, value: any) {
   }
 }
 
-// openai 字段
-const apiKey = computed({
-  get: () => currentConfig.value.api_key || "",
-  set: (val: string) => updateProviderField("api_key", val),
-})
-const apiUrl = computed({
-  get: () => currentConfig.value.url || "",
-  set: (val: string) => updateProviderField("url", val),
-})
-const model = computed({
-  get: () => currentConfig.value.model || "",
-  set: (val: string) => updateProviderField("model", val),
-})
+// 手动保存的文本输入框
+const apiKey = ref("")
+const apiUrl = ref("")
+const model = ref("")
+const serverUrl = ref("")
+const modelPath = ref("")
+const llamaCppPath = ref("")
 
-// hy_mt15 字段
-const serverUrl = computed({
-  get: () => currentConfig.value.server_url || "",
-  set: (val: string) => updateProviderField("server_url", val),
-})
-const modelPath = computed({
-  get: () => currentConfig.value.model_path || "",
-  set: (val: string) => updateProviderField("model_path", val),
-})
-const llamaCppPath = computed({
-  get: () => currentConfig.value.llama_cpp_path || "",
-  set: (val: string) => updateProviderField("llama_cpp_path", val),
-})
+function syncLocalValues() {
+  apiKey.value = currentConfig.value.api_key || ""
+  apiUrl.value = currentConfig.value.url || ""
+  model.value = currentConfig.value.model || ""
+  serverUrl.value = currentConfig.value.server_url || ""
+  modelPath.value = currentConfig.value.model_path || ""
+  llamaCppPath.value = currentConfig.value.llama_cpp_path || ""
+}
+
+watch(activeTab, syncLocalValues, { immediate: true })
+
+function saveField(key: string, value: string) {
+  updateProviderField(key, value)
+  ElMessage.success("已保存")
+}
 </script>
 
 <template>
@@ -95,26 +92,41 @@ const llamaCppPath = computed({
           <template v-if="activeTab === 'openai'">
             <div>
               <span style="font-size: 14px; margin-bottom: 4px; display: block">API Key</span>
-              <el-input
-                v-model="apiKey"
-                type="password"
-                show-password
-                placeholder="请输入 API Key"
-              />
+              <div style="display: flex; align-items: center; gap: 8px">
+                <el-input
+                  v-model="apiKey"
+                  type="password"
+                  show-password
+                  placeholder="请输入 API Key"
+                />
+                <el-icon v-if="apiKey !== (currentConfig.api_key || '')"
+                  style="cursor: pointer; color: var(--el-color-primary); font-size: 18px; flex-shrink: 0"
+                  @click="saveField('api_key', apiKey)"><Check /></el-icon>
+              </div>
             </div>
             <div>
               <span style="font-size: 14px; margin-bottom: 4px; display: block">API URL</span>
-              <el-input
-                v-model="apiUrl"
-                placeholder="请输入 API URL"
-              />
+              <div style="display: flex; align-items: center; gap: 8px">
+                <el-input
+                  v-model="apiUrl"
+                  placeholder="请输入 API URL"
+                />
+                <el-icon v-if="apiUrl !== (currentConfig.url || '')"
+                  style="cursor: pointer; color: var(--el-color-primary); font-size: 18px; flex-shrink: 0"
+                  @click="saveField('url', apiUrl)"><Check /></el-icon>
+              </div>
             </div>
             <div>
               <span style="font-size: 14px; margin-bottom: 4px; display: block">Model</span>
-              <el-input
-                v-model="model"
-                placeholder="请输入模型名称"
-              />
+              <div style="display: flex; align-items: center; gap: 8px">
+                <el-input
+                  v-model="model"
+                  placeholder="请输入模型名称"
+                />
+                <el-icon v-if="model !== (currentConfig.model || '')"
+                  style="cursor: pointer; color: var(--el-color-primary); font-size: 18px; flex-shrink: 0"
+                  @click="saveField('model', model)"><Check /></el-icon>
+              </div>
             </div>
           </template>
 
@@ -122,24 +134,39 @@ const llamaCppPath = computed({
           <template v-if="activeTab === 'hy_mt15'">
             <div>
               <span style="font-size: 14px; margin-bottom: 4px; display: block">Server URL</span>
-              <el-input
-                v-model="serverUrl"
-                placeholder="默认 http://127.0.0.1:8081"
-              />
+              <div style="display: flex; align-items: center; gap: 8px">
+                <el-input
+                  v-model="serverUrl"
+                  placeholder="默认 http://127.0.0.1:8081"
+                />
+                <el-icon v-if="serverUrl !== (currentConfig.server_url || '')"
+                  style="cursor: pointer; color: var(--el-color-primary); font-size: 18px; flex-shrink: 0"
+                  @click="saveField('server_url', serverUrl)"><Check /></el-icon>
+              </div>
             </div>
             <div>
               <span style="font-size: 14px; margin-bottom: 4px; display: block">Model Path</span>
-              <el-input
-                v-model="modelPath"
-                placeholder="默认 models/HY-mt/HY-MT1.5-1.8B-Q8_0.gguf"
-              />
+              <div style="display: flex; align-items: center; gap: 8px">
+                <el-input
+                  v-model="modelPath"
+                  placeholder="默认 models/HY-mt/HY-MT1.5-1.8B-Q8_0.gguf"
+                />
+                <el-icon v-if="modelPath !== (currentConfig.model_path || '')"
+                  style="cursor: pointer; color: var(--el-color-primary); font-size: 18px; flex-shrink: 0"
+                  @click="saveField('model_path', modelPath)"><Check /></el-icon>
+              </div>
             </div>
             <div>
               <span style="font-size: 14px; margin-bottom: 4px; display: block">Llama.cpp Path</span>
-              <el-input
-                v-model="llamaCppPath"
-                placeholder="默认 llama-cpp"
-              />
+              <div style="display: flex; align-items: center; gap: 8px">
+                <el-input
+                  v-model="llamaCppPath"
+                  placeholder="默认 llama-cpp"
+                />
+                <el-icon v-if="llamaCppPath !== (currentConfig.llama_cpp_path || '')"
+                  style="cursor: pointer; color: var(--el-color-primary); font-size: 18px; flex-shrink: 0"
+                  @click="saveField('llama_cpp_path', llamaCppPath)"><Check /></el-icon>
+              </div>
             </div>
           </template>
         </div>

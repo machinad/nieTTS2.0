@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed } from "vue"
+import { computed, ref, watch } from "vue"
+import { ElMessage } from "element-plus"
+import { Check } from "@element-plus/icons-vue"
 import { updateConfigAndStore } from "../useConfig"
 import { appStore, settingsTab } from "../store"
 
@@ -38,32 +40,39 @@ const selectedVoice = computed({
   },
 })
 
-const aliApiKey = computed({
-  get: () => currentProvider.value.ali_api_key || "",
-  set: (val: string) => {
-    const providers = [...(appStore.config.tts_provider?.providers || [])]
-    const idx = providers.findIndex((p: any) => p.name === activeTab.value)
-    if (idx >= 0) {
-      providers[idx] = { ...providers[idx], ali_api_key: val }
-      updateConfigAndStore("tts_provider.providers", providers)
-    }
-  },
-})
-
+// 手动保存的文本输入框
+const aliApiKey = ref("")
 const matchaKeys = ["acoustic_model", "vocoder", "tokens", "lexicon", "data_dir", "dict_dir"]
+const matchaValues = ref<Record<string, string>>({})
 
-function matchaValue(key: string) {
-  return computed({
-    get: () => currentProvider.value?.[`matcha_${key}`] || "",
-    set: (val: string) => {
-      const providers = [...(appStore.config.tts_provider?.providers || [])]
-      const idx = providers.findIndex((p: any) => p.name === activeTab.value)
-      if (idx >= 0) {
-        providers[idx] = { ...providers[idx], [`matcha_${key}`]: val }
-        updateConfigAndStore("tts_provider.providers", providers)
-      }
-    },
-  })
+function syncLocalValues() {
+  aliApiKey.value = currentProvider.value.ali_api_key || ""
+  const mv: Record<string, string> = {}
+  for (const k of matchaKeys) {
+    mv[k] = currentProvider.value?.[`matcha_${k}`] || ""
+  }
+  matchaValues.value = mv
+}
+
+watch(activeTab, syncLocalValues, { immediate: true })
+
+function updateProviderField(key: string, value: string) {
+  const providers = [...(appStore.config.tts_provider?.providers || [])]
+  const idx = providers.findIndex((p: any) => p.name === activeTab.value)
+  if (idx >= 0) {
+    providers[idx] = { ...providers[idx], [key]: value }
+    updateConfigAndStore("tts_provider.providers", providers)
+  }
+}
+
+function saveAliApiKey() {
+  updateProviderField("ali_api_key", aliApiKey.value)
+  ElMessage.success("已保存")
+}
+
+function saveMatchaValue(key: string) {
+  updateProviderField(`matcha_${key}`, matchaValues.value[key])
+  ElMessage.success("已保存")
 }
 
 async function onSetDefault(val: boolean) {
@@ -126,23 +135,31 @@ const engineDescription = computed(() => {
 
           <div v-if="needsApiKey">
             <span style="font-size: 14px; margin-bottom: 4px; display: block">阿里 API Key</span>
-            <el-input
-              :model-value="aliApiKey"
-              @update:model-value="(v: string) => aliApiKey = v"
-              type="password"
-              show-password
-              placeholder="请输入 API Key"
-            />
+            <div style="display: flex; align-items: center; gap: 8px">
+              <el-input
+                v-model="aliApiKey"
+                type="password"
+                show-password
+                placeholder="请输入 API Key"
+              />
+              <el-icon v-if="aliApiKey !== (currentProvider.ali_api_key || '')"
+                style="cursor: pointer; color: var(--el-color-primary); font-size: 18px; flex-shrink: 0"
+                @click="saveAliApiKey"><Check /></el-icon>
+            </div>
           </div>
 
           <template v-if="isMatcha">
             <div v-for="key in matchaKeys" :key="key">
               <span style="font-size: 14px; margin-bottom: 4px; display: block">{{ key }}</span>
-              <el-input
-                :model-value="matchaValue(key).value"
-                @update:model-value="(v: string) => matchaValue(key).value = v"
-                :placeholder="`请输入 ${key}`"
-              />
+              <div style="display: flex; align-items: center; gap: 8px">
+                <el-input
+                  v-model="matchaValues[key]"
+                  :placeholder="`请输入 ${key}`"
+                />
+                <el-icon v-if="matchaValues[key] !== (currentProvider[`matcha_${key}`] || '')"
+                  style="cursor: pointer; color: var(--el-color-primary); font-size: 18px; flex-shrink: 0"
+                  @click="saveMatchaValue(key)"><Check /></el-icon>
+              </div>
             </div>
           </template>
         </div>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue"
+import { ref, computed, onMounted, watch } from "vue"
 import { ElMessage } from "element-plus"
+import { Check } from "@element-plus/icons-vue"
 import { appStore } from "../store"
 import { postConfig, getConfig } from "../api"
 
@@ -33,6 +34,15 @@ async function onChangeField(key: string, value: any) {
   } catch (e: any) {
     ElMessage.error(`保存失败: ${e.message}`)
   }
+}
+
+// OSC Host 手动保存
+const oscHost = ref("")
+watch(() => appStore.config.osc_host, (v) => { oscHost.value = v || "" }, { immediate: true })
+
+async function saveOscHost() {
+  await onChangeField("osc_host", oscHost.value)
+  ElMessage.success("已保存")
 }
 </script>
 
@@ -113,10 +123,12 @@ async function onChangeField(key: string, value: any) {
         </div>
         <div>
           <span style="font-size: 14px; margin-bottom: 4px; display: block">OSC Host</span>
-          <el-input
-            :model-value="appStore.config.osc_host"
-            @update:model-value="(v: string) => onChangeField('osc_host', v)"
-          />
+          <div style="display: flex; align-items: center; gap: 8px">
+            <el-input v-model="oscHost" />
+            <el-icon v-if="oscHost !== (appStore.config.osc_host || '')"
+              style="cursor: pointer; color: var(--el-color-primary); font-size: 18px; flex-shrink: 0"
+              @click="saveOscHost"><Check /></el-icon>
+          </div>
         </div>
         <div>
           <span style="font-size: 14px; margin-bottom: 4px; display: block">OSC Port</span>
