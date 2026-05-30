@@ -18,10 +18,13 @@ export interface WSMessage {
 export interface VoiceData {
   tts_engines: string[]
   all_tts_engines: string[]
+  tts_engine_descriptions: Record<string, string>
   translate_engines: string[]
   all_translate_engines: string[]
+  translate_engine_descriptions: Record<string, string>
   stt_engines: string[]
   all_stt_engines: string[]
+  stt_engine_descriptions: Record<string, string>
   voices: Record<string, string[]>
   source_languages: string[]
   target_languages: string[]
@@ -58,10 +61,13 @@ export const appStore = reactive({
   voices: {
     tts_engines: [],
     all_tts_engines: [],
+    tts_engine_descriptions: {},
     translate_engines: [],
     all_translate_engines: [],
+    translate_engine_descriptions: {},
     stt_engines: [],
     all_stt_engines: [],
+    stt_engine_descriptions: {},
     voices: {},
     source_languages: [],
     target_languages: [],

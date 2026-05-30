@@ -15,6 +15,11 @@ const currentConfig = computed(() => {
   return providers.find((p: any) => p.name === activeTab.value) || {}
 })
 
+const engineDescription = computed(() => {
+  const descriptions = (appStore.voices as any)?.stt_engine_descriptions || {}
+  return descriptions[activeTab.value] || ""
+})
+
 const isDefault = computed(() => sttProvider.value?.provider === activeTab.value)
 
 async function onSetDefault(val: boolean) {
@@ -54,6 +59,10 @@ async function onVadChange(key: string, value: number) {
         :name="engine"
       >
         <div style="display: flex; flex-direction: column; gap: 16px; margin-top: 8px">
+          <div v-if="engineDescription" style="color: #909399; font-size: 13px; line-height: 1.5; padding: 8px 12px; background: #f5f7fa; border-radius: 4px">
+            {{ engineDescription }}
+          </div>
+
           <div style="display: flex; align-items: center; gap: 8px">
             <span style="font-size: 14px">设为默认引擎</span>
             <el-switch

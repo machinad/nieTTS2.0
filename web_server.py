@@ -126,18 +126,24 @@ class WebServer:
         )
         engines = self.tts.get_available_engines()
         all_engines = self.tts.get_all_engines()
+        tts_descriptions = self.tts.get_engine_descriptions()
         translate_engines = self.translate.get_available_engines()
         all_translate_engines = self.translate.get_all_engines()
+        translate_descriptions = self.translate.get_engine_descriptions()
         stt_engines = self.stt.get_available_engines() if self.stt else []
         all_stt_engines = self.stt.get_all_engines() if self.stt else []
+        stt_descriptions = self.stt.get_engine_descriptions() if self.stt else {}
 
         return jsonify({
             "tts_engines": engines,
             "all_tts_engines": all_engines,
+            "tts_engine_descriptions": tts_descriptions,
             "translate_engines": translate_engines,
             "all_translate_engines": all_translate_engines,
+            "translate_engine_descriptions": translate_descriptions,
             "stt_engines": stt_engines,
             "all_stt_engines": all_stt_engines,
+            "stt_engine_descriptions": stt_descriptions,
             "voices": {
                 "edge_tts": list(Edge_TTS_voices.keys()),
                 "cosyvoice": list(ali_tts_voices.keys()),

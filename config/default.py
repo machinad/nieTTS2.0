@@ -10,17 +10,20 @@ default_config = {
         "providers":[
             {
                 "name": "edge_tts",
-                "voice":"汉语女声-晓晓-新闻小说-温柔"
+                "voice":"汉语女声-晓晓-新闻小说-温柔",
+                "description": "免费微软官方TTS在线服务（在线API）"
             },
             {
                 "name": "cosyvoice",
                 "voice": "龙婉-普通话-语音助手、导航播报、聊天数字人",
-                "ali_api_key": ""
+                "ali_api_key": "",
+                "description": "阿里百炼CosyVoice语音合成服务，支持情感控制、语音克隆等功能（需要API Key）"
             },
             {
                 "name":"sambert",
                 "voice":"知琪-温柔女声-通用场景",
-                "ali_api_key": ""
+                "ali_api_key": "",
+                "description": "阿里百炼Sambert语音合成服务，适用于通用场景（需要API Key）"
             },
             {
                 "name":"MatchaTTS",
@@ -30,7 +33,8 @@ default_config = {
                 "matcha_tokens": "models/matcha-icefall-zh-en/tokens.txt",
                 "matcha_lexicon": "models/matcha-icefall-zh-en/lexicon.txt",
                 "matcha_data_dir": "models/matcha-icefall-zh-en",
-                "matcha_dict_dir": ""
+                "matcha_dict_dir": "",
+                "description": "本地离线TTS，完全本地推理无需网络（需要模型文件）"
             }
 
         ]
@@ -44,6 +48,7 @@ default_config = {
                 "encoder": "models/qwen3-asr-0.6B-int8/encoder.int8.onnx",
                 "decoder": "models/qwen3-asr-0.6B-int8/decoder.int8.onnx",
                 "tokenizer": "models/qwen3-asr-0.6B-int8/tokenizer",
+                "description": "通义千问Qwen3本地离线语音识别，基于0.6B参数量化模型（需要模型文件）"
             }
         ]
     },
@@ -54,13 +59,15 @@ default_config = {
                 "name": "openai",
                 "model": "",
                 "api_key": "",
-                "url": ""
+                "url": "",
+                "description": "OpenAI兼容大语言模型翻译，支持任意OpenAI API格式的模型（需要API Key）"
             },
             {
                 "name": "hy_mt15",
                 "model_path": "models/HY-mt/HY-MT1.5-1.8B-Q8_0.gguf",
                 "server_url": "http://127.0.0.1:8081",
                 "llama_cpp_path": "llama-cpp",
+                "description": "HY-MT1.5本地离线翻译模型，基于1.8B参数GGUF量化模型（需要模型文件）"
             },
         ]
     },
@@ -126,6 +133,14 @@ class ConfigManager:
         for p in default_config["translation_provider"]["providers"]:
             if p.get("name") not in disk_names:
                 config["translation_provider"]["providers"].append(copy.deepcopy(p))
+        # 补充新增的 provider 字段（兼容已有 config.json）
+        for provider_key in ["tts_provider", "stt_provider", "translation_provider"]:
+            for provider in config[provider_key]["providers"]:
+                if not provider.get("description"):
+                    for dp in default_config[provider_key]["providers"]:
+                        if dp.get("name") == provider.get("name") and dp.get("description"):
+                            provider["description"] = dp["description"]
+                            break
         self._save_file(config)
         return config
 

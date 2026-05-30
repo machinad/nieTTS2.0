@@ -36,6 +36,10 @@ class STTService:
         providers = self.config.get("stt_provider", {}).get("providers", [])
         return [p["name"] for p in providers if p.get("name")]
 
+    def get_engine_descriptions(self) -> dict[str, str]:
+        providers = self.config.get("stt_provider", {}).get("providers", [])
+        return {p["name"]: p.get("description", "") for p in providers if p.get("name")}
+
     def reload_engines(self):
         self._build_engines()
 

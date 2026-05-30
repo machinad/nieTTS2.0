@@ -73,6 +73,11 @@ const needsApiKey = computed(() =>
   ["cosyvoice", "sambert"].includes(activeTab.value)
 )
 const isMatcha = computed(() => activeTab.value === "MatchaTTS")
+
+const engineDescription = computed(() => {
+  const descriptions = (appStore.voices as any)?.tts_engine_descriptions || {}
+  return descriptions[activeTab.value] || ""
+})
 </script>
 
 <template>
@@ -85,6 +90,10 @@ const isMatcha = computed(() => activeTab.value === "MatchaTTS")
         :name="engine"
       >
         <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px">
+          <div v-if="engineDescription" style="color: #909399; font-size: 13px; line-height: 1.5; padding: 8px 12px; background: #f5f7fa; border-radius: 4px">
+            {{ engineDescription }}
+          </div>
+
           <div style="display: flex; align-items: center; gap: 8px">
             <span style="font-size: 14px">设为默认引擎</span>
             <el-switch
