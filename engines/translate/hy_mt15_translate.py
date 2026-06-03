@@ -24,7 +24,7 @@ class HyMT15Translate(BaseTranslate):
     @classmethod
     def from_config(cls, cfg: dict):
         return cls(
-            model_path=cfg.get("model_path", "models/HY-mt/HY-MT1.5-1.8B-Q8_0.gguf"),
+            model_path=cfg.get("model_path", "models/HY-mt/Hy-MT2-1.8B-2Bit.gguf"),
             server_url=cfg.get("server_url", "http://127.0.0.1:8081"),
             llama_cpp_path=cfg.get("llama_cpp_path", "llama-cpp"),
         )

@@ -64,7 +64,7 @@ default_config = {
             },
             {
                 "name": "hy_mt15",
-                "model_path": "models/HY-mt/HY-MT1.5-1.8B-Q8_0.gguf",
+                "model_path": "models/HY-mt/Hy-MT2-1.8B-2Bit.gguf",
                 "server_url": "http://127.0.0.1:8081",
                 "llama_cpp_path": "llama-cpp",
                 "description": "HY-MT1.5本地离线翻译模型，基于1.8B参数GGUF量化模型（需要模型文件）"
