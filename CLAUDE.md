@@ -60,6 +60,15 @@ To add a new engine: create a file in the domain subfolder, implement the base A
 
 Per-request: TTS on original text + translation in parallel → translation triggers second TTS + OSC → audio files queued for playback in order → temp files deleted after play.
 
+### WebSocket Audio Input Flow (`web_server.py` → pipeline)
+The `/ws` endpoint supports bidirectional audio streaming for STT:
+1. Client sends `{"type": "start"}` to begin a speech session
+2. Client streams binary Int16 PCM audio frames
+3. Server runs **Silero VAD** (`engines/stt/vad/`) to detect speech segments in real-time
+4. Complete speech segments are transcribed by **Qwen3 STT** (`engines/stt/`)
+5. Transcribed text is fed into the `RequestPipeline` (reuses the full TTS+translate pipeline)
+6. Client sends `{"type": "stop"}` to end the session
+
 ### Web Server (`web_server.py`)
 Quart async server with CORS. Key routes: `GET /` (SPA), `POST /tts`, `GET/POST /config`, `WS /ws`, `GET /assets/<path>`. WebSocket handles log broadcast, audio stream input for STT (binary PCM), and VAD processing. `WSLogHandler` pushes Python logs to all connected WS clients.
 
@@ -67,7 +76,7 @@ Quart async server with CORS. Key routes: `GET /` (SPA), `POST /tts`, `GET/POST 
 Vue 3 + Element Plus + TypeScript SPA. Vite builds to `templates/`. State via `reactive()` store (`store.ts`), WebSocket with auto-reconnect (`ws.ts`), HTTP API layer (`api.ts`). Views: Home (TTS control), Settings, Logs, About.
 
 ### Configuration (`config/`)
-`ConfigManager` singleton: deep-merges defaults (`default_config`) with disk config (`config/config.json`). Dot-notation access: `config.get("tts_provider.provider")`. Voice mappings in `provider_voice.py`.
+`ConfigManager` singleton: deep-merges defaults (`default_config`) with disk config (`config/config.json`). Dot-notation access: `config.get("tts_provider.provider")`. Voice mappings in `provider_voice.py`. Handles backward compatibility: auto-appends new providers and fills missing description fields when loading older config files.
 
 ## Key Conventions
 

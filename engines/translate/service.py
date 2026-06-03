@@ -20,6 +20,8 @@ class TranslateService:
 
     def _build_engines(self):
         providers = self.config.get("translation_provider", {}).get("providers", [])
+        for eng in getattr(self, "_engines", {}).values():
+            eng.close()
         self._engines: dict[str, BaseTranslate] = {}
         for p in providers:
             name = p.get("name", "")

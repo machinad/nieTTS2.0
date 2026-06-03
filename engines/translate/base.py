@@ -29,3 +29,7 @@ class BaseTranslate(ABC):
     @abstractmethod
     def engine_name(self) -> str:
         ...
+
+    def close(self):
+        """释放引擎持有的资源（子进程、网络连接等）。子类按需覆盖。"""
+        pass
