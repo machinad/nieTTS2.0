@@ -28,17 +28,22 @@ const isDefault = computed(() => transProvider.value?.provider === activeTab.val
 
 async function onSetDefault(val: boolean) {
   if (val) {
-    await updateConfigAndStore("translation_provider.provider", activeTab.value)
+    await updateConfigAndStore("translation_provider.provider", activeTab.value, true)
   }
 }
 
-function updateProviderField(key: string, value: any) {
+function updateProviderField(key: string, value: any, needReload = false) {
   const list = [...(transProvider.value?.providers || [])]
   const idx = list.findIndex((p: any) => p.name === activeTab.value)
   if (idx >= 0) {
     list[idx] = { ...list[idx], [key]: value }
-    updateConfigAndStore("translation_provider.providers", list)
+    updateConfigAndStore("translation_provider.providers", list, needReload)
   }
+}
+
+function saveField(key: string, value: string) {
+  updateProviderField(key, value, true)
+  ElMessage.success("已保存")
 }
 
 // 手动保存的文本输入框
@@ -59,11 +64,6 @@ function syncLocalValues() {
 }
 
 watch(activeTab, syncLocalValues, { immediate: true })
-
-function saveField(key: string, value: string) {
-  updateProviderField(key, value)
-  ElMessage.success("已保存")
-}
 </script>
 
 <template>

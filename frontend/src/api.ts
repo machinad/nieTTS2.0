@@ -36,6 +36,12 @@ export async function postConfig(partial: Record<string, any>) {
   return data
 }
 
+export async function postReload() {
+  return request<{ success: boolean }>("/config/reload", {
+    method: "POST",
+  })
+}
+
 export async function postTTS(params: Record<string, any>) {
   const data = await request<{ request_id: string }>("/tts", {
     method: "POST",

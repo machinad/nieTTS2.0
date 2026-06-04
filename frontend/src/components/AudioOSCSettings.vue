@@ -3,7 +3,7 @@ import { ref, computed, onMounted, watch } from "vue"
 import { ElMessage } from "element-plus"
 import { Check } from "@element-plus/icons-vue"
 import { appStore } from "../store"
-import { postConfig, getConfig } from "../api"
+import { postConfig, getConfig, postReload } from "../api"
 
 const INPUT_DEVICE_KEY = "nietts_input_device_id"
 
@@ -42,7 +42,13 @@ watch(() => appStore.config.osc_host, (v) => { oscHost.value = v || "" }, { imme
 
 async function saveOscHost() {
   await onChangeField("osc_host", oscHost.value)
+  await postReload()
   ElMessage.success("已保存")
+}
+
+async function onOscPortChange(v: any) {
+  await onChangeField("osc_port", v)
+  await postReload()
 }
 </script>
 
@@ -136,7 +142,7 @@ async function saveOscHost() {
             :model-value="appStore.config.osc_port"
             :min="1"
             :max="65535"
-            @change="(v: any) => onChangeField('osc_port', v)"
+            @change="onOscPortChange"
           />
         </div>
       </div>

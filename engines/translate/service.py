@@ -16,12 +16,11 @@ class TranslateService:
 
     def __init__(self, config: ConfigManager):
         self.config = config
+        self._active_provider = self.config.get("translation_provider.provider", "openai")
         self._build_engines()
 
     def _build_engines(self):
         providers = self.config.get("translation_provider", {}).get("providers", [])
-        for eng in getattr(self, "_engines", {}).values():
-            eng.close()
         self._engines: dict[str, BaseTranslate] = {}
         for p in providers:
             name = p.get("name", "")
@@ -44,7 +43,13 @@ class TranslateService:
         providers = self.config.get("translation_provider", {}).get("providers", [])
         return {p["name"]: p.get("description", "") for p in providers if p.get("name")}
 
-    def reload_engines(self):
+    async def reload_engines(self):
+        new_provider = self.config.get("translation_provider.provider", "openai")
+        if self._active_provider != new_provider:
+            old = self._engines.get(self._active_provider)
+            if old:
+                await old.close()
+            self._active_provider = new_provider
         self._build_engines()
 
     async def translate(self, text: str, provider: str = None,

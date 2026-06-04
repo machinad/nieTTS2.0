@@ -27,6 +27,10 @@ class BaseSTT(ABC):
     def is_available(self) -> bool:
         ...
 
+    async def close(self):
+        """释放引擎持有的资源（模型、连接等）。子类按需覆盖。"""
+        pass
+
     @property
     @abstractmethod
     def engine_name(self) -> str:

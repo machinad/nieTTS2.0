@@ -56,28 +56,28 @@ function syncLocalValues() {
 
 watch(activeTab, syncLocalValues, { immediate: true })
 
-function updateProviderField(key: string, value: string) {
+function updateProviderField(key: string, value: string, needReload = false) {
   const providers = [...(appStore.config.tts_provider?.providers || [])]
   const idx = providers.findIndex((p: any) => p.name === activeTab.value)
   if (idx >= 0) {
     providers[idx] = { ...providers[idx], [key]: value }
-    updateConfigAndStore("tts_provider.providers", providers)
+    updateConfigAndStore("tts_provider.providers", providers, needReload)
   }
 }
 
 function saveAliApiKey() {
-  updateProviderField("ali_api_key", aliApiKey.value)
+  updateProviderField("ali_api_key", aliApiKey.value, true)
   ElMessage.success("已保存")
 }
 
 function saveMatchaValue(key: string) {
-  updateProviderField(`matcha_${key}`, matchaValues.value[key])
+  updateProviderField(`matcha_${key}`, matchaValues.value[key], true)
   ElMessage.success("已保存")
 }
 
 async function onSetDefault(val: boolean) {
   if (val) {
-    await updateConfigAndStore("tts_provider.provider", activeTab.value)
+    await updateConfigAndStore("tts_provider.provider", activeTab.value, true)
   }
 }
 

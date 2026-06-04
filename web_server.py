@@ -63,6 +63,7 @@ class WebServer:
         self.app.route("/tts", methods=["POST"])(self.tts_endpoint)
         self.app.route("/config", methods=["GET"])(self.get_config)
         self.app.route("/config", methods=["POST"])(self.update_config)
+        self.app.route("/config/reload", methods=["POST"])(self.reload_config)
         self.app.websocket("/ws")(self.ws_handler)
         self.app.route("/assets/<path:filename>")(self.serve_assets)
 
@@ -145,13 +146,15 @@ class WebServer:
         if not data:
             return jsonify({"error": "无效的配置数据"}), 400
         ok = self.config.update(data)
-        if ok:
-            self.tts.reload_engines()
-            self.translate.reload_engines()
-            if self.stt:
-                self.stt.reload_engines()
-            self.osc.reload()
         return jsonify({"success": ok})
+
+    async def reload_config(self):
+        await self.tts.reload_engines()
+        await self.translate.reload_engines()
+        if self.stt:
+            await self.stt.reload_engines()
+        self.osc.reload()
+        return jsonify({"success": True})
 
     async def ws_handler(self):
         ws_obj = websocket._get_current_object()

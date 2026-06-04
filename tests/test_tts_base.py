@@ -84,3 +84,16 @@ class TestBaseTTS:
         p = impl._make_path(".mp3")
         assert p.suffix == ".mp3"
         assert p.parent == temp_dir
+
+    @pytest.mark.asyncio
+    async def test_close_is_noop_by_default(self, temp_dir):
+        class Impl(BaseTTS):
+            engine_name = "Test"
+            async def synthesize(self, text, voice, **kwargs):
+                return TTSResult(success=True)
+            def is_available(self):
+                return True
+
+        impl = Impl(temp_dir)
+        # Should not raise
+        await impl.close()

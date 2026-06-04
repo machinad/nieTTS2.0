@@ -77,12 +77,22 @@ class TestSTTService:
         assert result.success is True
         assert result.text == "hello"
 
-    def test_reload_engines(self, mock_config_with_qwen3):
+    @pytest.mark.asyncio
+    async def test_reload_engines(self, mock_config_with_qwen3):
         service = STTService(mock_config_with_qwen3)
         orig_len = len(service._engines)
-        service.reload_engines()
+        await service.reload_engines()
         # Should rebuild without error
         assert len(service._engines) > 0
+
+    @pytest.mark.asyncio
+    async def test_reload_calls_close(self, mock_config_with_qwen3):
+        service = STTService(mock_config_with_qwen3)
+        mock_engine = AsyncMock()
+        mock_engine.is_available.return_value = True
+        service._engines["Qwen3"] = mock_engine
+        await service.reload_engines()
+        mock_engine.close.assert_called_once()
 
 
 class TestTTSService:

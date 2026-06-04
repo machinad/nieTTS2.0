@@ -28,7 +28,7 @@ const isDefault = computed(() => sttProvider.value?.provider === activeTab.value
 
 async function onSetDefault(val: boolean) {
   if (val) {
-    await updateConfigAndStore("stt_provider.provider", activeTab.value)
+    await updateConfigAndStore("stt_provider.provider", activeTab.value, true)
   }
 }
 

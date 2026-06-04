@@ -40,7 +40,9 @@ class STTService:
         providers = self.config.get("stt_provider", {}).get("providers", [])
         return {p["name"]: p.get("description", "") for p in providers if p.get("name")}
 
-    def reload_engines(self):
+    async def reload_engines(self):
+        for eng in self._engines.values():
+            await eng.close()
         self._build_engines()
 
     async def transcribe(self, samples, sample_rate: int = 16000,

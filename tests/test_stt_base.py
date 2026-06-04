@@ -57,3 +57,16 @@ class TestBaseSTT:
         impl = Impl()
         assert impl.engine_name == "Test"
         assert impl.is_available() is True
+
+    @pytest.mark.asyncio
+    async def test_close_is_noop_by_default(self):
+        class Impl(BaseSTT):
+            engine_name = "Test"
+            async def transcribe(self, samples, sample_rate):
+                return STTResult(success=True)
+            def is_available(self):
+                return True
+
+        impl = Impl()
+        # Should not raise
+        await impl.close()

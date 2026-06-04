@@ -85,7 +85,7 @@ class HyMT15Translate(BaseTranslate):
                 pass
             type(self)._process = None
 
-    def close(self):
+    async def close(self):
         """释放 llama-server 子进程资源"""
         self._stop_server()
 

@@ -55,6 +55,9 @@ class Qwen3STT(BaseSTT):
         )
         logger.info("Qwen3 ASR model loaded")
 
+    async def close(self):
+        self._recognizer = None
+
     async def transcribe(self, samples: np.ndarray, sample_rate: int) -> STTResult:
         if not self.is_available():
             return STTResult(

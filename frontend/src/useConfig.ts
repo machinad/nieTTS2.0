@@ -1,5 +1,5 @@
 import { ElMessage } from "element-plus"
-import { postConfig, getConfig } from "./api"
+import { postConfig, getConfig, postReload } from "./api"
 import { appStore } from "./store"
 
 export function useAutoSave() {
@@ -19,7 +19,7 @@ export function useAutoSave() {
   return { saveConfig }
 }
 
-export async function updateConfigAndStore(key: string, value: any) {
+export async function updateConfigAndStore(key: string, value: any, needReload = false) {
   const payload: Record<string, any> = {}
   const keys = key.split(".")
   let obj = payload
@@ -32,6 +32,9 @@ export async function updateConfigAndStore(key: string, value: any) {
   try {
     await postConfig(payload)
     await getConfig()
+    if (needReload) {
+      await postReload()
+    }
   } catch (e: any) {
     ElMessage.error(`配置保存失败: ${e.message}`)
   }

@@ -24,6 +24,10 @@ class OpenAITranslate(BaseTranslate):
     def is_available(self) -> bool:
         return bool(self.api_key)
 
+    async def close(self):
+        if self.client:
+            await self.client.close()
+
     async def translate(self, text: str, source_lang: str, target_lang: str, **kwargs) -> TranslateResult:
         model = kwargs.get("model", self.model)
         try:

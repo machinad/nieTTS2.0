@@ -61,6 +61,9 @@ class MatchaTTS(BaseTTS):
         self._tts = sherpa_onnx.OfflineTts(config)
         logger.info(f"MatchaTTS 初始化完成，samplerate={self._tts.sample_rate}")
 
+    async def close(self):
+        self._tts = None
+
     async def synthesize(self, text: str, voice: str = "", **kwargs) -> TTSResult:
         if not self.is_available():
             return TTSResult(

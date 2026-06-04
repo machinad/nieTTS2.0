@@ -38,7 +38,7 @@ def mock_tts():
     tts.synthesize = AsyncMock()
     tts.get_available_engines.return_value = ["edge_tts"]
     tts.get_all_engines.return_value = ["edge_tts", "cosyvoice", "sambert", "MatchaTTS"]
-    tts.reload_engines = MagicMock()
+    tts.reload_engines = AsyncMock()
     return tts
 
 
@@ -47,7 +47,7 @@ def mock_translate():
     t = MagicMock(spec=TranslateService)
     t.translate = AsyncMock()
     t.get_available_engines.return_value = []
-    t.reload_engines = MagicMock()
+    t.reload_engines = AsyncMock()
     return t
 
 
@@ -77,7 +77,7 @@ def mock_stt():
     stt.transcribe = AsyncMock()
     stt.get_available_engines.return_value = []
     stt.get_all_engines.return_value = []
-    stt.reload_engines = MagicMock()
+    stt.reload_engines = AsyncMock()
     return stt
 
 
@@ -269,6 +269,30 @@ class TestUpdateConfig:
         # TTS provider should still be present
         assert mock_config.get("tts_provider.provider") == "edge_tts"
         assert mock_config.get("tLanguage") == "日语"
+
+    @pytest.mark.asyncio
+    async def test_update_does_not_reload(self, client, mock_tts, mock_translate, mock_stt):
+        """POST /config should only save, not reload engines."""
+        resp = await client.post("/config", json={"target_lang": "日语"})
+        assert resp.status_code == 200
+        mock_tts.reload_engines.assert_not_called()
+        mock_translate.reload_engines.assert_not_called()
+        mock_stt.reload_engines.assert_not_called()
+
+
+# ── POST /config/reload ─────────────────────────────────────────────────
+
+class TestReloadConfig:
+    @pytest.mark.asyncio
+    async def test_reload(self, client, mock_tts, mock_translate, mock_stt, mock_osc):
+        resp = await client.post("/config/reload")
+        assert resp.status_code == 200
+        data = await resp.get_json()
+        assert data["success"] is True
+        mock_tts.reload_engines.assert_called_once()
+        mock_translate.reload_engines.assert_called_once()
+        mock_stt.reload_engines.assert_called_once()
+        mock_osc.reload.assert_called_once()
 
 
 # ── WS /ws ──────────────────────────────────────────────────────────────
