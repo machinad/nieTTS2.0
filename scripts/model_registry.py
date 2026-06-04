@@ -21,10 +21,11 @@ class ModelFile:
     local_path: str          # 相对于项目根目录的本地路径
     size: int                # 文件大小（字节），0 表示目录
     sha256: str              # SHA256 校验值（文件），空字符串表示目录
-    hf_repo: str             # HuggingFace 仓库 ID
-    hf_remote_path: str      # 仓库内文件路径
+    hf_repo: Optional[str]   # HuggingFace 仓库 ID（None = HF 无此文件）
+    hf_remote_path: Optional[str]  # 仓库内文件路径（None = HF 无此文件）
     ms_repo: str             # ModelScope 仓库 ID
     ms_remote_path: Optional[str] = None  # 仓库内文件路径（None = ModelScope 无此文件）
+    github_url: Optional[str] = None  # GitHub 直接下载链接（备用源）
     engine: str = ""         # 所属引擎: silero_vad / matcha_tts / qwen3_asr / hy_mt15
     is_directory: bool = False  # 是否为目录（如 espeak-ng-data）
     description: str = ""    # 文件描述
@@ -42,12 +43,12 @@ MODEL_REGISTRY: list[ModelFile] = [
     # --------------------------------------------------------
     ModelFile(
         local_path="models/silero_vad.onnx",
-        size=643854,
-        sha256="9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6",
+        size=2243022,
+        sha256="a4a068cd6cf1ea8355b84327595838ca748ec29a25bc91fc82e6c299ccdc5808",
         hf_repo="onnx-community/silero-vad",
-        hf_remote_path="silero_vad.onnx",
-        ms_repo="manyeyes/silero-vad-onnx",
-        ms_remote_path="silero_vad.onnx",
+        hf_remote_path="onnx/model.onnx",
+        ms_repo="onnx-community/silero-vad",
+        ms_remote_path="onnx/model.onnx",
         engine="silero_vad",
         description="Silero VAD 语音活动检测模型",
     ),
@@ -70,10 +71,11 @@ MODEL_REGISTRY: list[ModelFile] = [
         local_path="models/vocos-16khz-univ.onnx",
         size=53882848,
         sha256="b599142a1fb8ff03de3e84ac35ff537c619e56f4267a6fe894851a42844acf9e",
-        hf_repo="csukuangfj/matcha-icefall-zh-en",
-        hf_remote_path="vocos-16khz-univ.onnx",
+        hf_repo=None,
+        hf_remote_path=None,
         ms_repo="dengcunqin/matcha_tts_zh_en_20251010",
         ms_remote_path="vocos-16khz-univ.onnx",
+        github_url="https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/vocos-16khz-univ.onnx",
         engine="matcha_tts",
         description="MatchaTTS Vocos 声码器模型",
     ),
@@ -217,18 +219,18 @@ MODEL_REGISTRY: list[ModelFile] = [
     ),
 
     # --------------------------------------------------------
-    # HY-MT1.5 — 翻译模型
+    # HY-MT2 — 翻译模型
     # --------------------------------------------------------
     ModelFile(
-        local_path="models/HY-mt/HY-MT1.5-1.8B-Q8_0.gguf",
-        size=1908528288,
-        sha256="6789b06d0902f2f5312c0e1703d56ccbddfcfb6c653d22519b7c720f7db9a98e",
-        hf_repo="tencent/HY-MT1.5-1.8B-GGUF",
-        hf_remote_path="HY-MT1.5-1.8B-Q8_0.gguf",
-        ms_repo="Tencent-Hunyuan/HY-MT1.5-1.8B-GGUF",
-        ms_remote_path="HY-MT1.5-1.8B-Q8_0.gguf",
+        local_path="models/HY-mt/Hy-MT2-1.8B-2Bit.gguf",
+        size=600534880,
+        sha256="dcc33bbae9b28d923c8c76a64f6157840841d26f8774f3dfd770d5fabeeb1cd7",
+        hf_repo="tencent/Hy-MT2-1.8B-2Bit-GGUF",
+        hf_remote_path="Hy-MT2-1.8B-2Bit.gguf",
+        ms_repo="Tencent-Hunyuan/Hy-MT2-1.8B-2Bit-GGUF",
+        ms_remote_path="Hy-MT2-1.8B-2Bit.gguf",
         engine="hy_mt15",
-        description="HY-MT1.5 翻译模型（1.8B 参数，Q8_0 量化）",
+        description="HY-MT2 翻译模型（1.8B 参数，2Bit 量化）",
     ),
 ]
 

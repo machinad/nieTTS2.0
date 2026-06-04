@@ -73,16 +73,18 @@ def detect_source() -> str:
 class Downloader:
     """模型文件下载器"""
 
-    def __init__(self, source: str, registry: ModelRegistry, force: bool = False):
+    def __init__(self, source: str, registry: ModelRegistry, force: bool = False, hf_endpoint: str | None = None):
         """
         Args:
-            source: "huggingface" 或 "modelscope"
+            source: "huggingface", "huggingface_mirror" 或 "modelscope"
             registry: 模型注册表实例
             force: 是否强制重新下载已有文件
+            hf_endpoint: HuggingFace 镜像地址，如 "https://hf-mirror.com"
         """
         self.source = source
         self.registry = registry
         self.force = force
+        self._hf_endpoint = hf_endpoint or "https://hf-mirror.com"
         self._hf_available = False
         self._ms_available = False
         self._check_libraries()
@@ -244,6 +246,94 @@ class Downloader:
             logger.error("[FAIL] ModelScope 目录下载失败 %s: %s", mf.local_path, e)
             return False
 
+    def _download_single_file_mirror(self, mf: ModelFile) -> bool:
+        """从 HuggingFace 镜像直接下载单个文件（绕过 huggingface_hub 库）"""
+        import httpx
+
+        url = f"{self._hf_endpoint}/{mf.hf_repo}/resolve/main/{mf.hf_remote_path}"
+        local = self.registry.project_root / mf.local_path
+        local.parent.mkdir(parents=True, exist_ok=True)
+
+        try:
+            with httpx.stream("GET", url, follow_redirects=True, timeout=120) as r:
+                r.raise_for_status()
+                with open(local, "wb") as f:
+                    for chunk in r.iter_bytes(chunk_size=8192):
+                        f.write(chunk)
+            logger.info("[OK] 已从镜像下载: %s", mf.local_path)
+            return True
+        except Exception as e:
+            logger.error("[FAIL] 镜像下载失败 %s: %s", mf.local_path, e)
+            return False
+
+    def _download_directory_mirror(self, mf: ModelFile) -> bool:
+        """从 HuggingFace 镜像批量下载目录"""
+        import httpx
+
+        local_dir = self.registry.project_root / mf.local_path
+
+        try:
+            # 通过 API 获取目录下的文件列表
+            api_url = f"{self._hf_endpoint}/api/models/{mf.hf_repo}/tree/main/{mf.hf_remote_path}"
+            r = httpx.get(api_url, follow_redirects=True, timeout=30)
+            r.raise_for_status()
+            files = r.json()
+            file_names = [f["path"].split("/")[-1] for f in files if f.get("type") == "file"]
+
+            if not file_names:
+                logger.error("[FAIL] 镜像目录为空或不存在: %s", mf.hf_remote_path)
+                return False
+
+            local_dir.mkdir(parents=True, exist_ok=True)
+            ok, fail = 0, 0
+            for name in file_names:
+                file_url = f"{self._hf_endpoint}/{mf.hf_repo}/resolve/main/{mf.hf_remote_path}/{name}"
+                dest = local_dir / name
+                try:
+                    with httpx.stream("GET", file_url, follow_redirects=True, timeout=120) as resp:
+                        resp.raise_for_status()
+                        with open(dest, "wb") as f:
+                            for chunk in resp.iter_bytes(chunk_size=8192):
+                                f.write(chunk)
+                    ok += 1
+                except Exception as e:
+                    logger.error("[FAIL] 镜像下载失败 %s/%s: %s", mf.hf_remote_path, name, e)
+                    fail += 1
+
+            if fail == 0:
+                logger.info("[OK] 已从镜像下载目录: %s (%d 个文件)", mf.local_path, ok)
+                return True
+            else:
+                logger.warning("[PARTIAL] 镜像目录下载部分失败: %s (%d 成功, %d 失败)", mf.local_path, ok, fail)
+                return ok > 0
+        except Exception as e:
+            logger.error("[FAIL] 镜像目录下载失败 %s: %s", mf.local_path, e)
+            return False
+
+    def _download_from_github(self, mf: ModelFile) -> bool:
+        """从 GitHub Release 直接下载文件"""
+        import httpx
+
+        if not mf.github_url:
+            logger.error("[FAIL] 无 GitHub 下载链接: %s", mf.local_path)
+            return False
+
+        local = self.registry.project_root / mf.local_path
+        local.parent.mkdir(parents=True, exist_ok=True)
+
+        try:
+            logger.info("从 GitHub 下载: %s", mf.github_url)
+            with httpx.stream("GET", mf.github_url, follow_redirects=True, timeout=300) as r:
+                r.raise_for_status()
+                with open(local, "wb") as f:
+                    for chunk in r.iter_bytes(chunk_size=8192):
+                        f.write(chunk)
+            logger.info("[OK] 已从 GitHub 下载: %s", mf.local_path)
+            return True
+        except Exception as e:
+            logger.error("[FAIL] GitHub 下载失败 %s: %s", mf.local_path, e)
+            return False
+
     def _extract_espeak_zip(self, mf: ModelFile) -> bool:
         """从仓库内的 espeak-ng-data.zip 解压，无需网络下载"""
         if not mf.is_directory:
@@ -272,7 +362,10 @@ class Downloader:
         """
         下载单个模型文件。
 
-        如果当前源不可用（ModelScope 缺失文件），自动回退到 HuggingFace。
+        根据 source 选择不同的下载通道：
+        - huggingface_mirror: 直接从镜像下载（绕过 huggingface_hub 库）
+        - huggingface: 使用 huggingface_hub 库下载
+        - modelscope: 使用 modelscope 库下载，缺失文件回退到 HuggingFace
 
         Returns:
             True 成功，False 失败
@@ -290,20 +383,30 @@ class Downloader:
             # 优先从仓库内的 zip 解压
             if self._extract_espeak_zip(mf):
                 return True
-            if self.source == "huggingface":
+            if self.source == "huggingface_mirror":
+                return self._download_directory_mirror(mf)
+            elif self.source == "huggingface":
                 return self._download_directory_hf(mf)
             else:
-                # ModelScope 目录下载，缺失时回退到 HuggingFace
+                # ModelScope 目录下载，缺失时回退到 HuggingFace 官方
                 if mf.ms_remote_path is None:
                     logger.info("ModelScope 无 %s，从 HuggingFace 补充", mf.local_path)
                     return self._download_directory_hf(mf)
                 return self._download_directory_ms(mf)
         else:
-            if self.source == "huggingface":
+            if self.source == "huggingface_mirror":
+                if mf.hf_remote_path is None:
+                    return self._download_from_github(mf)
+                return self._download_single_file_mirror(mf)
+            elif self.source == "huggingface":
+                if mf.hf_remote_path is None:
+                    return self._download_from_github(mf)
                 return self._download_single_file_hf(mf)
             else:
-                # ModelScope 单文件下载，缺失时回退到 HuggingFace
+                # ModelScope 单文件下载
                 if mf.ms_remote_path is None:
+                    if mf.github_url:
+                        return self._download_from_github(mf)
                     logger.info("ModelScope 无 %s，从 HuggingFace 补充", mf.local_path)
                     return self._download_single_file_hf(mf)
                 return self._download_single_file_ms(mf)
@@ -343,6 +446,19 @@ class Downloader:
             total_ok += ok
             total_fail += fail
         return total_ok, total_fail
+
+
+def get_model_status() -> list[dict]:
+    """获取所有引擎的模型文件状态，供 API 使用"""
+    registry = ModelRegistry()
+    engines = registry.get_engines()
+    result = []
+    for engine in engines:
+        files = registry.get_by_engine(engine)
+        total = len(files)
+        ok = sum(1 for mf in files if registry.verify_file(mf, fast=True)[0])
+        result.append({"engine": engine, "total": total, "ok": ok})
+    return result
 
 
 # ============================================================
@@ -450,7 +566,7 @@ def main():
 
     # download 子命令
     dl_parser = subparsers.add_parser("download", help="下载缺失的模型文件")
-    dl_parser.add_argument("--source", choices=["huggingface", "modelscope"], help="强制使用指定下载源")
+    dl_parser.add_argument("--source", choices=["huggingface", "huggingface_mirror", "modelscope"], help="强制使用指定下载源")
     dl_parser.add_argument("--engine", type=str, help="只下载指定引擎的模型")
     dl_parser.add_argument("--force", action="store_true", help="强制重新下载（忽略已有文件）")
 

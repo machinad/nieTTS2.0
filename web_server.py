@@ -13,6 +13,7 @@ from engines.stt.service import STTService
 from engines.stt.vad.silero_vad import SileroVAD
 from engines.pipeline import RequestPipeline
 from engines.audio.playback import get_playback_devices
+from scripts.download_models import Downloader, ModelRegistry, get_model_status
 logger = logging.getLogger(__name__)
 
 _WSS = set()
@@ -64,10 +65,13 @@ class WebServer:
         self.app.route("/config", methods=["GET"])(self.get_config)
         self.app.route("/config", methods=["POST"])(self.update_config)
         self.app.route("/config/reload", methods=["POST"])(self.reload_config)
+        self.app.route("/models/status", methods=["GET"])(self.models_status)
+        self.app.route("/models/download", methods=["POST"])(self.models_download)
         self.app.websocket("/ws")(self.ws_handler)
         self.app.route("/assets/<path:filename>")(self.serve_assets)
 
         self._vad_instances: dict = {}
+        self._download_task: asyncio.Task | None = None
 
     def _make_vad(self) -> SileroVAD:
         vad_cfg = self.config.config.get("vad", {})
@@ -155,6 +159,37 @@ class WebServer:
             await self.stt.reload_engines()
         self.osc.reload()
         return jsonify({"success": True})
+
+    async def models_status(self):
+        from quart import make_response
+        response = await make_response(jsonify(get_model_status()))
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        return response
+
+    async def models_download(self):
+        data = await request.get_json()
+        if not data or "source" not in data:
+            return jsonify({"error": "缺少 source 参数"}), 400
+        source = data["source"]
+        if source not in ("huggingface", "huggingface_mirror", "modelscope"):
+            return jsonify({"error": f"不支持的下载源: {source}"}), 400
+
+        if self._download_task and not self._download_task.done():
+            return jsonify({"error": "下载任务已在运行中"}), 409
+
+        async def _run_download():
+            try:
+                registry = ModelRegistry()
+                downloader = Downloader(source=source, registry=registry)
+                ok, fail = await asyncio.to_thread(downloader.download_all)
+                logger.info("模型下载完成: %d 成功, %d 失败", ok, fail)
+                await _broadcast({"type": "download_done", "ok": ok, "fail": fail})
+            except Exception as e:
+                logger.error("模型下载异常: %s", e)
+                await _broadcast({"type": "download_done", "ok": 0, "fail": -1})
+
+        self._download_task = asyncio.create_task(_run_download())
+        return jsonify({"status": "started"})
 
     async def ws_handler(self):
         ws_obj = websocket._get_current_object()

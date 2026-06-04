@@ -7,12 +7,14 @@ export interface LogEntry {
 }
 
 export interface WSMessage {
-  type: "stt_result" | "status" | "log"
+  type: "stt_result" | "status" | "log" | "download_done"
   text?: string
   request_id?: string
   state?: "queued" | "processing" | "playing" | "done"
   level?: "info" | "warn" | "error"
   message?: string
+  ok?: number
+  fail?: number
 }
 
 export interface ProviderConfig {

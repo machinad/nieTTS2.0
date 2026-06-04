@@ -49,3 +49,14 @@ export async function postTTS(params: Record<string, any>) {
   })
   return data
 }
+
+export async function getModelsStatus() {
+  return request<{ engine: string; total: number; ok: number }[]>("/models/status")
+}
+
+export async function postModelsDownload(source: string) {
+  return request<{ status: string }>("/models/download", {
+    method: "POST",
+    body: JSON.stringify({ source }),
+  })
+}

@@ -3,6 +3,7 @@ import TTSSettings from "../components/TTSSettings.vue"
 import STTSettings from "../components/STTSettings.vue"
 import TranslateSettings from "../components/TranslateSettings.vue"
 import AudioOSCSettings from "../components/AudioOSCSettings.vue"
+import ModelDownloadSettings from "../components/ModelDownloadSettings.vue"
 </script>
 
 <template>
@@ -18,6 +19,9 @@ import AudioOSCSettings from "../components/AudioOSCSettings.vue"
     </el-tab-pane>
     <el-tab-pane label="音频 & OSC">
       <AudioOSCSettings />
+    </el-tab-pane>
+    <el-tab-pane label="模型下载">
+      <ModelDownloadSettings />
     </el-tab-pane>
   </el-tabs>
 </template>
