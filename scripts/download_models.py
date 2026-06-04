@@ -358,6 +358,35 @@ class Downloader:
             logger.error("[FAIL] 解压失败 %s: %s", zip_path.name, e)
             return False
 
+    def _extract_zip(self, mf: ModelFile) -> bool:
+        """解压带 extract_to 标记的 zip 文件"""
+        if not mf.extract_to:
+            return False
+
+        zip_path = self.registry.project_root / mf.local_path
+        extract_dir = self.registry.project_root / mf.extract_to
+
+        # 如果目标目录已存在且有文件，跳过
+        if extract_dir.exists() and any(extract_dir.rglob("*")):
+            return True
+
+        if not zip_path.exists():
+            logger.warning("[SKIP] 未找到 %s，跳过解压", mf.local_path)
+            return False
+
+        import zipfile
+
+        try:
+            extract_dir.mkdir(parents=True, exist_ok=True)
+            with zipfile.ZipFile(zip_path, "r") as zf:
+                zf.extractall(extract_dir)
+            file_count = sum(1 for _ in extract_dir.rglob("*") if _.is_file())
+            logger.info("[OK] 已解压 %s → %s（%d 个文件）", mf.local_path, mf.extract_to, file_count)
+            return True
+        except Exception as e:
+            logger.error("[FAIL] 解压失败 %s: %s", mf.local_path, e)
+            return False
+
     def download_file(self, mf: ModelFile) -> bool:
         """
         下载单个模型文件。
@@ -371,6 +400,14 @@ class Downloader:
             True 成功，False 失败
         """
         local = self.registry.project_root / mf.local_path
+
+        # 带 extract_to 标记的条目：zip 已在 git 中，只需解压
+        if mf.extract_to:
+            is_valid, _ = self.registry.verify_file(mf, fast=True)
+            if is_valid and not self.force:
+                logger.info("[SKIP] 跳过（已解压）: %s", mf.extract_to)
+                return True
+            return self._extract_zip(mf)
 
         # 检查是否需要下载
         if not self.force and local.exists() and not mf.is_directory:

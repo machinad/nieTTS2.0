@@ -28,7 +28,8 @@ class ModelFile:
     github_url: Optional[str] = None  # GitHub 直接下载链接（备用源）
     engine: str = ""         # 所属引擎: silero_vad / matcha_tts / qwen3_asr / hy_mt15
     is_directory: bool = False  # 是否为目录（如 espeak-ng-data）
-    description: str = ""    # 文件描述
+    extract_to: str = ""       # 解压目标目录（相对项目根），非空时需解压
+    description: str = ""      # 文件描述
 
 
 # ============================================================
@@ -232,6 +233,22 @@ MODEL_REGISTRY: list[ModelFile] = [
         engine="hy_mt15",
         description="HY-MT2 翻译模型（1.8B 参数，2Bit 量化）",
     ),
+
+    # --------------------------------------------------------
+    # llama-cpp — 翻译引擎运行时
+    # --------------------------------------------------------
+    ModelFile(
+        local_path="llama-cpp.zip",
+        size=0,
+        sha256="",
+        hf_repo=None,
+        hf_remote_path=None,
+        ms_repo="",
+        ms_remote_path=None,
+        engine="hy_mt15",
+        extract_to="llama-cpp/",
+        description="llama-server 运行时（自编译，解压到 llama-cpp/ 目录）",
+    ),
 ]
 
 
@@ -265,6 +282,19 @@ class ModelRegistry:
             (is_valid, message)
         """
         local = self.project_root / mf.local_path
+
+        if mf.extract_to:
+            # 需要解压的条目：校验 zip 文件存在性 + 解压目标目录
+            # 跳过 SHA256（运行时二进制会频繁更新）
+            if not local.exists():
+                return False, "文件不存在"
+            extract_dir = self.project_root / mf.extract_to
+            if not extract_dir.exists() or not extract_dir.is_dir():
+                return False, "解压目标目录不存在"
+            file_count = sum(1 for _ in extract_dir.rglob("*") if _.is_file())
+            if file_count == 0:
+                return False, "解压目标目录为空"
+            return True, f"已解压 ({file_count} 个文件)"
 
         if mf.is_directory:
             if not local.exists() or not local.is_dir():
