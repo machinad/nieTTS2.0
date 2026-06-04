@@ -244,6 +244,30 @@ class Downloader:
             logger.error("[FAIL] ModelScope 目录下载失败 %s: %s", mf.local_path, e)
             return False
 
+    def _extract_espeak_zip(self, mf: ModelFile) -> bool:
+        """从仓库内的 espeak-ng-data.zip 解压，无需网络下载"""
+        if not mf.is_directory:
+            return False
+
+        local_dir = self.registry.project_root / mf.local_path
+        zip_path = local_dir.parent / "espeak-ng-data.zip"
+
+        if not zip_path.exists():
+            logger.warning("[SKIP] 未找到 %s，跳过本地解压", zip_path.name)
+            return False
+
+        import zipfile
+
+        try:
+            local_dir.mkdir(parents=True, exist_ok=True)
+            with zipfile.ZipFile(zip_path, "r") as zf:
+                zf.extractall(local_dir)
+            logger.info("[OK] 已从 %s 解压: %s", zip_path.name, mf.local_path)
+            return True
+        except Exception as e:
+            logger.error("[FAIL] 解压失败 %s: %s", zip_path.name, e)
+            return False
+
     def download_file(self, mf: ModelFile) -> bool:
         """
         下载单个模型文件。
@@ -263,6 +287,9 @@ class Downloader:
                 return True
 
         if mf.is_directory:
+            # 优先从仓库内的 zip 解压
+            if self._extract_espeak_zip(mf):
+                return True
             if self.source == "huggingface":
                 return self._download_directory_hf(mf)
             else:

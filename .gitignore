@@ -9,6 +9,6 @@ config.json
 /docs/原始代码(已废弃)
 /docs/sherpa_extracted.txt
 /docs/sherpa_full.txt
-/models*
+/models/**
 /frontend/node_modules
 /llama-cpp
