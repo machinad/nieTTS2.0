@@ -507,6 +507,15 @@ function onTextareaKeydown(e: KeyboardEvent) {
 }
 
 @media (max-width: 768px) {
+  .home {
+    gap: var(--sp-3);
+    height: 100%;
+    overflow: hidden;
+  }
+  .editor__textarea {
+    min-height: 90px;
+    max-height: 140px;
+  }
   .lang-row {
     flex-direction: row;
     flex-wrap: wrap;

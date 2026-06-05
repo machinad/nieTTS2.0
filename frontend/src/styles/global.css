@@ -169,6 +169,41 @@ body {
   background-color: var(--border-default) !important;
 }
 
+/* ---- Tabs: swipeable on mobile ---- */
+@media (max-width: 768px) {
+  .el-tabs__header {
+    touch-action: pan-x !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .el-tabs__nav-prev,
+  .el-tabs__nav-next {
+    display: none !important;
+  }
+  .el-tabs__nav-wrap {
+    overflow: hidden !important;
+    margin: 0 !important;
+    -webkit-mask-image: linear-gradient(to right, black 80%, transparent 100%) !important;
+    mask-image: linear-gradient(to right, black 80%, transparent 100%) !important;
+  }
+  .el-tabs__nav-wrap::after {
+    display: none !important;
+  }
+  .el-tabs__nav-scroll {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    touch-action: pan-x !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+  .el-tabs__nav-scroll::-webkit-scrollbar {
+    display: none !important;
+  }
+  .el-tabs__nav {
+    transform: none !important;
+    flex-shrink: 0 !important;
+  }
+}
+
 .el-input__wrapper,
 .el-textarea__inner {
   background-color: var(--bg-surface) !important;

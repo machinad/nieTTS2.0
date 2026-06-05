@@ -189,15 +189,15 @@ onBeforeUnmount(() => window.removeEventListener("resize", checkMobile))
 
 .content {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: var(--sp-6);
-  display: flex;
-  justify-content: center;
 }
 
 .content > * {
   width: 100%;
   max-width: 680px;
+  margin: 0 auto;
 }
 
 /* Page transition */
@@ -227,7 +227,7 @@ onBeforeUnmount(() => window.removeEventListener("resize", checkMobile))
 
 @media (max-width: 768px) {
   .content {
-    padding: var(--sp-4);
+    padding: var(--sp-3);
   }
 }
 </style>
