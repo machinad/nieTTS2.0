@@ -40,7 +40,6 @@ const selectedVoice = computed({
   },
 })
 
-// 手动保存的文本输入框
 const aliApiKey = ref("")
 const matchaKeys = ["acoustic_model", "vocoder", "tokens", "lexicon", "data_dir", "dict_dir"]
 const matchaValues = ref<Record<string, string>>({})
@@ -94,7 +93,7 @@ const engineDescription = computed(() => {
 </script>
 
 <template>
-  <div>
+  <div class="tts-settings">
     <el-tabs v-model="activeTab">
       <el-tab-pane
         v-for="engine in engines"
@@ -102,21 +101,18 @@ const engineDescription = computed(() => {
         :label="engine"
         :name="engine"
       >
-        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px">
-          <div v-if="engineDescription" style="color: #909399; font-size: 13px; line-height: 1.5; padding: 8px 12px; background: #f5f7fa; border-radius: 4px">
+        <div class="panel">
+          <div v-if="engineDescription" class="desc">
             {{ engineDescription }}
           </div>
 
-          <div style="display: flex; align-items: center; gap: 8px">
-            <span style="font-size: 14px">设为默认引擎</span>
-            <el-switch
-              :model-value="isDefault"
-              @change="onSetDefault"
-            />
+          <div class="row">
+            <span class="row__label">设为默认引擎</span>
+            <el-switch :model-value="isDefault" @change="onSetDefault" />
           </div>
 
-          <div>
-            <span style="font-size: 14px; margin-bottom: 4px; display: block">音色</span>
+          <div class="field">
+            <label class="field__label">音色</label>
             <el-select
               :model-value="selectedVoice"
               @update:model-value="(v: string) => selectedVoice = v"
@@ -124,41 +120,28 @@ const engineDescription = computed(() => {
               clearable
               style="width: 100%"
             >
-              <el-option
-                v-for="v in engineVoices"
-                :key="v"
-                :label="v"
-                :value="v"
-              />
+              <el-option v-for="v in engineVoices" :key="v" :label="v" :value="v" />
             </el-select>
           </div>
 
-          <div v-if="needsApiKey">
-            <span style="font-size: 14px; margin-bottom: 4px; display: block">阿里 API Key</span>
-            <div style="display: flex; align-items: center; gap: 8px">
-              <el-input
-                v-model="aliApiKey"
-                type="password"
-                show-password
-                placeholder="请输入 API Key"
-              />
-              <el-icon v-if="aliApiKey !== (currentProvider.ali_api_key || '')"
-                style="cursor: pointer; color: var(--el-color-primary); font-size: 18px; flex-shrink: 0"
-                @click="saveAliApiKey"><Check /></el-icon>
+          <div v-if="needsApiKey" class="field">
+            <label class="field__label">阿里 API Key</label>
+            <div class="field__input-row">
+              <el-input v-model="aliApiKey" type="password" show-password placeholder="请输入 API Key" />
+              <button v-if="aliApiKey !== (currentProvider.ali_api_key || '')" class="save-icon" @click="saveAliApiKey">
+                <el-icon><Check /></el-icon>
+              </button>
             </div>
           </div>
 
           <template v-if="isMatcha">
-            <div v-for="key in matchaKeys" :key="key">
-              <span style="font-size: 14px; margin-bottom: 4px; display: block">{{ key }}</span>
-              <div style="display: flex; align-items: center; gap: 8px">
-                <el-input
-                  v-model="matchaValues[key]"
-                  :placeholder="`请输入 ${key}`"
-                />
-                <el-icon v-if="matchaValues[key] !== (currentProvider[`matcha_${key}`] || '')"
-                  style="cursor: pointer; color: var(--el-color-primary); font-size: 18px; flex-shrink: 0"
-                  @click="saveMatchaValue(key)"><Check /></el-icon>
+            <div v-for="key in matchaKeys" :key="key" class="field">
+              <label class="field__label">{{ key }}</label>
+              <div class="field__input-row">
+                <el-input v-model="matchaValues[key]" :placeholder="`请输入 ${key}`" />
+                <button v-if="matchaValues[key] !== (currentProvider[`matcha_${key}`] || '')" class="save-icon" @click="saveMatchaValue(key)">
+                  <el-icon><Check /></el-icon>
+                </button>
               </div>
             </div>
           </template>
@@ -167,3 +150,76 @@ const engineDescription = computed(() => {
     </el-tabs>
   </div>
 </template>
+
+<style scoped>
+.tts-settings {
+  margin-top: 4px;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 12px;
+}
+
+.desc {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 12px 16px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--accent);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.row__label {
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field__label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+}
+
+.field__input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.save-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent);
+  background: var(--accent-muted);
+  color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+.save-icon:hover {
+  background: var(--accent);
+  color: #ffffff;
+}
+</style>

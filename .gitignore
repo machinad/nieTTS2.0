@@ -20,3 +20,5 @@ config.json
 !models/matcha-icefall-zh-en/espeak-ng-data.zip
 /frontend/node_modules
 /llama-cpp
+/.agents*
+/.claude*

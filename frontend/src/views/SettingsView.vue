@@ -7,21 +7,37 @@ import ModelDownloadSettings from "../components/ModelDownloadSettings.vue"
 </script>
 
 <template>
-  <el-tabs>
-    <el-tab-pane label="TTS">
-      <TTSSettings />
-    </el-tab-pane>
-    <el-tab-pane label="STT">
-      <STTSettings />
-    </el-tab-pane>
-    <el-tab-pane label="翻译">
-      <TranslateSettings />
-    </el-tab-pane>
-    <el-tab-pane label="音频 & OSC">
-      <AudioOSCSettings />
-    </el-tab-pane>
-    <el-tab-pane label="模型下载">
-      <ModelDownloadSettings />
-    </el-tab-pane>
-  </el-tabs>
+  <div class="settings">
+    <el-tabs class="settings-tabs">
+      <el-tab-pane label="语音合成">
+        <TTSSettings />
+      </el-tab-pane>
+      <el-tab-pane label="语音识别">
+        <STTSettings />
+      </el-tab-pane>
+      <el-tab-pane label="翻译">
+        <TranslateSettings />
+      </el-tab-pane>
+      <el-tab-pane label="音频 & OSC">
+        <AudioOSCSettings />
+      </el-tab-pane>
+      <el-tab-pane label="模型下载">
+        <ModelDownloadSettings />
+      </el-tab-pane>
+    </el-tabs>
+  </div>
 </template>
+
+<style scoped>
+.settings {
+  animation: fadeInUp 400ms var(--ease-out) both;
+}
+
+.settings-tabs :deep(.el-tabs__header) {
+  margin-bottom: 24px;
+}
+
+.settings-tabs :deep(.el-tabs__content) {
+  padding: 0;
+}
+</style>
