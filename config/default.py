@@ -197,9 +197,54 @@ class ConfigManager:
         for key, value in source.items():
             if key in target and isinstance(target[key], dict) and isinstance(value, dict):
                 self._deep_update(target[key], value)
+            elif key in target and isinstance(target[key], list) and isinstance(value, list):
+                # providers 列表按 name 字段合并，避免只修改一个 provider 时丢失其他
+                if value and isinstance(value[0], dict) and "name" in value[0]:
+                    by_name = {p["name"]: p for p in target[key] if isinstance(p, dict) and "name" in p}
+                    for item in value:
+                        if isinstance(item, dict) and "name" in item:
+                            if item["name"] in by_name:
+                                self._deep_update(by_name[item["name"]], item)
+                            else:
+                                by_name[item["name"]] = item
+                    target[key] = list(by_name.values())
+                else:
+                    target[key] = value
             else:
                 target[key] = value
 
     def update(self, data):
-        self._deep_update(self.config, data)
-        return self.save_config()
+        # 从 disk 重新加载最新 config，避免 GUI/Web 端互相覆盖
+        fresh = copy.deepcopy(default_config)
+        if self.config_file.exists():
+            try:
+                with open(self.config_file, 'r', encoding='utf-8') as f:
+                    disk = json.load(f)
+                self._deep_update(fresh, disk)
+            except Exception:
+                pass
+        # 在最新内容上应用本次修改
+        self._deep_update(fresh, data)
+        # 补充缺失的 provider 描述（兼容旧 config）
+        for provider_key in ["tts_provider", "stt_provider", "translation_provider"]:
+            if provider_key in fresh:
+                for provider in fresh[provider_key].get("providers", []):
+                    if not provider.get("description"):
+                        for dp in default_config[provider_key]["providers"]:
+                            if dp.get("name") == provider.get("name") and dp.get("description"):
+                                provider["description"] = dp["description"]
+                                break
+        # 保存并更新内存
+        self._save_file(fresh)
+        # 验证写入结果
+        try:
+            with open(self.config_file, 'r', encoding='utf-8') as f:
+                verify = json.load(f)
+            if verify != fresh:
+                logger.error("配置验证失败! 写入内容与内存不一致")
+            else:
+                logger.info("配置已保存并验证通过 %s", self.config_file)
+        except Exception as e:
+            logger.error("配置验证读取失败: %s", e)
+        self.config = fresh
+        return True

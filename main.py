@@ -1,6 +1,5 @@
 ﻿import asyncio
 import logging
-import sys
 
 from config.default import ConfigManager
 from engines.tts.service import TTSService
@@ -10,6 +9,8 @@ from engines.stt.service import STTService
 from engines.pipeline import RequestPipeline
 from web_server import WebServer, WSLogHandler
 from certificates.certificates_server import CertificateServer
+
+from version import VERSION
 
 logging.basicConfig(
     level=logging.INFO,
@@ -28,8 +29,6 @@ BANNER = r"""
 ██║ ╚████║  ██║  ███████╗     ██║        ██║     ███████║
 ╚═╝  ╚═══╝  ╚═╝  ╚══════╝     ╚═╝        ╚═╝     ╚══════╝
 """  # noqa: W291
-
-VERSION = "v2.1.2"
 
 
 class nieTTS:
