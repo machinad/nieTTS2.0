@@ -391,26 +391,6 @@ QCheckBox::indicator:checked {
     border-color: #d6608a;
 }
 
-/* ---- Switch (CheckBox styled as toggle) ---- */
-QCheckBox#switch {
-    spacing: 8px;
-    background: transparent;
-}
-QCheckBox#switch::indicator {
-    width: 40px;
-    height: 22px;
-    border-radius: 11px;
-    border: 2px solid rgba(0, 0, 0, 0.14);
-    background: #e8e6e3;
-}
-QCheckBox#switch::indicator:hover {
-    border-color: rgba(0, 0, 0, 0.3);
-}
-QCheckBox#switch::indicator:checked {
-    background: #d6608a;
-    border-color: #d6608a;
-}
-
 /* ---- Radio button ---- */
 QRadioButton {
     color: #1a1a1a;

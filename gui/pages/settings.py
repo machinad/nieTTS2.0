@@ -3,10 +3,11 @@ import logging
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTabWidget, QFrame,
-    QComboBox, QLineEdit, QCheckBox, QPushButton, QDoubleSpinBox,
+    QComboBox, QLineEdit, QPushButton, QDoubleSpinBox,
     QSpinBox, QRadioButton, QButtonGroup, QProgressBar, QScrollArea,
     QGridLayout,
 )
+from gui.widgets.toggle import ToggleSwitch
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,7 @@ def _engine_tab_panel(
     is_default: bool,
     on_set_default,
     fields: list,
-) -> QWidget:
+) -> tuple[QWidget, ToggleSwitch]:
     """Build a single engine tab panel matching the Vue frontend layout."""
     panel = QWidget()
     layout = QVBoxLayout(panel)
@@ -73,10 +74,8 @@ def _engine_tab_panel(
     default_label = _label("设为默认引擎", "font-size: 14px; color: #1a1a1a; background: transparent;")
     default_row.addWidget(default_label)
     default_row.addStretch()
-    switch = QCheckBox()
-    switch.setObjectName("switch")
-    switch.setChecked(is_default)
-    switch.stateChanged.connect(lambda state: on_set_default() if state else None)
+    switch = ToggleSwitch(checked=is_default)
+    switch.toggled.connect(lambda checked: on_set_default() if checked else None)
     default_row.addWidget(switch)
     layout.addLayout(default_row)
 
@@ -85,13 +84,16 @@ def _engine_tab_panel(
         layout.addLayout(field)
 
     layout.addStretch()
-    return panel
+    return panel, switch
 
 
 class SettingsPage(QWidget):
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
         self.bridge = bridge
+        self._tts_switches: dict[str, ToggleSwitch] = {}
+        self._stt_switches: dict[str, ToggleSwitch] = {}
+        self._translate_switches: dict[str, ToggleSwitch] = {}
         self._setup_ui()
 
     def _setup_ui(self):
@@ -178,11 +180,12 @@ class SettingsPage(QWidget):
                         lambda checked, n=name, k=key, w=edit: self._update_tts_provider_field(n, f"matcha_{k}", w.text(), reload=True)
                     ))
 
-            panel = _engine_tab_panel(
+            panel, switch = _engine_tab_panel(
                 desc, is_default,
                 lambda n=name: self._set_default_tts(n),
                 fields,
             )
+            self._tts_switches[name] = switch
             engine_tabs.addTab(panel, name)
 
         outer.addWidget(engine_tabs)
@@ -224,11 +227,12 @@ class SettingsPage(QWidget):
                         read_edit.setStyleSheet("color: #9b9a98;")
                         fields.append(_field_col(key, read_edit))
 
-            panel = _engine_tab_panel(
+            panel, switch = _engine_tab_panel(
                 desc, is_default,
                 lambda n=name: self._set_default_stt(n),
                 fields,
             )
+            self._stt_switches[name] = switch
             engine_tabs.addTab(panel, name)
 
         # VAD settings as a separate tab
@@ -323,11 +327,12 @@ class SettingsPage(QWidget):
                         lambda checked, n=name, k=field_key, w=edit: self._update_translate_provider_field(n, k, w.text(), reload=True)
                     ))
 
-            panel = _engine_tab_panel(
+            panel, switch = _engine_tab_panel(
                 desc, is_default,
                 lambda n=name: self._set_default_translate(n),
                 fields,
             )
+            self._translate_switches[name] = switch
             engine_tabs.addTab(panel, name)
 
         outer.addWidget(engine_tabs)
@@ -401,11 +406,9 @@ class SettingsPage(QWidget):
             lbl = _label(label, "font-size: 14px; color: #1a1a1a; background: transparent;")
             rlay.addWidget(lbl)
             rlay.addStretch()
-            cb = QCheckBox()
-            cb.setChecked(cfg.get(key, True))
-            cb.setObjectName("switch")
-            cb.stateChanged.connect(lambda state, k=key: self.bridge.update_config({k: bool(state)}))
-            rlay.addWidget(cb)
+            toggle = ToggleSwitch(checked=cfg.get(key, True))
+            toggle.toggled.connect(lambda checked, k=key: self.bridge.update_config({k: checked}))
+            rlay.addWidget(toggle)
             beh_l.addWidget(row)
         layout.addWidget(beh_card)
 
@@ -417,11 +420,10 @@ class SettingsPage(QWidget):
         osc_l.setContentsMargins(20, 16, 20, 20)
         osc_l.setSpacing(12)
         osc_l.addWidget(_label("OSC 设置", "font-size: 15px; font-weight: 600; color: #1a1a1a; background: transparent;"))
-        osc_enable = QCheckBox("启用 OSC")
-        osc_enable.setChecked(cfg.get("osc_enabled", True))
-        osc_enable.setObjectName("switch")
-        osc_enable.stateChanged.connect(lambda s: self.bridge.update_config({"osc_enabled": bool(s)}))
-        osc_l.addWidget(osc_enable)
+        osc_l.addWidget(_label("启用 OSC", "font-size: 14px; color: #1a1a1a; background: transparent;"))
+        osc_toggle = ToggleSwitch(checked=cfg.get("osc_enabled", True))
+        osc_toggle.toggled.connect(lambda checked: self.bridge.update_config({"osc_enabled": checked}))
+        osc_l.addWidget(osc_toggle)
 
         osc_host_edit = QLineEdit(cfg.get("osc_host", "127.0.0.1"))
         osc_l.addLayout(_field_col("OSC Host", osc_host_edit, lambda: self.bridge.update_config({"osc_host": osc_host_edit.text()})))
@@ -505,12 +507,24 @@ class SettingsPage(QWidget):
         )
 
     def _set_default_tts(self, name: str):
+        for n, sw in self._tts_switches.items():
+            sw.blockSignals(True)
+            sw.setChecked(n == name)
+            sw.blockSignals(False)
         self.bridge.update_config({"tts_provider": {"provider": name}})
 
     def _set_default_stt(self, name: str):
+        for n, sw in self._stt_switches.items():
+            sw.blockSignals(True)
+            sw.setChecked(n == name)
+            sw.blockSignals(False)
         self.bridge.update_config({"stt_provider": {"provider": name}})
 
     def _set_default_translate(self, name: str):
+        for n, sw in self._translate_switches.items():
+            sw.blockSignals(True)
+            sw.setChecked(n == name)
+            sw.blockSignals(False)
         self.bridge.update_config({"translation_provider": {"provider": name}})
 
     def _update_tts_provider_field(self, provider_name: str, key: str, value, reload: bool = False):
