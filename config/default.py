@@ -242,9 +242,13 @@ class ConfigManager:
                 verify = json.load(f)
             if verify != fresh:
                 logger.error("配置验证失败! 写入内容与内存不一致")
+                self.config = fresh
+                return False
             else:
                 logger.info("配置已保存并验证通过 %s", self.config_file)
         except Exception as e:
             logger.error("配置验证读取失败: %s", e)
+            self.config = fresh
+            return False
         self.config = fresh
         return True

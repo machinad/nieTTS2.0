@@ -75,7 +75,14 @@ def _engine_tab_panel(
     default_row.addWidget(default_label)
     default_row.addStretch()
     switch = ToggleSwitch(checked=is_default)
-    switch.toggled.connect(lambda checked: on_set_default() if checked else None)
+    def _on_switch(checked, sw=switch):
+        if checked:
+            on_set_default()
+        else:
+            sw.blockSignals(True)
+            sw.setChecked(True)
+            sw.blockSignals(False)
+    switch.toggled.connect(_on_switch)
     default_row.addWidget(switch)
     layout.addLayout(default_row)
 
@@ -255,12 +262,12 @@ class SettingsPage(QWidget):
         grid = QGridLayout()
         grid.setSpacing(12)
         vad_params = [
-            ("Threshold", "threshold", 0, 1, 0.05),
-            ("Min Silence", "min_silence_duration", 0, 10, 0.05),
-            ("Min Speech", "min_speech_duration", 0, 10, 0.05),
-            ("Max Speech", "max_speech_duration", 0, 60, 0.5),
+            ("Threshold", "threshold", 0, 1, 0.05, 0.5),
+            ("Min Silence", "min_silence_duration", 0, 10, 0.05, 0.25),
+            ("Min Speech", "min_speech_duration", 0, 10, 0.05, 0.25),
+            ("Max Speech", "max_speech_duration", 0, 60, 0.5, 15.0),
         ]
-        for i, (label, key, mn, mx, step) in enumerate(vad_params):
+        for i, (label, key, mn, mx, step, default) in enumerate(vad_params):
             vbox = QVBoxLayout()
             vbox.setSpacing(4)
             lbl = _label(label, "font-size: 14px; font-weight: 500; color: #1a1a1a; background: transparent;")
@@ -273,7 +280,7 @@ class SettingsPage(QWidget):
             spin = QDoubleSpinBox()
             spin.setRange(mn, mx)
             spin.setSingleStep(step)
-            spin.setValue(vad.get(key, 0.5))
+            spin.setValue(vad.get(key, default))
             spin.valueChanged.connect(lambda v, k=key: self._on_vad_change(k, v))
             vbox.addWidget(spin)
             grid.addLayout(vbox, i // 2, i % 2)

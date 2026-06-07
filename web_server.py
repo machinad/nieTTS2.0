@@ -1,7 +1,6 @@
 import asyncio
 import json
 import logging
-from pathlib import Path
 import numpy as np
 from quart import Quart, request, jsonify, websocket, send_from_directory
 from quart_cors import cors
@@ -39,9 +38,17 @@ class WSLogHandler(logging.Handler):
                 level = "warn"
             message = f"[{record.name}] {record.getMessage()}"
             coro = _broadcast({"type": "log", "level": level, "message": message})
-            self._loop.create_task(coro)
+            import threading
+            if threading.current_thread() is threading.main_thread():
+                self._loop.create_task(coro)
+            else:
+                self._loop.call_soon_threadsafe(self._loop.create_task, coro)
         except Exception:
-            self.handleError(record)
+            import sys
+            try:
+                sys.stderr.write(f"WSLogHandler error: {record.getMessage()}\n")
+            except Exception:
+                pass
 
 
 class WebServer:
