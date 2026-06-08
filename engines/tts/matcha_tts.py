@@ -71,7 +71,7 @@ class MatchaTTS(BaseTTS):
                 error="MatchaTTS 模型文件不存在，请先下载模型",
             )
         try:
-            self._lazy_init()
+            await asyncio.to_thread(self._lazy_init)
             sid = int(voice) if voice else 0
             if self._tts.num_speakers > 0 and sid >= self._tts.num_speakers:
                 sid = 0

@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import threading
 import numpy as np
 from quart import Quart, request, jsonify, websocket, send_from_directory
 from quart_cors import cors
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 _WSS = set()
 _WSS_LOCK = asyncio.Lock()
+_MAX_TEXT_LENGTH = 5000
 
 
 class WSLogHandler(logging.Handler):
@@ -38,7 +40,6 @@ class WSLogHandler(logging.Handler):
                 level = "warn"
             message = f"[{record.name}] {record.getMessage()}"
             coro = _broadcast({"type": "log", "level": level, "message": message})
-            import threading
             if threading.current_thread() is threading.main_thread():
                 self._loop.create_task(coro)
             else:
@@ -111,8 +112,8 @@ class WebServer:
         text = (data.get("text") or "").strip()
         if not text:
             return jsonify({"error": "文本内容不能为空"}), 400
-        if len(text) > 5000:
-            return jsonify({"error": "文本内容过长，最多 5000 字符"}), 400
+        if len(text) > _MAX_TEXT_LENGTH:
+            return jsonify({"error": f"文本内容过长，最多 {_MAX_TEXT_LENGTH} 字符"}), 400
 
         req_id = await self.pipeline.submit_tts(
             text=text,
@@ -215,7 +216,7 @@ class WebServer:
                     if typ == "start":
                         logger.info("WS: 客户端请求开始音频流")
                         vad = self._make_vad()
-                        self._vad_instances[id(ws_obj)] = vad
+                        self._vad_instances[ws_obj] = vad
                     elif typ == "stop":
                         logger.info("WS: audio stream stop requested")
                         if vad is not None and self.stt is not None:
@@ -241,7 +242,7 @@ class WebServer:
                                     )
                                 vad.pop()
                         vad = None
-                        self._vad_instances.pop(id(ws_obj), None)
+                        self._vad_instances.pop(ws_obj, None)
                 elif isinstance(raw, bytes):
                     if vad is None or self.stt is None:
                         continue
@@ -275,7 +276,7 @@ class WebServer:
         finally:
             async with _WSS_LOCK:
                 _WSS.discard(ws_obj)
-            self._vad_instances.pop(id(ws_obj), None)
+            self._vad_instances.pop(ws_obj, None)
 
     async def serve_assets(self, filename):
         return await send_from_directory(str(self._templates / "assets"), filename)

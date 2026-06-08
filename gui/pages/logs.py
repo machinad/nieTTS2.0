@@ -1,3 +1,4 @@
+import html
 import logging
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -82,7 +83,7 @@ class LogsPage(QWidget):
         self._terminal.append(
             f'<div style="color:{color};font-family:JetBrains Mono,Consolas,monospace;'
             f'font-size:13px;line-height:1.6;">'
-            f'<span style="font-size:10px;">{icon}</span> {message}</div>'
+            f'<span style="font-size:10px;">{icon}</span> {html.escape(message)}</div>'
         )
         sb = self._terminal.verticalScrollBar()
         sb.setValue(sb.maximum())

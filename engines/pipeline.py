@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -48,7 +47,9 @@ def _resolve_edge_voice(target_lang: str) -> str:
 
 def _engine_supports_lang(engine: str, lang: str) -> bool:
     langs = _ENGINE_LANGS.get(engine)
-    return langs is None or lang in langs
+    if langs is None:
+        return False
+    return lang in langs
 
 
 @dataclass
@@ -126,13 +127,14 @@ class RequestPipeline:
         while self._running:
             try:
                 req = await self._request_queue.get()
-                await self._process(req)
-                self._request_queue.task_done()
+                try:
+                    await self._process(req)
+                finally:
+                    self._request_queue.task_done()
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 logger.exception(f"_request_worker 异常: {e}")
-                self._request_queue.task_done()
 
     async def _process(self, req: TTSRequest) -> None:
         # 先启动翻译（异步），与原文 TTS 并行执行
@@ -220,7 +222,7 @@ class RequestPipeline:
                         path.unlink(missing_ok=True)
                         break
                     except PermissionError:
-                        time.sleep(0.05)
+                        await asyncio.sleep(0.05)
                 self._play_queue.task_done()
             except asyncio.CancelledError:
                 break

@@ -10,14 +10,12 @@ import socket
 class CertificateServer:
     def __init__(self):
         try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.connect(("8.8.8.8", 80)) # 连接到一个外部地址以获取本机IP
-            local_ip = s.getsockname()[0]
-            self.ip_address = local_ip
-            s.close()
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                s.connect(("8.8.8.8", 80))
+                self.ip_address = s.getsockname()[0]
         except Exception as e:
             logging.error(f"无法获取本机局域网 IP 地址: {e}")
-            local_ip = "未知"
+            self.ip_address = "127.0.0.1"
         # 证书文件生成在当前 py 文件所在目录，其他类可通过 server.cert_path 访问
         self.cert_path = Path(__file__).parent
         self.key_path = self.cert_path / "key.pem"

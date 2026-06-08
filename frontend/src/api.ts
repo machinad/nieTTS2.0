@@ -9,7 +9,8 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
     const body = await res.json().catch(() => ({}))
     throw new Error((body as any).error || `HTTP ${res.status}`)
   }
-  return res.json()
+  const text = await res.text()
+  return text ? JSON.parse(text) : ({} as T)
 }
 
 export async function getConfig() {

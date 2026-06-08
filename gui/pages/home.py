@@ -1,3 +1,4 @@
+import html
 import logging
 from PySide6.QtCore import Qt, Signal, QSize, QByteArray
 from PySide6.QtGui import QIcon, QPixmap, QPainter
@@ -317,7 +318,7 @@ class HomePage(QWidget):
         color_map = {"info": "#6b6a68", "warn": "#c48520", "error": "#d04840"}
         color = color_map.get(level, "#6b6a68")
         self._log_box.appendHtml(
-            f'<span style="color:{color};font-family:JetBrains Mono,Consolas,monospace;font-size:12px;">{message}</span>'
+            f'<span style="color:{color};font-family:JetBrains Mono,Consolas,monospace;font-size:12px;">{html.escape(message)}</span>'
         )
         sb = self._log_box.verticalScrollBar()
         sb.setValue(sb.maximum())

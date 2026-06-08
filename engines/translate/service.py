@@ -44,12 +44,13 @@ class TranslateService:
         return {p["name"]: p.get("description", "") for p in providers if p.get("name")}
 
     async def reload_engines(self):
-        new_provider = self.config.get("translation_provider.provider", "openai")
-        if self._active_provider != new_provider:
-            old = self._engines.get(self._active_provider)
-            if old:
-                await old.close()
-            self._active_provider = new_provider
+        for engine in self._engines.values():
+            try:
+                await engine.close()
+            except Exception:
+                pass
+        self._engines.clear()
+        self._active_provider = self.config.get("translation_provider.provider", "openai")
         self._build_engines()
 
     async def translate(self, text: str, provider: str = None,

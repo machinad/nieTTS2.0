@@ -1,5 +1,6 @@
 ﻿import copy
 import json
+import threading
 from pathlib import Path
 import logging
 logger = logging.getLogger(__name__)
@@ -80,7 +81,7 @@ default_config = {
         "max_speech_duration": 15.0,
         "window_size": 512,
     },
-    "device": "CABLE Input (VB-Audio Virtual Cable)",
+    "device": "",
     "source_lang": "中文",
     "target_lang": "英语",
     "isPlayAudio": True,
@@ -94,10 +95,13 @@ default_config = {
 
 class ConfigManager:
     _instance = None
+    _lock = threading.Lock()
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
         return cls._instance
 
     def __init__(self):

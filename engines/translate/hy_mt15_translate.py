@@ -21,9 +21,6 @@ _ZH_TO_EN = {
 class HyMT15Translate(BaseTranslate):
     engine_name = "HY-MT1.5"
 
-    # 类变量：所有实例共享同一个 llama-server 进程，避免 reload_engines 重建时重复启动
-    _process: subprocess.Popen | None = None
-
     @classmethod
     def from_config(cls, cfg: dict):
         return cls(
@@ -36,6 +33,7 @@ class HyMT15Translate(BaseTranslate):
         self.model_path = Path(model_path)
         self.server_url = server_url.rstrip("/")
         self.llama_cpp_path = Path(llama_cpp_path)
+        self._process: subprocess.Popen | None = None
 
     def is_available(self) -> bool:
         return self.model_path.exists()
@@ -68,42 +66,43 @@ class HyMT15Translate(BaseTranslate):
             "-c", "4096",
             "--no-warmup",
         ]
-        type(self)._process = subprocess.Popen(
+        self._process = subprocess.Popen(
             cmd,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-        logger.info("llama-server 已启动 (PID: %s)", type(self)._process.pid)
+        logger.info("llama-server 已启动 (PID: %s)", self._process.pid)
 
     def _stop_server(self):
-        proc = type(self)._process
+        proc = self._process
         if proc is not None:
             try:
                 proc.kill()
                 proc.wait(timeout=5)
             except Exception:
                 pass
-            type(self)._process = None
+            self._process = None
 
     async def close(self):
         """释放 llama-server 子进程资源"""
         self._stop_server()
 
     async def _wait_ready(self, timeout: int = 15) -> bool:
-        for _ in range(int(timeout / 0.5)):
-            await asyncio.sleep(0.5)
-            try:
-                r = httpx.get(f"{self.server_url}/health", timeout=3)
-                if r.status_code == 200:
-                    return True
-            except Exception:
-                continue
+        async with httpx.AsyncClient(timeout=3) as client:
+            for _ in range(int(timeout / 0.5)):
+                await asyncio.sleep(0.5)
+                try:
+                    r = await client.get(f"{self.server_url}/health")
+                    if r.status_code == 200:
+                        return True
+                except Exception:
+                    continue
         return False
 
     async def translate(self, text: str, source_lang: str, target_lang: str, **kwargs) -> TranslateResult:
         try:
-            if type(self)._process is None or type(self)._process.poll() is not None:
-                self._start_server()
+            if self._process is None or self._process.poll() is not None:
+                await asyncio.to_thread(self._start_server)
                 if not await self._wait_ready():
                     return TranslateResult(
                         success=False,

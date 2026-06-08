@@ -40,6 +40,7 @@ async def play_file(path: Path, device_name: str = "") -> None:
     suffix = path.suffix.lower()
     if suffix not in _SUPPORTED_SUFFIXES:
         logger.warning(f"不支持的音频格式: {suffix}")
+        return
 
     device_id = None
     if device_name:

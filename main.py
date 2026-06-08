@@ -58,6 +58,7 @@ class nieTTS:
         logger.info(f"nieTTS {VERSION} 运行在 https://{self._host}:{self._port}")
         logger.info(f"局域网地址: https://{self.cert.ip_address}:{self._port}")
 
+        self._shutdown_event = asyncio.Event()
         await self.web.app.run_task(
             host=self._host,
             port=self._port,
@@ -67,8 +68,7 @@ class nieTTS:
         )
 
     async def _shutdown_trigger(self):
-        while True:
-            await asyncio.sleep(3600)
+        await self._shutdown_event.wait()
 
     def _cleanup_orphan_files(self):
         save_dir = self.config.save_path
@@ -76,10 +76,11 @@ class nieTTS:
             for f in save_dir.iterdir():
                 if f.is_file():
                     f.unlink(missing_ok=True)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"清理孤儿文件失败: {e}")
 
     async def stop(self):
+        self._shutdown_event.set()
         await self.pipeline.stop()
         logger.info("nieTTS 已停止")
 

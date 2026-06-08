@@ -22,3 +22,5 @@ config.json
 /llama-cpp
 /.agents*
 /.claude*
+AUDIT_REPORT.md
+FIX_PLAN.md

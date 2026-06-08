@@ -17,6 +17,7 @@ class SambertTTS(BaseTTS):
     def __init__(self, save_dir, api_key: str = ""):
         super().__init__(save_dir)
         self.api_key = api_key
+        self._lock = asyncio.Lock()
 
     def is_available(self) -> bool:
         return bool(self.api_key)
@@ -24,11 +25,12 @@ class SambertTTS(BaseTTS):
     async def synthesize(self, text: str, voice: str, **kwargs) -> TTSResult:
         save_path = self._make_path(".mp3")
         try:
-            dashscope.api_key = self.api_key
-            result = await asyncio.to_thread(
-                SpeechSynthesizerV1.call, model=voice, text=text,
-                sample_rate=48000, format="mp3",
-            )
+            async with self._lock:
+                dashscope.api_key = self.api_key
+                result = await asyncio.to_thread(
+                    SpeechSynthesizerV1.call, model=voice, text=text,
+                    sample_rate=48000, format="mp3",
+                )
             audio_data = result.get_audio_data()
             if audio_data is not None:
                 await asyncio.to_thread(save_path.write_bytes, audio_data)

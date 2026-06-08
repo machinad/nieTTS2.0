@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from "vue"
+import { ref, computed, onBeforeUnmount } from "vue"
 import { useRouter } from "vue-router"
 import { ElMessage } from "element-plus"
 import { appStore, getActiveEngine, getActiveVoice, getSourceLang, getTargetLang, addLog } from "../store"
@@ -101,8 +101,6 @@ async function startRecording() {
     analyser.connect(scriptNode)
     scriptNode.connect(audioContext.destination)
 
-    unsubWs = wsManager.onMessage(() => {})
-
     wsManager.send(JSON.stringify({ type: "start" }))
     isRecording.value = true
     showVoicePanel.value = true
@@ -167,6 +165,10 @@ function onTextareaKeydown(e: KeyboardEvent) {
     onSend()
   }
 }
+
+onBeforeUnmount(() => {
+  if (isRecording.value) cleanupAudio()
+})
 </script>
 
 <template>

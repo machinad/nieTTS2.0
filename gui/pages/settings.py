@@ -533,6 +533,7 @@ class SettingsPage(QWidget):
             sw.setChecked(n == name)
             sw.blockSignals(False)
         self.bridge.update_config({"translation_provider": {"provider": name}})
+        self._reload_async()
 
     def _update_tts_provider_field(self, provider_name: str, key: str, value, reload: bool = False):
         if not isinstance(provider_name, str) or not provider_name:

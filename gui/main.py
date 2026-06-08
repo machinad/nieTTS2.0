@@ -36,8 +36,9 @@ class MainWindow(QMainWindow):
         loop.call_soon(self._init_async)
 
     def closeEvent(self, event):
+        self._audio.stop_recording()
         loop = asyncio.get_event_loop()
-        loop.call_soon_threadsafe(loop.stop)
+        loop.call_soon(loop.stop)
         event.accept()
 
     def _setup_ui(self):
