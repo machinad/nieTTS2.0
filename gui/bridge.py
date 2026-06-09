@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from config.default import ConfigManager
+from config.provider_voice import Edge_TTS_voices, ali_tts_voices, sambert_tts_voices
 from engines.tts.service import TTSService
 from engines.translate.service import TranslateService
 from engines.osc.service import OSCService
@@ -46,7 +47,14 @@ class GuiBridge:
         return ok
 
     def get_config(self) -> dict:
-        return self.config.config
+        cfg = dict(self.config.config)
+        cfg["voices"] = {
+            "edge_tts": list(Edge_TTS_voices.keys()),
+            "cosyvoice": list(ali_tts_voices.keys()),
+            "sambert": list(sambert_tts_voices.keys()),
+            "MatchaTTS": ["0"],
+        }
+        return cfg
 
     def get_provider_config(self, name: str) -> dict:
         return self.config.get_provider_config(name)

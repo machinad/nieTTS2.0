@@ -94,7 +94,7 @@ class GuiAudioInput(QObject):
         samples_f32 = samples_int16.astype(np.float32) / 32768.0
 
         rms = float(np.sqrt(np.mean(samples_f32**2))) if len(samples_f32) > 0 else 0.0
-        self.level_changed.emit(min(1.0, rms * 5.0))
+        self.level_changed.emit(min(1.0, rms * 10.0))
 
         if self._vad is None:
             return

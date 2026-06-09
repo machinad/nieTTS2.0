@@ -116,7 +116,7 @@ class SettingsPage(QWidget):
         self._tabs.addTab(self._build_tts_tab(), "语音合成")
         self._tabs.addTab(self._build_stt_tab(), "语音识别")
         self._tabs.addTab(self._build_translate_tab(), "翻译")
-        self._tabs.addTab(self._build_audio_tab(), "音频 & 其它")
+        self._tabs.addTab(self._build_audio_tab(), "音频 && 其它")
         self._tabs.addTab(self._build_download_tab(), "模型下载")
         root.addWidget(self._tabs)
 
@@ -149,7 +149,6 @@ class SettingsPage(QWidget):
 
             # Voice combo
             voice_combo = QComboBox()
-            voice_combo.setEditable(True)
             voice_combo.blockSignals(True)
             voice_combo.addItems(voices)
             current_voice = prov.get("voice", "")

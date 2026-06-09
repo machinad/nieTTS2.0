@@ -35,7 +35,7 @@ class WaveformWidget(QWidget):
             dist = abs(i - step)
             wave = math.sin((self._tick * 0.15) + i * 0.3) * 0.3
             self._levels[i] = max(
-                self._levels[i] * 0.85,
+                self._levels[i] * 0.7,
                 level * max(0, 1.0 - dist * 0.04) + wave * level * 0.3,
             )
 

@@ -1,4 +1,7 @@
+import os
 from PySide6.QtWidgets import QApplication
+
+_ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets").replace("\\", "/")
 
 # Design tokens mapped from frontend/src/styles/global.css
 QSS = """
@@ -201,6 +204,7 @@ QPushButton#filter_btn[active="true"] {
 QFrame[class="toggle_row"] {
     border-bottom: 1px solid rgba(0, 0, 0, 0.04);
     padding: 10px 0;
+    background-color: #ffffff;
 }
 
 /* ---- Tab widget ---- */
@@ -233,6 +237,7 @@ QComboBox {
     border: 1px solid rgba(0, 0, 0, 0.08);
     border-radius: 10px;
     padding: 8px 12px;
+    padding-right: 36px;
     background: #ffffff;
     color: #1a1a1a;
     font-size: 14px;
@@ -245,18 +250,14 @@ QComboBox:focus {
     border-color: #d6608a;
 }
 QComboBox::drop-down {
-    border: none;
+    border: 1px solid transparent;
     width: 28px;
     subcontrol-position: center right;
 }
 QComboBox::down-arrow {
-    image: none;
-    width: 0;
-    height: 0;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 6px solid #6b6a68;
-    margin-right: 8px;
+    image: url(__ASSETS_DIR__/chevron-down.svg);
+    width: 12px;
+    height: 12px;
 }
 QComboBox QAbstractItemView {
     background: #ffffff;
@@ -329,18 +330,14 @@ QDoubleSpinBox::down-button, QSpinBox::down-button {
     background: transparent;
 }
 QDoubleSpinBox::up-arrow, QSpinBox::up-arrow {
-    width: 0;
-    height: 0;
-    border-left: 4px solid transparent;
-    border-right: 4px solid transparent;
-    border-bottom: 5px solid #6b6a68;
+    image: url(__ASSETS_DIR__/chevron-up.svg);
+    width: 12px;
+    height: 12px;
 }
 QDoubleSpinBox::down-arrow, QSpinBox::down-arrow {
-    width: 0;
-    height: 0;
-    border-left: 4px solid transparent;
-    border-right: 4px solid transparent;
-    border-top: 5px solid #6b6a68;
+    image: url(__ASSETS_DIR__/chevron-down.svg);
+    width: 12px;
+    height: 12px;
 }
 
 /* ---- Plain text edit ---- */
@@ -562,7 +559,7 @@ QPushButton {
     border: none;
     color: #1a1a1a;
 }
-"""
+""".replace("__ASSETS_DIR__", _ASSETS_DIR)
 
 
 def apply_theme(app: QApplication):

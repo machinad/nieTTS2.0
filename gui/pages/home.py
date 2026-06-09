@@ -164,8 +164,8 @@ class HomePage(QWidget):
         arrow.setPixmap(arrow_pixmap)
         arrow.setFixedSize(24, 24)
         arrow.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        arrow.setStyleSheet("background: transparent; padding-bottom: 8px;")
-        lang_layout.addWidget(arrow)
+        arrow.setStyleSheet("background: transparent;")
+        lang_layout.addWidget(arrow, alignment=Qt.AlignmentFlag.AlignVCenter)
 
         tgt_col = QVBoxLayout()
         tgt_col.setSpacing(6)
