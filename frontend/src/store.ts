@@ -36,6 +36,7 @@ export interface AppConfig {
   osc_enabled: boolean
   osc_host: string
   osc_port: number
+  port: number
   vad: Record<string, number>
   available_devices: { name: string }[]
   voices: Record<string, string[]>

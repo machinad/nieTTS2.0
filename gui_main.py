@@ -90,6 +90,11 @@ def main():
         logger.info("Web 服务启动在 https://%s:%s", host, port)
         logger.info("局域网地址: https://%s:%s", cert_server.ip_address, port)
 
+        bridge.ip_address = cert_server.ip_address
+        bridge.web_port = port
+
+        window._home_page.update_web_url()
+
         web = WebServer(config, tts, translate, osc, pipeline, stt)
 
         shutdown_event = asyncio.Event()
@@ -106,9 +111,6 @@ def main():
                 shutdown_trigger=_web_shutdown_trigger,
             )
         )
-
-        window.set_connected(True)
-        window._about_page._api_url.setText(f"https://{cert_server.ip_address}:{port}")
 
     async def _shutdown():
         qt_log_handler.disable()

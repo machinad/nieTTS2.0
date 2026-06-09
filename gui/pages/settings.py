@@ -116,7 +116,7 @@ class SettingsPage(QWidget):
         self._tabs.addTab(self._build_tts_tab(), "语音合成")
         self._tabs.addTab(self._build_stt_tab(), "语音识别")
         self._tabs.addTab(self._build_translate_tab(), "翻译")
-        self._tabs.addTab(self._build_audio_tab(), "音频 & OSC")
+        self._tabs.addTab(self._build_audio_tab(), "音频 & 其它")
         self._tabs.addTab(self._build_download_tab(), "模型下载")
         root.addWidget(self._tabs)
 
@@ -439,6 +439,20 @@ class SettingsPage(QWidget):
         osc_port_spin.setValue(cfg.get("osc_port", 9000))
         osc_l.addLayout(_field_col("OSC Port", osc_port_spin, lambda: self.bridge.update_config({"osc_port": osc_port_spin.value()})))
         layout.addWidget(osc_card)
+
+        # Web 端口设置
+        port_card = QFrame()
+        port_card.setObjectName("card")
+        port_card.setProperty("class", "card")
+        port_l = QVBoxLayout(port_card)
+        port_l.setContentsMargins(20, 16, 20, 20)
+        port_l.setSpacing(12)
+        port_l.addWidget(_label("Web 端口", "font-size: 15px; font-weight: 600; color: #1a1a1a; background: transparent;"))
+        port_spin = QSpinBox()
+        port_spin.setRange(1, 65535)
+        port_spin.setValue(cfg.get("port", 11451))
+        port_l.addLayout(_field_col("web端口（重启生效）", port_spin, lambda: self.bridge.update_config({"port": port_spin.value()})))
+        layout.addWidget(port_card)
 
         layout.addStretch()
         scroll.setWidget(container)

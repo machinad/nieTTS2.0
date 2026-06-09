@@ -73,6 +73,8 @@ def _make_icon(svg_data: bytes, size: int = 16) -> QIcon:
 class HomePage(QWidget):
     request_send = Signal(str, dict)
     log_message = Signal(str, str)
+    recording_started = Signal()
+    recording_stopped = Signal()
 
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
@@ -91,9 +93,20 @@ class HomePage(QWidget):
         scroll_layout.setContentsMargins(24, 24, 24, 24)
         scroll_layout.setSpacing(16)
 
+        title_row = QHBoxLayout()
         title = QLabel("主页")
         title.setObjectName("page_title")
-        scroll_layout.addWidget(title)
+        title_row.addWidget(title)
+        title_row.addStretch()
+
+        self._url_label = QLabel()
+        self._url_label.setStyleSheet(
+            "font-family: 'JetBrains Mono', 'Consolas', monospace; "
+            "font-size: 12px; color: #9b9a98; background: transparent;"
+        )
+        self.update_web_url()
+        title_row.addWidget(self._url_label)
+        scroll_layout.addLayout(title_row)
 
         # ---- Editor card ----
         editor_card = QFrame()
@@ -323,5 +336,11 @@ class HomePage(QWidget):
         sb = self._log_box.verticalScrollBar()
         sb.setValue(sb.maximum())
 
-    recording_started = Signal()
-    recording_stopped = Signal()
+    def update_web_url(self):
+        self._url_label.setText(f"web面板地址(可跨设备访问): {self._get_web_url()}")
+
+    def _get_web_url(self):
+        ip = self.bridge.ip_address
+        port = self.bridge.web_port
+        return f"https://{ip}:{port}"
+

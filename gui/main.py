@@ -92,10 +92,6 @@ class MainWindow(QMainWindow):
         except Exception as e:
             logger.error("加载模型状态失败: %s", e)
 
-    def set_connected(self, connected: bool):
-        self._header.set_connected(connected)
-        self._about_page.set_connected(connected)
-
     def _on_log(self, level: str, message: str):
         self._home_page.append_log(level, message)
         self._logs_page.append_log(level, message)

@@ -24,3 +24,5 @@ config.json
 /.claude*
 AUDIT_REPORT.md
 FIX_PLAN.md
+AGENTS.md
+CLAUDE.md

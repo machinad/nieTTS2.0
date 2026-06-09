@@ -18,7 +18,7 @@ import ModelDownloadSettings from "../components/ModelDownloadSettings.vue"
       <el-tab-pane label="翻译">
         <TranslateSettings />
       </el-tab-pane>
-      <el-tab-pane label="音频 & OSC">
+      <el-tab-pane label="音频 & 其它">
         <AudioOSCSettings />
       </el-tab-pane>
       <el-tab-pane label="模型下载">

@@ -157,6 +157,27 @@ async function onOscPortChange(v: any) {
         </div>
       </div>
     </div>
+
+    <!-- Web port settings -->
+    <div class="card">
+      <div class="card__header">
+        <svg viewBox="0 0 24 24" fill="none" width="18" height="18">
+          <path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Web 端口</span>
+      </div>
+      <div class="osc-fields">
+        <div class="field">
+          <label class="field__label">web端口（重启生效）</label>
+          <el-input-number
+            :model-value="appStore.config.port || 11451"
+            :min="1"
+            :max="65535"
+            @change="(v: number) => onChangeField('port', v)"
+          />
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 

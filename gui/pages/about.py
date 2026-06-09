@@ -114,36 +114,4 @@ class AboutPage(QWidget):
             stack_l.addLayout(row)
         root.addWidget(stack_card)
 
-        conn_card, conn_l = _card("连接状态")
-        self._ws_status = QLabel("\u25CF  WebSocket 已断开")
-        self._ws_status.setStyleSheet(
-            "font-size: 14px; font-weight: 500; color: #d04840;"
-        )
-        conn_l.addWidget(self._ws_status)
-        api_info = QVBoxLayout()
-        api_info.setSpacing(4)
-        api_label = QLabel("API 地址")
-        api_label.setStyleSheet("font-size: 12px; font-weight: 600; color: #9b9a98;")
-        api_info.addWidget(api_label)
-        self._api_url = QLabel("https://0.0.0.0:11451")
-        self._api_url.setStyleSheet(
-            "font-family: 'Consolas', monospace; font-size: 13px; color: #6b6a68;"
-            "padding: 8px 12px; background: #f0eeeb; border-radius: 8px;"
-        )
-        api_info.addWidget(self._api_url)
-        conn_l.addLayout(api_info)
-        root.addWidget(conn_card)
-
         root.addStretch()
-
-    def set_connected(self, connected: bool):
-        if connected:
-            self._ws_status.setText("\u25CF  WebSocket 已连接")
-            self._ws_status.setStyleSheet(
-                "font-size: 14px; font-weight: 500; color: #3da85c;"
-            )
-        else:
-            self._ws_status.setText("\u25CF  WebSocket 已断开")
-            self._ws_status.setStyleSheet(
-                "font-size: 14px; font-weight: 500; color: #d04840;"
-            )

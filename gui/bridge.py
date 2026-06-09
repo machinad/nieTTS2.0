@@ -27,6 +27,8 @@ class GuiBridge:
         self.osc = osc
         self.stt = stt
         self.pipeline = pipeline
+        self.ip_address = "127.0.0.1"
+        self.web_port = 11451
 
     async def submit_tts(self, text: str, **opts) -> str:
         return await self.pipeline.submit_tts(text=text, **opts)
