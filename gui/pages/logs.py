@@ -1,5 +1,6 @@
 import html
 import logging
+from datetime import datetime
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -47,7 +48,8 @@ class LogsPage(QWidget):
         clear_btn = QPushButton("  清空")
         clear_btn.setObjectName("secondary_btn")
         clear_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        clear_btn.setFixedHeight(36)
+        clear_btn.setFixedHeight(40)
+        clear_btn.setMinimumWidth(80)
         clear_btn.clicked.connect(self._clear_logs)
         toolbar.addWidget(clear_btn)
 
@@ -80,9 +82,11 @@ class LogsPage(QWidget):
     def _append_html(self, level: str, message: str):
         color = COLOR_MAP.get(level, "#6b6a68")
         icon = ICON_MAP.get(level, "\u25CF")
+        timestamp = datetime.now().strftime("%H:%M:%S")
         self._terminal.append(
             f'<div style="color:{color};font-family:JetBrains Mono,Consolas,monospace;'
             f'font-size:13px;line-height:1.6;">'
+            f'<span style="color:#9b9a98;">{timestamp}</span> '
             f'<span style="font-size:10px;">{icon}</span> {html.escape(message)}</div>'
         )
         sb = self._terminal.verticalScrollBar()

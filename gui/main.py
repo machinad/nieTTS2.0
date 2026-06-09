@@ -116,5 +116,5 @@ class MainWindow(QMainWindow):
     def _on_stt_result(self, text: str):
         logger.info("STT 识别结果: %s", text)
 
-    def _on_audio_level(self, level: float):
-        self._home_page.update_waveform(level)
+    def _on_audio_level(self, level: float, freq_levels: list):
+        self._home_page.update_waveform(level, freq_levels)

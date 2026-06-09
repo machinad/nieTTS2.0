@@ -1,6 +1,6 @@
 import html
 import logging
-from PySide6.QtCore import Qt, Signal, QSize, QByteArray
+from PySide6.QtCore import Qt, Signal, QSize, QByteArray, QEvent
 from PySide6.QtGui import QIcon, QPixmap, QPainter
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
@@ -129,9 +129,10 @@ class HomePage(QWidget):
         editor_layout.addLayout(editor_header)
 
         self._text_edit = QPlainTextEdit()
-        self._text_edit.setPlaceholderText("输入要合成的文本...\n\nEnter 发送 · Ctrl+Enter 换行")
+        self._text_edit.setPlaceholderText("输入要合成的文本...\n\nEnter 发送 · shift+Enter 换行")
         self._text_edit.setMaximumHeight(200)
         self._text_edit.textChanged.connect(self._on_text_changed)
+        self._text_edit.installEventFilter(self)
         editor_layout.addWidget(self._text_edit)
 
         scroll_layout.addWidget(editor_card)
@@ -263,6 +264,15 @@ class HomePage(QWidget):
         self._engine_label.setText(text)
         self._engine_label.setIcon(_make_icon(_SVG_GEAR, 16))
 
+    def eventFilter(self, obj, event):
+        if obj is self._text_edit and event.type() == QEvent.Type.KeyPress:
+            if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                if not (event.modifiers() & Qt.KeyboardModifier.ControlModifier) and \
+                   not (event.modifiers() & Qt.KeyboardModifier.ShiftModifier):
+                    self._on_send()
+                    return True
+        return super().eventFilter(obj, event)
+
     def _on_text_changed(self):
         text = self._text_edit.toPlainText()
         if len(text) > 5000:
@@ -323,9 +333,9 @@ class HomePage(QWidget):
         self._waveform.hide()
         self.recording_stopped.emit()
 
-    def update_waveform(self, level: float):
+    def update_waveform(self, level: float, freq_levels: list = None):
         if self._recording:
-            self._waveform.update_level(level)
+            self._waveform.update_level(level, freq_levels)
 
     def append_log(self, level: str, message: str):
         color_map = {"info": "#6b6a68", "warn": "#c48520", "error": "#d04840"}

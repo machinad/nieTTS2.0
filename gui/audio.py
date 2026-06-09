@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 import numpy as np
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtMultimedia import QAudioSource, QAudioFormat, QMediaDevices
@@ -9,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 class GuiAudioInput(QObject):
     stt_result_ready = Signal(str)
-    level_changed = Signal(float)
+    level_changed = Signal(float, list)
 
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
@@ -20,6 +21,9 @@ class GuiAudioInput(QObject):
         self._recording = False
         self._device_name = ""
         self._stt_tasks: set[asyncio.Task] = set()
+        self._last_level_time = 0  # 上次发送 level 的时间戳
+        self._buffer_size = 2000  # 固定缓冲区大小
+        self._sample_buffer = np.zeros(0, dtype=np.float32)  # 样本缓冲区
 
     def start_recording(self, device_name: str = ""):
         if self._recording:
@@ -57,6 +61,7 @@ class GuiAudioInput(QObject):
             return
 
         self._audio_source = QAudioSource(target_device, fmt)
+        self._audio_source.setBufferSize(self._buffer_size * 2)  # 每个样本2字节（Int16）
         self._io_device = self._audio_source.start()
         if self._io_device:
             self._io_device.readyRead.connect(self._on_audio_data)
@@ -68,6 +73,7 @@ class GuiAudioInput(QObject):
         if not self._recording:
             return
         self._recording = False
+        self._sample_buffer = np.zeros(0, dtype=np.float32)  # 清空样本缓冲区
 
         if self._audio_source:
             self._audio_source.stop()
@@ -93,8 +99,48 @@ class GuiAudioInput(QObject):
         samples_int16 = np.frombuffer(raw, dtype=np.int16)
         samples_f32 = samples_int16.astype(np.float32) / 32768.0
 
-        rms = float(np.sqrt(np.mean(samples_f32**2))) if len(samples_f32) > 0 else 0.0
-        self.level_changed.emit(min(1.0, rms * 10.0))
+        # 将新数据添加到缓冲区
+        self._sample_buffer = np.concatenate([self._sample_buffer, samples_f32])
+
+        # 当缓冲区达到2000个样本时进行FFT分析
+        while len(self._sample_buffer) >= self._buffer_size:
+            # 取出2000个样本
+            frame = self._sample_buffer[:self._buffer_size]
+            self._sample_buffer = self._sample_buffer[self._buffer_size:]
+
+            # 限制 level 信号发送频率到 16fps（约62.5ms）
+            current_time = time.time() * 1000  # 转换为毫秒
+            if current_time - self._last_level_time >= 62.5:  # 62.5ms = 16fps
+                self._last_level_time = current_time
+                
+                rms = float(np.sqrt(np.mean(frame**2)))
+                
+                # RMS 太小则跳过 FFT，直接输出全零
+                silence_threshold = 0.005
+                if rms < silence_threshold:
+                    self.level_changed.emit(0.0, [0.0] * 30)
+                    continue
+                
+                # FFT 分析
+                fft_data = np.abs(np.fft.rfft(frame))
+                fft_data = fft_data[:len(fft_data)//2]  # 只取前半部分（有效频率）
+                if np.max(fft_data) > 0:
+                    fft_data = fft_data / np.max(fft_data)  # 归一化到 0-1
+                
+                # 采样范围：第9-39个bin（72Hz-316Hz）
+                start_bin = 9
+                end_bin = 39
+                fft_data_trimmed = fft_data[start_bin:end_bin]  # 30个bin
+                
+                # 只基于关心的bin进行归一化
+                if np.max(fft_data_trimmed) > 0:
+                    fft_data_trimmed = fft_data_trimmed / np.max(fft_data_trimmed)
+                
+                # 放大系数
+                amplify_factor = 1.5
+                freq_levels = [min(1.0, float(x) * amplify_factor) for x in fft_data_trimmed]
+                
+                self.level_changed.emit(min(1.0, rms * 20.0), freq_levels)
 
         if self._vad is None:
             return

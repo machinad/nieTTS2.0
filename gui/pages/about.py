@@ -49,8 +49,7 @@ class AboutPage(QWidget):
 
         hero = QFrame()
         hero.setStyleSheet(
-            "QFrame { background: qlineargradient(x1:0,y1:0,x2:1,y2:1,"
-            "stop:0 #ffffff, stop:1 #f0eeeb);"
+            "QFrame { background: #ffffff;"
             "border: 1px solid rgba(0,0,0,0.04); border-radius: 20px; }"
         )
         hero_layout = QVBoxLayout(hero)
@@ -69,8 +68,7 @@ class AboutPage(QWidget):
         p.end()
         icon_lbl.setPixmap(pixmap)
         icon_lbl.setStyleSheet(
-            "background: qlineargradient(x1:0,y1:0,x2:1,y2:1,"
-            "stop:0 #d6608a, stop:1 #9a6ad6);"
+            "background: #d6608a;"
             "border-radius: 16px;"
         )
         hero_layout.addWidget(icon_lbl, 0, Qt.AlignmentFlag.AlignCenter)
