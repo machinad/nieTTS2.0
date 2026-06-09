@@ -121,7 +121,15 @@ class RequestPipeline:
         return req.request_id
 
     async def submit_stt_text(self, text: str) -> str:
-        return await self.submit_tts(text)
+        return await self.submit_tts(
+            text,
+            translate=bool(self.config.get("isTranslate", True)),
+            play_audio=bool(self.config.get("isPlayAudio", True)),
+            play_translation=bool(self.config.get("isPlayTranslation", True)),
+            osc_enabled=bool(self.config.get("osc_enabled", True)),
+            source_lang=self.config.get("source_lang", "中文"),
+            target_lang=self.config.get("target_lang", "英语"),
+        )
 
     async def _request_worker(self):
         while self._running:
