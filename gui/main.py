@@ -55,7 +55,7 @@ class MainWindow(QMainWindow):
         right.setContentsMargins(0, 0, 0, 0)
         right.setSpacing(0)
 
-        self._header = Header()
+        self._header = Header(self.bridge)
         right.addWidget(self._header)
 
         self._stack = QStackedWidget()

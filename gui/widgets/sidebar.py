@@ -1,9 +1,11 @@
-from PySide6.QtCore import Qt, Signal, QSize, QByteArray
-from PySide6.QtGui import QIcon, QPixmap, QPainter
+from PySide6.QtCore import Qt, Signal, QSize, QByteArray, QPropertyAnimation, QEasingCurve
+from PySide6.QtGui import QPixmap, QPainter
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
     QFrame, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
 )
+
+from gui.widgets.utils import svg_icon
 
 # SVG icon paths (stroke-based, 24x24 viewBox, matching Element Plus style)
 _SVG_HOUSE = b'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
@@ -60,19 +62,6 @@ _SVG_CHEVRON_RIGHT = b'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24
 </svg>'''
 
 
-def _svg_icon(svg_data: bytes, color: str = "#6b6a68", size: int = 20) -> QIcon:
-    """Render SVG bytes to a QIcon with the given color."""
-    svg = svg_data.replace(b"currentColor", color.encode())
-    renderer = QSvgRenderer(QByteArray(svg))
-    pixmap = QPixmap(size, size)
-    pixmap.fill(Qt.GlobalColor.transparent)
-    painter = QPainter(pixmap)
-    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-    renderer.render(painter)
-    painter.end()
-    return QIcon(pixmap)
-
-
 class _NavButton(QPushButton):
     def __init__(self, svg_data: bytes, label: str, parent=None):
         super().__init__(parent)
@@ -99,7 +88,7 @@ class _NavButton(QPushButton):
 
     def _update_appearance(self):
         color = "#d6608a" if self._active else "#6b6a68"
-        icon = _svg_icon(self._svg_data, color)
+        icon = svg_icon(self._svg_data, color)
         self.setIcon(icon)
         if self._collapsed:
             self.setText("")
@@ -172,7 +161,7 @@ class Sidebar(QFrame):
         self._collapse_btn.setFixedSize(36, 36)
         self._collapse_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._collapse_btn.setIconSize(QSize(16, 16))
-        self._collapse_btn.setIcon(_svg_icon(_SVG_CHEVRON_LEFT, "#6b6a68"))
+        self._collapse_btn.setIcon(svg_icon(_SVG_CHEVRON_LEFT, "#6b6a68"))
         self._collapse_btn.clicked.connect(self._toggle_collapse)
         collapse_row = QHBoxLayout()
         collapse_row.addStretch()
@@ -193,15 +182,42 @@ class Sidebar(QFrame):
             btn.set_active(i == index)
 
     def _toggle_collapse(self):
+        if hasattr(self, '_anim_min'):
+            self._anim_min.stop()
+            try:
+                self._anim_min.finished.disconnect(self._update_collapse_state)
+            except RuntimeError:
+                pass
+        if hasattr(self, '_anim_max'):
+            self._anim_max.stop()
+
         self._collapsed = not self._collapsed
+        target = 64 if self._collapsed else 220
+        current = self.width()
+
+        self._anim_min = QPropertyAnimation(self, b"minimumWidth")
+        self._anim_min.setDuration(200)
+        self._anim_min.setStartValue(current)
+        self._anim_min.setEndValue(target)
+        self._anim_min.setEasingCurve(QEasingCurve.Type.InOutCubic)
+
+        self._anim_max = QPropertyAnimation(self, b"maximumWidth")
+        self._anim_max.setDuration(200)
+        self._anim_max.setStartValue(current)
+        self._anim_max.setEndValue(target)
+        self._anim_max.setEasingCurve(QEasingCurve.Type.InOutCubic)
+
+        self._anim_min.finished.connect(self._update_collapse_state)
+        self._anim_min.start()
+        self._anim_max.start()
+
+    def _update_collapse_state(self):
         if self._collapsed:
-            self.setFixedWidth(64)
             self._logo_label.hide()
-            self._collapse_btn.setIcon(_svg_icon(_SVG_CHEVRON_RIGHT, "#6b6a68"))
+            self._collapse_btn.setIcon(svg_icon(_SVG_CHEVRON_RIGHT, "#6b6a68"))
         else:
-            self.setFixedWidth(220)
             self._logo_label.show()
-            self._collapse_btn.setIcon(_svg_icon(_SVG_CHEVRON_LEFT, "#6b6a68"))
+            self._collapse_btn.setIcon(svg_icon(_SVG_CHEVRON_LEFT, "#6b6a68"))
         for btn in self._nav_buttons:
             btn.set_collapsed(self._collapsed)
         self.collapse_changed.emit(self._collapsed)

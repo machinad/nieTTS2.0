@@ -98,14 +98,6 @@ class HomePage(QWidget):
         title.setObjectName("page_title")
         title_row.addWidget(title)
         title_row.addStretch()
-
-        self._url_label = QLabel()
-        self._url_label.setStyleSheet(
-            "font-family: 'JetBrains Mono', 'Consolas', monospace; "
-            "font-size: 12px; color: #9b9a98; background: transparent;"
-        )
-        self.update_web_url()
-        title_row.addWidget(self._url_label)
         scroll_layout.addLayout(title_row)
 
         # ---- Editor card ----
@@ -345,12 +337,4 @@ class HomePage(QWidget):
         )
         sb = self._log_box.verticalScrollBar()
         sb.setValue(sb.maximum())
-
-    def update_web_url(self):
-        self._url_label.setText(f"web面板地址(可跨设备访问): {self._get_web_url()}")
-
-    def _get_web_url(self):
-        ip = self.bridge.ip_address
-        port = self.bridge.web_port
-        return f"https://{ip}:{port}"
 

@@ -93,7 +93,7 @@ def main():
         bridge.ip_address = cert_server.ip_address
         bridge.web_port = port
 
-        window._home_page.update_web_url()
+        window._header.update_web_url()
 
         web = WebServer(config, tts, translate, osc, pipeline, stt)
 
