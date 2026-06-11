@@ -39,8 +39,8 @@ class nieTTS:
         self.translate = TranslateService(self.config)
         self.osc = OSCService(self.config)
         self.stt = STTService(self.config)
-        self.pipeline = RequestPipeline(self.config, self.tts, self.translate, self.osc)
-        self.web = WebServer(self.config, self.tts, self.translate, self.osc, self.pipeline, self.stt)
+        self.pipeline = RequestPipeline(self.config, self.tts, self.translate, self.osc, stt=self.stt)
+        self.web = WebServer(self.config, self.tts, self.translate, self.osc, self.pipeline)
         self.cert = CertificateServer()
 
         self._host = self.config.get("host", "0.0.0.0")

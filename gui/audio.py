@@ -20,7 +20,6 @@ class GuiAudioInput(QObject):
         self._vad = None
         self._recording = False
         self._device_name = ""
-        self._stt_tasks: set[asyncio.Task] = set()
         self._last_level_time = 0  # 上次发送 level 的时间戳
         self._buffer_size = 2000  # 固定缓冲区大小
         self._sample_buffer = np.zeros(0, dtype=np.float32)  # 样本缓冲区
@@ -152,16 +151,7 @@ class GuiAudioInput(QObject):
             return
         while not self._vad.empty():
             seg = self._vad.front
-            task = asyncio.create_task(self._run_stt(seg.samples, seg.sample_rate))
-            self._stt_tasks.add(task)
-            task.add_done_callback(self._stt_tasks.discard)
+            asyncio.ensure_future(self.bridge.pipeline.submit(
+                audio_samples=seg.samples, sample_rate=seg.sample_rate,
+            ))
             self._vad.pop()
-
-    async def _run_stt(self, samples, sample_rate: int):
-        try:
-            result = await self.bridge.transcribe_audio(samples, sample_rate)
-            if result.is_success and result.text:
-                self.stt_result_ready.emit(result.text)
-                await self.bridge.submit_stt_text(result.text)
-        except Exception as e:
-            logger.error("GUI STT 处理异常: %s", e)

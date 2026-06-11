@@ -14,7 +14,6 @@ from config.default import ConfigManager, default_config
 from engines.tts.service import TTSService
 from engines.translate.service import TranslateService
 from engines.osc.service import OSCService
-from engines.stt.service import STTService
 from engines.pipeline import RequestPipeline
 from web_server import WebServer
 
@@ -65,26 +64,18 @@ def mock_osc():
 def mock_pipeline():
     p = MagicMock(spec=RequestPipeline)
     p.submit_tts = AsyncMock(return_value="abc123def456")
-    p.submit_stt_text = AsyncMock(return_value="stt_abc123")
+    p.submit = AsyncMock(return_value="abc123def456")
     p.start = AsyncMock()
     p.stop = AsyncMock()
+    p.stt = MagicMock()
+    p.stt.reload_engines = AsyncMock()
     return p
 
 
 @pytest.fixture
-def mock_stt():
-    stt = MagicMock(spec=STTService)
-    stt.transcribe = AsyncMock()
-    stt.get_available_engines.return_value = []
-    stt.get_all_engines.return_value = []
-    stt.reload_engines = AsyncMock()
-    return stt
-
-
-@pytest.fixture
-def app(mock_config, mock_tts, mock_translate, mock_osc, mock_pipeline, mock_stt):
+def app(mock_config, mock_tts, mock_translate, mock_osc, mock_pipeline):
     server = WebServer(mock_config, mock_tts, mock_translate, mock_osc,
-                       mock_pipeline, mock_stt)
+                       mock_pipeline)
     return server.app
 
 
@@ -271,27 +262,26 @@ class TestUpdateConfig:
         assert mock_config.get("tLanguage") == "日语"
 
     @pytest.mark.asyncio
-    async def test_update_does_not_reload(self, client, mock_tts, mock_translate, mock_stt):
+    async def test_update_does_not_reload(self, client, mock_tts, mock_translate):
         """POST /config should only save, not reload engines."""
         resp = await client.post("/config", json={"target_lang": "日语"})
         assert resp.status_code == 200
         mock_tts.reload_engines.assert_not_called()
         mock_translate.reload_engines.assert_not_called()
-        mock_stt.reload_engines.assert_not_called()
 
 
 # ── POST /config/reload ─────────────────────────────────────────────────
 
 class TestReloadConfig:
     @pytest.mark.asyncio
-    async def test_reload(self, client, mock_tts, mock_translate, mock_stt, mock_osc):
+    async def test_reload(self, client, mock_tts, mock_translate, mock_pipeline, mock_osc):
         resp = await client.post("/config/reload")
         assert resp.status_code == 200
         data = await resp.get_json()
         assert data["success"] is True
         mock_tts.reload_engines.assert_called_once()
         mock_translate.reload_engines.assert_called_once()
-        mock_stt.reload_engines.assert_called_once()
+        mock_pipeline.stt.reload_engines.assert_called_once()
         mock_osc.reload.assert_called_once()
 
 
@@ -344,10 +334,11 @@ class TestWebSocket:
             await ws.send(json.dumps({"type": "stop"}))
 
     @pytest.mark.asyncio
-    async def test_start_then_binary_audio_flow(self, mock_stt):
+    async def test_start_then_binary_audio_flow(self):
         """Start -> binary audio -> stop should process pipeline without crash."""
-        mock_stt.transcribe = AsyncMock()
-        mock_stt.get_available_engines.return_value = ["Qwen3"]
+        mock_pipeline = MagicMock(spec=RequestPipeline)
+        mock_pipeline.submit = AsyncMock(return_value="abc123")
+        mock_pipeline.stt = MagicMock()
 
         ConfigManager._instance = None
         server = WebServer(
@@ -355,8 +346,7 @@ class TestWebSocket:
             MagicMock(),
             MagicMock(),
             MagicMock(),
-            MagicMock(),
-            mock_stt,
+            mock_pipeline,
         )
         server._templates = Path(__file__).parent
         c = server.app.test_client()

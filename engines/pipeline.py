@@ -3,7 +3,9 @@ import logging
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Callable
+
+import numpy as np
 
 from config.default import ConfigManager
 from engines.tts.service import TTSService
@@ -53,9 +55,13 @@ def _engine_supports_lang(engine: str, lang: str) -> bool:
 
 
 @dataclass
-class TTSRequest:
-    text: str
+class PipelineRequest:
     request_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
+    # 输入（二选一）
+    text: str = ""
+    audio_samples: Optional[np.ndarray] = field(default=None, repr=False)
+    sample_rate: int = 16000
+    # TTS 参数
     tts_provider: str = ""
     voice: str = ""
     translate: bool = True
@@ -64,24 +70,38 @@ class TTSRequest:
     osc_enabled: bool = True
     source_lang: str = "中文"
     target_lang: str = ""
+    # STT 结果回调（可选，优先于全局回调）
+    _stt_callback: Optional[Callable[[str, str], None]] = field(
+        default=None, repr=False, compare=False
+    )
+
+
+# 向后兼容
+TTSRequest = PipelineRequest
 
 
 class RequestPipeline:
 
     def __init__(self, config: ConfigManager, tts: TTSService,
-                 translate: TranslateService, osc: OSCService):
+                 translate: TranslateService, osc: OSCService,
+                 stt=None):
         self.config = config
         self.tts = tts
         self.translate = translate
         self.osc = osc
+        self.stt = stt
 
-        self._request_queue: asyncio.Queue[TTSRequest] = asyncio.Queue()
+        self._request_queue: asyncio.Queue[PipelineRequest] = asyncio.Queue()
         self._play_queue: asyncio.Queue[Path | None] = asyncio.Queue()
 
         self._running = False
         self._request_task: Optional[asyncio.Task] = None
         self._play_task: Optional[asyncio.Task] = None
         self._bg_tasks: set[asyncio.Task] = set()
+        self._stt_result_callback: Optional[Callable] = None
+
+    def on_stt_result(self, callback: Callable):
+        self._stt_result_callback = callback
 
     async def start(self):
         if self._running:
@@ -104,11 +124,17 @@ class RequestPipeline:
             self._bg_tasks.clear()
         logger.info("RequestPipeline 已停止")
 
-    async def submit_tts(self, text: str, **opts) -> str:
-        req = TTSRequest(text=text, **{
-            k: v for k, v in opts.items()
-            if k in TTSRequest.__dataclass_fields__ and k != "request_id"
-        })
+    async def submit(self, *, text: str = "",
+                     audio_samples: np.ndarray | None = None,
+                     sample_rate: int = 16000,
+                     stt_callback: Callable | None = None,
+                     **opts) -> str:
+        req = PipelineRequest(
+            text=text, audio_samples=audio_samples, sample_rate=sample_rate,
+            _stt_callback=stt_callback,
+            **{k: v for k, v in opts.items()
+               if k in PipelineRequest.__dataclass_fields__ and k != "request_id"},
+        )
         if not req.tts_provider:
             req.tts_provider = self.config.get("tts_provider.provider", "edge_tts")
         if not req.voice:
@@ -117,34 +143,44 @@ class RequestPipeline:
         if not req.target_lang:
             req.target_lang = self.config.get("target_lang", "英语")
         await self._request_queue.put(req)
-        logger.info(f"请求入队: {req.request_id}  text={text[:40]}")
+        if req.audio_samples is not None:
+            logger.info("音频请求入队: %s", req.request_id)
+        else:
+            logger.info("请求入队: %s  text=%s", req.request_id, req.text[:40])
         return req.request_id
 
-    async def submit_stt_text(self, text: str) -> str:
-        return await self.submit_tts(
-            text,
-            translate=bool(self.config.get("isTranslate", True)),
-            play_audio=bool(self.config.get("isPlayAudio", True)),
-            play_translation=bool(self.config.get("isPlayTranslation", True)),
-            osc_enabled=bool(self.config.get("osc_enabled", True)),
-            source_lang=self.config.get("source_lang", "中文"),
-            target_lang=self.config.get("target_lang", "英语"),
-        )
+    async def submit_tts(self, text: str, **opts) -> str:
+        return await self.submit(text=text, **opts)
 
     async def _request_worker(self):
         while self._running:
             try:
                 req = await self._request_queue.get()
                 try:
+                    if req.audio_samples is not None and self.stt is not None:
+                        stt_result = await self.stt.transcribe(
+                            req.audio_samples, req.sample_rate
+                        )
+                        if not stt_result.is_success or not stt_result.text:
+                            logger.warning("STT 失败，跳过: %s", stt_result.error)
+                            continue
+                        req.text = stt_result.text
+                        if req._stt_callback:
+                            req._stt_callback(req.request_id, req.text)
+                        elif self._stt_result_callback:
+                            self._stt_result_callback(req.request_id, req.text)
+                    if not req.text:
+                        logger.warning("请求无文本内容，跳过: %s", req.request_id)
+                        continue
                     await self._process(req)
                 finally:
                     self._request_queue.task_done()
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.exception(f"_request_worker 异常: {e}")
+                logger.exception("_request_worker 异常: %s", e)
 
-    async def _process(self, req: TTSRequest) -> None:
+    async def _process(self, req: PipelineRequest) -> None:
         # 先启动翻译（异步），与原文 TTS 并行执行
         if req.translate or req.play_translation:
             task = asyncio.create_task(self._handle_translate_bg(req))
@@ -177,7 +213,7 @@ class RequestPipeline:
         if not req.translate and req.osc_enabled:
             self.osc.send_original(req.text)
 
-    async def _handle_translate_bg(self, req: TTSRequest) -> None:
+    async def _handle_translate_bg(self, req: PipelineRequest) -> None:
         try:
             translate_result = await self.translate.translate(
                 req.text,

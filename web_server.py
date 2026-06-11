@@ -10,7 +10,6 @@ from config.notifier import ConfigNotifier
 from engines.tts.service import TTSService
 from engines.translate.service import TranslateService
 from engines.osc.service import OSCService
-from engines.stt.service import STTService
 from engines.stt.vad.silero_vad import SileroVAD
 from engines.pipeline import RequestPipeline
 from engines.audio.playback import get_playback_devices
@@ -57,15 +56,15 @@ class WebServer:
 
     def __init__(self, config: ConfigManager, tts: TTSService,
                  translate: TranslateService, osc: OSCService,
-                 pipeline: RequestPipeline, stt: STTService | None = None,
+                 pipeline: RequestPipeline,
                  notifier: ConfigNotifier | None = None):
         self.config = config
         self.tts = tts
         self.translate = translate
         self.osc = osc
         self.pipeline = pipeline
-        self.stt = stt
         self._notifier = notifier
+        self._stt_result_ws_map: dict = {}
         if notifier:
             notifier.on_change(self._on_config_changed, source="gui")
 
@@ -174,8 +173,8 @@ class WebServer:
     async def reload_config(self):
         await self.tts.reload_engines()
         await self.translate.reload_engines()
-        if self.stt:
-            await self.stt.reload_engines()
+        if self.pipeline.stt:
+            await self.pipeline.stt.reload_engines()
         self.osc.reload()
         return jsonify({"success": True})
 
@@ -224,6 +223,12 @@ class WebServer:
         async with _WSS_LOCK:
             _WSS.add(ws_obj)
         vad: SileroVAD | None = None
+
+        def _on_stt_done(req_id, text):
+            asyncio.ensure_future(ws_obj.send(json.dumps({
+                "type": "stt_result", "text": text,
+            }, ensure_ascii=False)))
+
         try:
             while True:
                 raw = await websocket.receive()
@@ -239,55 +244,31 @@ class WebServer:
                         self._vad_instances[ws_obj] = vad
                     elif typ == "stop":
                         logger.info("WS: audio stream stop requested")
-                        if vad is not None and self.stt is not None:
+                        if vad is not None:
                             vad.flush()
                             while not vad.empty():
                                 seg = vad.front
-                                result = await self.stt.transcribe(seg.samples, seg.sample_rate)
-                                if result.is_success and result.text:
-                                    await ws_obj.send(json.dumps({
-                                        "type": "stt_result",
-                                        "text": result.text,
-                                    }, ensure_ascii=False))
-                                    await self.pipeline.submit_tts(
-                                        text=result.text,
-                                        tts_provider=self.config.get("tts_provider.provider", "edge_tts"),
-                                        voice=self.config.get("tts_provider.voice", ""),
-                                        translate=bool(self.config.get("isTranslate", True)),
-                                        play_audio=bool(self.config.get("isPlayAudio", True)),
-                                        play_translation=bool(self.config.get("isPlayTranslation", True)),
-                                        osc_enabled=bool(self.config.get("osc_enabled", True)),
-                                        source_lang="中文",
-                                        target_lang=self.config.get("target_lang", "英语"),
-                                    )
+                                await self.pipeline.submit(
+                                    audio_samples=seg.samples,
+                                    sample_rate=seg.sample_rate,
+                                    stt_callback=_on_stt_done,
+                                )
                                 vad.pop()
                         vad = None
                         self._vad_instances.pop(ws_obj, None)
                 elif isinstance(raw, bytes):
-                    if vad is None or self.stt is None:
+                    if vad is None:
                         continue
                     try:
                         samples = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
                         vad.accept_waveform(samples)
                         while not vad.empty():
                             seg = vad.front
-                            result = await self.stt.transcribe(seg.samples, seg.sample_rate)
-                            if result.is_success and result.text:
-                                await ws_obj.send(json.dumps({
-                                    "type": "stt_result",
-                                    "text": result.text,
-                                }, ensure_ascii=False))
-                                await self.pipeline.submit_tts(
-                                    text=result.text,
-                                    tts_provider=self.config.get("tts_provider.provider", "edge_tts"),
-                                    voice=self.config.get("tts_provider.voice", ""),
-                                    translate=bool(self.config.get("isTranslate", True)),
-                                    play_audio=bool(self.config.get("isPlayAudio", True)),
-                                    play_translation=bool(self.config.get("isPlayTranslation", True)),
-                                    osc_enabled=bool(self.config.get("osc_enabled", True)),
-                                    source_lang="中文",
-                                    target_lang=self.config.get("target_lang", "英语"),
-                                )
+                            await self.pipeline.submit(
+                                audio_samples=seg.samples,
+                                sample_rate=seg.sample_rate,
+                                stt_callback=_on_stt_done,
+                            )
                             vad.pop()
                     except Exception as e:
                         logger.error("WS audio processing error: %s", e)

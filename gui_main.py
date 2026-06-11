@@ -70,10 +70,10 @@ def main():
     translate = TranslateService(config)
     osc = OSCService(config)
     stt = STTService(config)
-    pipeline = RequestPipeline(config, tts, translate, osc)
+    pipeline = RequestPipeline(config, tts, translate, osc, stt=stt)
 
     notifier = ConfigNotifier()
-    bridge = GuiBridge(config, tts, translate, osc, stt, pipeline, notifier=notifier)
+    bridge = GuiBridge(config, tts, translate, osc, pipeline, notifier=notifier)
 
     window = MainWindow(bridge, qt_log_handler)
     window.show()
@@ -97,7 +97,7 @@ def main():
 
         window._header.update_web_url()
 
-        web = WebServer(config, tts, translate, osc, pipeline, stt, notifier=notifier)
+        web = WebServer(config, tts, translate, osc, pipeline, notifier=notifier)
         web.set_loop(asyncio.get_running_loop())
 
         shutdown_event = asyncio.Event()

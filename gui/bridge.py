@@ -7,7 +7,6 @@ from config.provider_voice import Edge_TTS_voices, ali_tts_voices, sambert_tts_v
 from engines.tts.service import TTSService
 from engines.translate.service import TranslateService
 from engines.osc.service import OSCService
-from engines.stt.service import STTService
 from engines.pipeline import RequestPipeline
 from engines.audio.playback import get_playback_devices
 
@@ -16,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 class GuiBridge(QObject):
     config_changed = Signal()
+    stt_result_ready = Signal(str)
 
     def __init__(
         self,
@@ -23,7 +23,6 @@ class GuiBridge(QObject):
         tts: TTSService,
         translate: TranslateService,
         osc: OSCService,
-        stt: STTService,
         pipeline: RequestPipeline,
         notifier: ConfigNotifier | None = None,
         parent: QObject | None = None,
@@ -33,25 +32,23 @@ class GuiBridge(QObject):
         self.tts = tts
         self.translate = translate
         self.osc = osc
-        self.stt = stt
         self.pipeline = pipeline
         self.ip_address = "127.0.0.1"
         self.web_port = 11451
         self._notifier = notifier
         if notifier:
             notifier.on_change(self._on_remote_config_change, source="webui")
+        if pipeline:
+            pipeline.on_stt_result(self._on_stt_result)
 
     def _on_remote_config_change(self, source):
         self.config_changed.emit()
 
+    def _on_stt_result(self, request_id, text):
+        self.stt_result_ready.emit(text)
+
     async def submit_tts(self, text: str, **opts) -> str:
-        return await self.pipeline.submit_tts(text=text, **opts)
-
-    async def submit_stt_text(self, text: str) -> str:
-        return await self.pipeline.submit_stt_text(text)
-
-    async def transcribe_audio(self, samples, sample_rate: int):
-        return await self.stt.transcribe(samples, sample_rate)
+        return await self.pipeline.submit(text=text, **opts)
 
     def update_config(self, data: dict) -> bool:
         ok = self.config.update(data)
@@ -83,7 +80,8 @@ class GuiBridge(QObject):
     async def reload_engines(self):
         await self.tts.reload_engines()
         await self.translate.reload_engines()
-        await self.stt.reload_engines()
+        if self.pipeline.stt:
+            await self.pipeline.stt.reload_engines()
         self.osc.reload()
 
     async def download_models(self, source: str):

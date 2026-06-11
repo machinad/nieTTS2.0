@@ -26,11 +26,11 @@ class MainWindow(QMainWindow):
         self.resize(1200, 800)
 
         self._audio = GuiAudioInput(bridge)
-        self._audio.stt_result_ready.connect(self._on_stt_result)
         self._audio.level_changed.connect(self._on_audio_level)
 
         self._setup_ui()
         self._connect_signals()
+        self.bridge.stt_result_ready.connect(self._on_stt_result)
 
         loop = asyncio.get_event_loop()
         loop.call_soon(self._init_async)
