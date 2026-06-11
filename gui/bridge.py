@@ -1,6 +1,8 @@
 import asyncio
 import logging
+from PySide6.QtCore import QObject, Signal
 from config.default import ConfigManager
+from config.notifier import ConfigNotifier
 from config.provider_voice import Edge_TTS_voices, ali_tts_voices, sambert_tts_voices
 from engines.tts.service import TTSService
 from engines.translate.service import TranslateService
@@ -12,7 +14,9 @@ from engines.audio.playback import get_playback_devices
 logger = logging.getLogger(__name__)
 
 
-class GuiBridge:
+class GuiBridge(QObject):
+    config_changed = Signal()
+
     def __init__(
         self,
         config: ConfigManager,
@@ -21,7 +25,10 @@ class GuiBridge:
         osc: OSCService,
         stt: STTService,
         pipeline: RequestPipeline,
+        notifier: ConfigNotifier | None = None,
+        parent: QObject | None = None,
     ):
+        super().__init__(parent)
         self.config = config
         self.tts = tts
         self.translate = translate
@@ -30,6 +37,12 @@ class GuiBridge:
         self.pipeline = pipeline
         self.ip_address = "127.0.0.1"
         self.web_port = 11451
+        self._notifier = notifier
+        if notifier:
+            notifier.on_change(self._on_remote_config_change, source="webui")
+
+    def _on_remote_config_change(self, source):
+        self.config_changed.emit()
 
     async def submit_tts(self, text: str, **opts) -> str:
         return await self.pipeline.submit_tts(text=text, **opts)
@@ -44,6 +57,8 @@ class GuiBridge:
         ok = self.config.update(data)
         if not ok:
             logger.error("配置保存失败!")
+        elif self._notifier:
+            self._notifier.notify(source="gui")
         return ok
 
     def get_config(self) -> dict:

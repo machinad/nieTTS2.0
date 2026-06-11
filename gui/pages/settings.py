@@ -102,6 +102,7 @@ class SettingsPage(QWidget):
         self._stt_switches: dict[str, ToggleSwitch] = {}
         self._translate_switches: dict[str, ToggleSwitch] = {}
         self._setup_ui()
+        self.bridge.config_changed.connect(self.rebuild_ui)
 
     def _setup_ui(self):
         root = QVBoxLayout(self)
@@ -599,6 +600,17 @@ class SettingsPage(QWidget):
             asyncio.create_task(self.bridge.reload_engines())
         except RuntimeError:
             pass
+
+    def rebuild_ui(self):
+        self._tts_switches.clear()
+        self._stt_switches.clear()
+        self._translate_switches.clear()
+        self._tabs.clear()
+        self._tabs.addTab(self._build_tts_tab(), "语音合成")
+        self._tabs.addTab(self._build_stt_tab(), "语音识别")
+        self._tabs.addTab(self._build_translate_tab(), "翻译")
+        self._tabs.addTab(self._build_audio_tab(), "音频 && 其它")
+        self._tabs.addTab(self._build_download_tab(), "模型下载")
 
     def _on_download(self):
         btn_id = self._download_source_group.checkedId()

@@ -6,6 +6,7 @@ from PySide6.QtWidgets import QApplication
 import qasync
 
 from config.default import ConfigManager
+from config.notifier import ConfigNotifier
 from engines.tts.service import TTSService
 from engines.translate.service import TranslateService
 from engines.osc.service import OSCService
@@ -71,7 +72,8 @@ def main():
     stt = STTService(config)
     pipeline = RequestPipeline(config, tts, translate, osc)
 
-    bridge = GuiBridge(config, tts, translate, osc, stt, pipeline)
+    notifier = ConfigNotifier()
+    bridge = GuiBridge(config, tts, translate, osc, stt, pipeline, notifier=notifier)
 
     window = MainWindow(bridge, qt_log_handler)
     window.show()
@@ -95,7 +97,8 @@ def main():
 
         window._header.update_web_url()
 
-        web = WebServer(config, tts, translate, osc, pipeline, stt)
+        web = WebServer(config, tts, translate, osc, pipeline, stt, notifier=notifier)
+        web.set_loop(asyncio.get_running_loop())
 
         shutdown_event = asyncio.Event()
 

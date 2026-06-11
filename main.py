@@ -48,6 +48,7 @@ class nieTTS:
 
     async def start(self):
         _ws_log_handler.set_loop(asyncio.get_running_loop())
+        self.web.set_loop(asyncio.get_running_loop())
         self._cleanup_orphan_files()
         logger.info("正在启动 Pipeline ...")
         await self.pipeline.start()

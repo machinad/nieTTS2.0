@@ -82,6 +82,7 @@ class HomePage(QWidget):
         self._recording = False
         self._setup_ui()
         self._load_config()
+        self.bridge.config_changed.connect(self._refresh_from_config)
 
     def _setup_ui(self):
         root = QVBoxLayout(self)
@@ -223,23 +224,29 @@ class HomePage(QWidget):
         root.addWidget(scroll)
 
     def _load_config(self):
-        cfg = self.bridge.get_config()
-        src = cfg.get("source_lang", "中文")
-        tgt = cfg.get("target_lang", "英语")
-        idx_src = self._src_combo.findText(src)
-        if idx_src >= 0:
-            self._src_combo.setCurrentIndex(idx_src)
-        idx_tgt = self._tgt_combo.findText(tgt)
-        if idx_tgt >= 0:
-            self._tgt_combo.setCurrentIndex(idx_tgt)
-        self._update_engine_badge()
-
+        self._refresh_from_config()
         self._src_combo.currentTextChanged.connect(
             lambda v: self.bridge.update_config({"source_lang": v})
         )
         self._tgt_combo.currentTextChanged.connect(
             lambda v: self.bridge.update_config({"target_lang": v})
         )
+
+    def _refresh_from_config(self):
+        cfg = self.bridge.get_config()
+        src = cfg.get("source_lang", "中文")
+        tgt = cfg.get("target_lang", "英语")
+        self._src_combo.blockSignals(True)
+        idx_src = self._src_combo.findText(src)
+        if idx_src >= 0:
+            self._src_combo.setCurrentIndex(idx_src)
+        self._src_combo.blockSignals(False)
+        self._tgt_combo.blockSignals(True)
+        idx_tgt = self._tgt_combo.findText(tgt)
+        if idx_tgt >= 0:
+            self._tgt_combo.setCurrentIndex(idx_tgt)
+        self._tgt_combo.blockSignals(False)
+        self._update_engine_badge()
 
     def _update_engine_badge(self):
         cfg = self.bridge.get_config()

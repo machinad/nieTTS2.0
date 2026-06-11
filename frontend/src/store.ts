@@ -7,7 +7,7 @@ export interface LogEntry {
 }
 
 export interface WSMessage {
-  type: "stt_result" | "status" | "log" | "download_done"
+  type: "stt_result" | "status" | "log" | "download_done" | "config_changed"
   text?: string
   request_id?: string
   state?: "queued" | "processing" | "playing" | "done"

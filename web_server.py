@@ -6,6 +6,7 @@ import numpy as np
 from quart import Quart, request, jsonify, websocket, send_from_directory
 from quart_cors import cors
 from config.default import ConfigManager
+from config.notifier import ConfigNotifier
 from engines.tts.service import TTSService
 from engines.translate.service import TranslateService
 from engines.osc.service import OSCService
@@ -56,13 +57,17 @@ class WebServer:
 
     def __init__(self, config: ConfigManager, tts: TTSService,
                  translate: TranslateService, osc: OSCService,
-                 pipeline: RequestPipeline, stt: STTService | None = None):
+                 pipeline: RequestPipeline, stt: STTService | None = None,
+                 notifier: ConfigNotifier | None = None):
         self.config = config
         self.tts = tts
         self.translate = translate
         self.osc = osc
         self.pipeline = pipeline
         self.stt = stt
+        self._notifier = notifier
+        if notifier:
+            notifier.on_change(self._on_config_changed, source="gui")
 
         self.app = Quart(__name__, static_folder=None)
         self.app = cors(self.app)
@@ -80,6 +85,10 @@ class WebServer:
 
         self._vad_instances: dict = {}
         self._download_task: asyncio.Task | None = None
+        self._loop: asyncio.AbstractEventLoop | None = None
+
+    def set_loop(self, loop: asyncio.AbstractEventLoop):
+        self._loop = loop
 
     def _make_vad(self) -> SileroVAD:
         vad_cfg = self.config.config.get("vad", {})
@@ -158,6 +167,8 @@ class WebServer:
         if not data:
             return jsonify({"error": "无效的配置数据"}), 400
         ok = self.config.update(data)
+        if ok and self._notifier:
+            self._notifier.notify(source="webui")
         return jsonify({"success": ok})
 
     async def reload_config(self):
@@ -167,6 +178,15 @@ class WebServer:
             await self.stt.reload_engines()
         self.osc.reload()
         return jsonify({"success": True})
+
+    def _on_config_changed(self, source):
+        if self._loop is None:
+            return
+        coro = _broadcast({"type": "config_changed"})
+        if threading.current_thread() is threading.main_thread():
+            self._loop.create_task(coro)
+        else:
+            self._loop.call_soon_threadsafe(self._loop.create_task, coro)
 
     async def models_status(self):
         from quart import make_response

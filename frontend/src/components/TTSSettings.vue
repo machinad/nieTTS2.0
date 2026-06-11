@@ -54,6 +54,7 @@ function syncLocalValues() {
 }
 
 watch(activeTab, syncLocalValues, { immediate: true })
+watch(currentProvider, syncLocalValues)
 
 function updateProviderField(key: string, value: string, needReload = false) {
   const providers = [...(appStore.config.tts_provider?.providers || [])]

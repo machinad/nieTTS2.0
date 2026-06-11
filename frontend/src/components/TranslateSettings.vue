@@ -63,6 +63,7 @@ function syncLocalValues() {
 }
 
 watch(activeTab, syncLocalValues, { immediate: true })
+watch(currentConfig, syncLocalValues)
 </script>
 
 <template>

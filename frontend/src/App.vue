@@ -17,6 +17,8 @@ onMounted(async () => {
       addLog(msg.level || "info", msg.message || "")
     } else if (msg.type === "status") {
       addLog("info", `请求 ${msg.request_id || ""} ${msg.state || ""}`)
+    } else if (msg.type === "config_changed") {
+      getConfig()
     }
   })
 
