@@ -50,3 +50,7 @@ class BaseVAD(ABC):
     @abstractmethod
     def engine_name(self) -> str:
         ...
+
+    def preload(self):
+        """预加载资源（可选覆盖）"""
+        pass

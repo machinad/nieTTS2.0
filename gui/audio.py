@@ -20,7 +20,7 @@ class GuiAudioInput(QObject):
         self._recording = False
         self._device_name = ""
         self._last_level_time = 0  # 上次发送 level 的时间戳
-        self._buffer_size = 2000  # 固定缓冲区大小
+        self._fft_frame_size = 2000  # FFT 帧大小
         self._sample_buffer = np.zeros(0, dtype=np.float32)  # 样本缓冲区
 
     def start_recording(self, device_name: str = ""):
@@ -38,6 +38,12 @@ class GuiAudioInput(QObject):
             max_speech_duration=vad_cfg.get("max_speech_duration", 15.0),
             window_size=vad_cfg.get("window_size", 512),
         )
+        try:
+            self._vad.preload()
+            logger.info("VAD 模型预加载完成")
+        except Exception as e:
+            logger.error("VAD 模型加载失败: %s", e)
+            self._vad = None
 
         fmt = QAudioFormat()
         fmt.setSampleRate(16000)
@@ -59,7 +65,7 @@ class GuiAudioInput(QObject):
             return
 
         self._audio_source = QAudioSource(target_device, fmt)
-        self._audio_source.setBufferSize(self._buffer_size * 2)  # 每个样本2字节（Int16）
+        self._audio_source.setBufferSize(32000)  # 1秒缓冲区（16kHz * 2字节）
         self._io_device = self._audio_source.start()
         if self._io_device:
             self._io_device.readyRead.connect(self._on_audio_data)
@@ -101,10 +107,10 @@ class GuiAudioInput(QObject):
         self._sample_buffer = np.concatenate([self._sample_buffer, samples_f32])
 
         # 当缓冲区达到2000个样本时进行FFT分析
-        while len(self._sample_buffer) >= self._buffer_size:
+        while len(self._sample_buffer) >= self._fft_frame_size:
             # 取出2000个样本
-            frame = self._sample_buffer[:self._buffer_size]
-            self._sample_buffer = self._sample_buffer[self._buffer_size:]
+            frame = self._sample_buffer[:self._fft_frame_size]
+            self._sample_buffer = self._sample_buffer[self._fft_frame_size:]
 
             # 限制 level 信号发送频率到 16fps（约62.5ms）
             current_time = time.time() * 1000  # 转换为毫秒

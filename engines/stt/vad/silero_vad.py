@@ -49,6 +49,9 @@ class SileroVAD(BaseVAD):
         self._vad = sherpa_onnx.VoiceActivityDetector(vad_config)
         logger.info("SileroVAD init OK, sr=%d", self._sample_rate)
 
+    def preload(self):
+        self._lazy_init()
+
     def accept_waveform(self, samples: np.ndarray):
         self._lazy_init()
         self._vad.accept_waveform(samples)
