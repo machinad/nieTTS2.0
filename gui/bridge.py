@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 class GuiBridge(QObject):
     config_changed = Signal()
-    stt_result_ready = Signal(str)
 
     def __init__(
         self,
@@ -38,14 +37,9 @@ class GuiBridge(QObject):
         self._notifier = notifier
         if notifier:
             notifier.on_change(self._on_remote_config_change, source="webui")
-        if pipeline:
-            pipeline.on_stt_result(self._on_stt_result)
 
     def _on_remote_config_change(self, source):
         self.config_changed.emit()
-
-    def _on_stt_result(self, request_id, text):
-        self.stt_result_ready.emit(text)
 
     def update_config(self, data: dict) -> bool:
         ok = self.config.update(data)

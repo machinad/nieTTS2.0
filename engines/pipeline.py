@@ -98,10 +98,6 @@ class RequestPipeline:
         self._request_task: Optional[asyncio.Task] = None
         self._play_task: Optional[asyncio.Task] = None
         self._bg_tasks: set[asyncio.Task] = set()
-        self._stt_result_callback: Optional[Callable] = None
-
-    def on_stt_result(self, callback: Callable):
-        self._stt_result_callback = callback
 
     async def start(self):
         if self._running:
@@ -164,8 +160,6 @@ class RequestPipeline:
                         req.text = stt_result.text
                         if req._stt_callback:
                             req._stt_callback(req.request_id, req.text)
-                        elif self._stt_result_callback:
-                            self._stt_result_callback(req.request_id, req.text)
                     if not req.text:
                         logger.warning("请求无文本内容，跳过: %s", req.request_id)
                         continue

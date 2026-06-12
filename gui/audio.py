@@ -9,7 +9,6 @@ logger = logging.getLogger(__name__)
 
 
 class GuiAudioInput(QObject):
-    stt_result_ready = Signal(str)
     level_changed = Signal(float, list)
 
     def __init__(self, bridge, parent=None):
