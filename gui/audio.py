@@ -21,7 +21,9 @@ class GuiAudioInput(QObject):
         self._device_name = ""
         self._last_level_time = 0  # 上次发送 level 的时间戳
         self._fft_frame_size = 2000  # FFT 帧大小
-        self._sample_buffer = np.zeros(0, dtype=np.float32)  # 样本缓冲区
+        self._sample_buffer = np.zeros(0, dtype=np.float32)  # FFT 样本缓冲区
+        self._vad_buffer = np.zeros(0, dtype=np.float32)  # VAD 累积缓冲区
+        self._vad_chunk_size = 1024  # 64ms @ 16kHz
 
     def start_recording(self, device_name: str = ""):
         if self._recording:
@@ -85,6 +87,9 @@ class GuiAudioInput(QObject):
             self._io_device = None
 
         if self._vad is not None:
+            if len(self._vad_buffer) > 0:
+                self._vad.accept_waveform(self._vad_buffer)
+                self._vad_buffer = np.zeros(0, dtype=np.float32)
             self._vad.flush()
             self._process_segments()
             self._vad = None
@@ -148,8 +153,12 @@ class GuiAudioInput(QObject):
 
         if self._vad is None:
             return
-        self._vad.accept_waveform(samples_f32)
-        self._process_segments()
+        self._vad_buffer = np.concatenate([self._vad_buffer, samples_f32])
+        while len(self._vad_buffer) >= self._vad_chunk_size:
+            chunk = self._vad_buffer[:self._vad_chunk_size]
+            self._vad_buffer = self._vad_buffer[self._vad_chunk_size:]
+            self._vad.accept_waveform(chunk)
+            self._process_segments()
 
     def _process_segments(self):
         if self._vad is None:

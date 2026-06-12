@@ -1,6 +1,6 @@
 import math
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QPainter, QColor, QLinearGradient
+from PySide6.QtGui import QPainter, QColor, QLinearGradient, QBrush
 from PySide6.QtWidgets import QWidget
 
 
@@ -17,14 +17,25 @@ class WaveformWidget(QWidget):
         self._recording = False
         self._tick = 0
 
-        # 缓存颜色对象
         self._accent = QColor("#d6608a")
         self._accent_dim = QColor("#d6608a")
         self._accent_dim.setAlpha(50)
 
+        self._grad_brush = QBrush(self._build_gradient())
+
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._animate)
-        self._timer.setInterval(16)  # 16ms = 约60fps
+        self._timer.setInterval(33)  # 30fps
+
+    def _build_gradient(self):
+        grad = QLinearGradient(0, 0, 0, self.height())
+        grad.setColorAt(0, self._accent)
+        grad.setColorAt(1, self._accent_dim)
+        return grad
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._grad_brush = QBrush(self._build_gradient())
 
     def set_recording(self, recording: bool):
         self._recording = recording
@@ -38,11 +49,9 @@ class WaveformWidget(QWidget):
 
     def update_level(self, level: float, freq_levels: list = None):
         if freq_levels and len(freq_levels) >= self.BAR_COUNT:
-            # 更新目标值，不直接修改 _levels
             for i in range(self.BAR_COUNT):
                 self._target_levels[i] = freq_levels[i]
         else:
-            # 使用 level 更新目标值
             step = self._tick % self.BAR_COUNT
             for i in range(self.BAR_COUNT):
                 dist = abs(i - step)
@@ -54,18 +63,16 @@ class WaveformWidget(QWidget):
 
     def _animate(self):
         self._tick += 1
-        # 平滑过渡到目标值
         for i in range(self.BAR_COUNT):
-            # 快速上升，缓慢下降
             if self._target_levels[i] > self._levels[i]:
-                self._levels[i] += (self._target_levels[i] - self._levels[i]) * 0.3  # 快速上升
+                self._levels[i] += (self._target_levels[i] - self._levels[i]) * 0.3
             else:
-                self._levels[i] *= 0.95  # 缓慢下降
-        self.update()
+                self._levels[i] *= 0.95
+        if any(lv > 0.01 for lv in self._levels):
+            self.update()
 
     def paintEvent(self, event):
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         w = self.width()
         h = self.height()
@@ -73,16 +80,12 @@ class WaveformWidget(QWidget):
         gap = (w - self.BAR_COUNT * bar_w) / max(1, self.BAR_COUNT - 1)
         y_base = h - 4
 
+        painter.setBrush(self._grad_brush)
+        painter.setPen(Qt.PenStyle.NoPen)
+
         for i in range(self.BAR_COUNT):
             bar_h = max(2, int(self._levels[i] * self.MAX_BAR_HEIGHT))
             x = int(i * (bar_w + gap))
-            y = y_base - bar_h
-
-            grad = QLinearGradient(x, y, x, y_base)
-            grad.setColorAt(0, self._accent)
-            grad.setColorAt(1, self._accent_dim)
-            painter.setBrush(grad)
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.drawRoundedRect(x, y, bar_w, bar_h, 2, 2)
+            painter.drawRect(x, y_base - bar_h, bar_w, bar_h)
 
         painter.end()
