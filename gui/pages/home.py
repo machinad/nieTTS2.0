@@ -234,8 +234,8 @@ class HomePage(QWidget):
 
     def _refresh_from_config(self):
         cfg = self.bridge.get_config()
-        src = cfg.get("source_lang", "中文")
-        tgt = cfg.get("target_lang", "英语")
+        src = cfg.get("source_lang")
+        tgt = cfg.get("target_lang")
         self._src_combo.blockSignals(True)
         idx_src = self._src_combo.findText(src)
         if idx_src >= 0:
@@ -294,10 +294,10 @@ class HomePage(QWidget):
         opts = {
             "tts_provider": engine,
             "voice": voice,
-            "translate": cfg.get("isTranslate", True),
-            "play_audio": cfg.get("isPlayAudio", True),
-            "play_translation": cfg.get("isPlayTranslation", True),
-            "osc_enabled": cfg.get("osc_enabled", True),
+            "translate": cfg.get("isTranslate"),
+            "play_audio": cfg.get("isPlayAudio"),
+            "play_translation": cfg.get("isPlayTranslation"),
+            "osc_enabled": cfg.get("osc_enabled"),
             "source_lang": self._src_combo.currentText(),
             "target_lang": self._tgt_combo.currentText(),
         }

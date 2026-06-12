@@ -272,7 +272,7 @@ svg_text(g, x0 + 245, y0 + 172, "HTTP POST /tts", size=8, fill=C["green"])
 
 # WebServer → Pipeline
 arrow_right(g, x1 + 260, pr_y + 105, x2 - 5, color=C["accent"])
-svg_text(g, x1 + 262, pr_y + 97, "submit_tts()", size=8, fill=C["accent"])
+svg_text(g, x1 + 262, pr_y + 97, "submit()", size=8, fill=C["accent"])
 
 # WebSocket arrows (frontend ↔ webserver)
 svg_line(g, x0 + 240, y0 + 140, x1 - 5, y0 + 112, stroke=C["green"], sw=1.5)

@@ -16,7 +16,7 @@ class TranslateService:
 
     def __init__(self, config: ConfigManager):
         self.config = config
-        self._active_provider = self.config.get("translation_provider.provider", "openai")
+        self._active_provider = self.config.get("translation_provider.provider")
         self._build_engines()
 
     def _build_engines(self):
@@ -50,13 +50,13 @@ class TranslateService:
             except Exception:
                 pass
         self._engines.clear()
-        self._active_provider = self.config.get("translation_provider.provider", "openai")
+        self._active_provider = self.config.get("translation_provider.provider")
         self._build_engines()
 
     async def translate(self, text: str, provider: str = None,
                         source_lang: str = "中文", target_lang: str = "",
                         **kwargs) -> TranslateResult:
-        provider = provider or self.config.get("translation_provider.provider", "openai")
+        provider = provider or self.config.get("translation_provider.provider")
         engine = self._engines.get(provider)
         if engine is None:
             return TranslateResult(
@@ -68,5 +68,5 @@ class TranslateService:
                 success=False,
                 error=f"翻译引擎 {provider} 不可用（未配置 API Key）",
             )
-        target_lang = target_lang or self.config.get("target_lang", "英语")
+        target_lang = target_lang or self.config.get("target_lang")
         return await engine.translate(text, source_lang, target_lang, **kwargs)

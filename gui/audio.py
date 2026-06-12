@@ -149,9 +149,17 @@ class GuiAudioInput(QObject):
     def _process_segments(self):
         if self._vad is None:
             return
+        cfg = self.bridge.config.config
         while not self._vad.empty():
             seg = self._vad.front
             asyncio.ensure_future(self.bridge.pipeline.submit(
-                audio_samples=seg.samples, sample_rate=seg.sample_rate,
+                audio_samples=seg.samples,
+                sample_rate=seg.sample_rate,
+                translate=cfg.get("isTranslate"),
+                play_audio=cfg.get("isPlayAudio"),
+                play_translation=cfg.get("isPlayTranslation"),
+                osc_enabled=cfg.get("osc_enabled"),
+                source_lang=cfg.get("source_lang"),
+                target_lang=cfg.get("target_lang"),
             ))
             self._vad.pop()

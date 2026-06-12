@@ -47,9 +47,6 @@ class GuiBridge(QObject):
     def _on_stt_result(self, request_id, text):
         self.stt_result_ready.emit(text)
 
-    async def submit_tts(self, text: str, **opts) -> str:
-        return await self.pipeline.submit(text=text, **opts)
-
     def update_config(self, data: dict) -> bool:
         ok = self.config.update(data)
         if not ok:

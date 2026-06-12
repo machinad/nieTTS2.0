@@ -69,7 +69,7 @@ class TTSService:
 
     async def synthesize(self, text: str, provider: str = None,
                          voice: str = "", **kwargs) -> TTSResult:
-        provider = provider or self.config.get("tts_provider.provider", "edge_tts")
+        provider = provider or self.config.get("tts_provider.provider")
         engine = self._engines.get(provider)
         if engine is None:
             return TTSResult(success=False, text=text,

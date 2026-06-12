@@ -136,21 +136,18 @@ class RequestPipeline:
                if k in PipelineRequest.__dataclass_fields__ and k != "request_id"},
         )
         if not req.tts_provider:
-            req.tts_provider = self.config.get("tts_provider.provider", "edge_tts")
+            req.tts_provider = self.config.get("tts_provider.provider")
         if not req.voice:
             provider_cfg = self.config.get_provider_config(req.tts_provider)
             req.voice = provider_cfg.get("voice", "")
         if not req.target_lang:
-            req.target_lang = self.config.get("target_lang", "英语")
+            req.target_lang = self.config.get("target_lang")
         await self._request_queue.put(req)
         if req.audio_samples is not None:
             logger.info("音频请求入队: %s", req.request_id)
         else:
             logger.info("请求入队: %s  text=%s", req.request_id, req.text[:40])
         return req.request_id
-
-    async def submit_tts(self, text: str, **opts) -> str:
-        return await self.submit(text=text, **opts)
 
     async def _request_worker(self):
         while self._running:
@@ -257,7 +254,7 @@ class RequestPipeline:
                     self._play_queue.task_done()
                     continue
                 if path.exists():
-                    device_name = self.config.get("device", "")
+                    device_name = self.config.get("device")
                     await play_file(path, device_name=device_name)
                 else:
                     logger.warning(f"音频文件不存在，跳过播放: {path}")

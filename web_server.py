@@ -123,7 +123,7 @@ class WebServer:
         if len(text) > _MAX_TEXT_LENGTH:
             return jsonify({"error": f"文本内容过长，最多 {_MAX_TEXT_LENGTH} 字符"}), 400
 
-        req_id = await self.pipeline.submit_tts(
+        req_id = await self.pipeline.submit(
             text=text,
             tts_provider=data.get("tts_provider", ""),
             voice=data.get("voice", ""),
@@ -248,10 +248,17 @@ class WebServer:
                             vad.flush()
                             while not vad.empty():
                                 seg = vad.front
+                                cfg = self.config.config
                                 await self.pipeline.submit(
                                     audio_samples=seg.samples,
                                     sample_rate=seg.sample_rate,
                                     stt_callback=_on_stt_done,
+                                    translate=cfg.get("isTranslate"),
+                                    play_audio=cfg.get("isPlayAudio"),
+                                    play_translation=cfg.get("isPlayTranslation"),
+                                    osc_enabled=cfg.get("osc_enabled"),
+                                    source_lang=cfg.get("source_lang"),
+                                    target_lang=cfg.get("target_lang"),
                                 )
                                 vad.pop()
                         vad = None
@@ -264,10 +271,17 @@ class WebServer:
                         vad.accept_waveform(samples)
                         while not vad.empty():
                             seg = vad.front
+                            cfg = self.config.config
                             await self.pipeline.submit(
                                 audio_samples=seg.samples,
                                 sample_rate=seg.sample_rate,
                                 stt_callback=_on_stt_done,
+                                translate=cfg.get("isTranslate"),
+                                play_audio=cfg.get("isPlayAudio"),
+                                play_translation=cfg.get("isPlayTranslation"),
+                                osc_enabled=cfg.get("osc_enabled"),
+                                source_lang=cfg.get("source_lang"),
+                                target_lang=cfg.get("target_lang"),
                             )
                             vad.pop()
                     except Exception as e:

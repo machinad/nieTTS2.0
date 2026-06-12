@@ -99,7 +99,7 @@ class MainWindow(QMainWindow):
     def _on_send_tts(self, text: str, opts: dict):
         async def _do():
             try:
-                req_id = await self.bridge.submit_tts(text, **opts)
+                req_id = await self.bridge.pipeline.submit(text=text, **opts)
                 logger.info("请求已提交: %s", req_id)
             except Exception as e:
                 logger.error("发送失败: %s", e)

@@ -63,7 +63,6 @@ def mock_osc():
 @pytest.fixture
 def mock_pipeline():
     p = MagicMock(spec=RequestPipeline)
-    p.submit_tts = AsyncMock(return_value="abc123def456")
     p.submit = AsyncMock(return_value="abc123def456")
     p.start = AsyncMock()
     p.stop = AsyncMock()
@@ -161,7 +160,7 @@ class TestTTSEndpoint:
         data = await resp.get_json()
         assert "request_id" in data
         assert data["request_id"] == "abc123def456"
-        mock_pipeline.submit_tts.assert_called_once()
+        mock_pipeline.submit.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_empty_text(self, client):
