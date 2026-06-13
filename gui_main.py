@@ -1,10 +1,8 @@
 import sys
 import asyncio
 import logging
-
 from PySide6.QtWidgets import QApplication
 import qasync
-
 from config.default import ConfigManager
 from config.notifier import ConfigNotifier
 from engines.tts.service import TTSService
@@ -15,7 +13,6 @@ from engines.pipeline import RequestPipeline
 from web_server import WebServer, WSLogHandler
 from certificates.certificates_server import CertificateServer
 from version import VERSION
-
 from gui.main import MainWindow
 from gui.log_handler import QtLogHandler
 from gui.bridge import GuiBridge
@@ -28,7 +25,7 @@ BANNER = r"""
 ██║╚██╗██║  ██║  ██╔══╝       ██║        ██║     ╚════██║
 ██║ ╚████║  ██║  ███████╗     ██║        ██║     ███████║
 ╚═╝  ╚═══╝  ╚═╝  ╚══════╝     ╚═╝        ╚═╝     ╚══════╝
-"""  # noqa: W291
+""" 
 
 logger = logging.getLogger(__name__)
 
