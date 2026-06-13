@@ -22,7 +22,13 @@ config.json
 /llama-cpp
 /.agents*
 /.claude*
+/.opencode
+/.pytest_cache
+/.ruff_cache
 AUDIT_REPORT.md
 FIX_PLAN.md
 AGENTS.md
 CLAUDE.md
+pytest.ini
+skill-lock.json
+test_hy_mt.py
