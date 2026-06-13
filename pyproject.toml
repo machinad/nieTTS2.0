@@ -1,0 +1,36 @@
+[project]
+name = "nietts"
+version = "2.1.2"
+description = "TTS + Translation + STT desktop app for VR social platforms"
+requires-python = ">=3.11"
+
+dependencies = [
+    # 核心运行时
+    "numpy>=2.4",
+    "sherpa-onnx>=1.13",
+    "miniaudio>=1.71",
+    "edge-tts>=7.2",
+    "quart>=0.20",
+    "quart-cors>=0.8",
+    "httpx>=0.28",
+    "openai>=2.21",
+    "cryptography>=46.0",
+    # GUI
+    "PySide6>=6.11",
+    "qasync>=0.28",
+    # TTS 引擎（阿里云）
+    "dashscope>=1.25",
+    # OSC（VRChat）
+    "python-osc>=1.9",
+    # 模型下载
+    "huggingface-hub>=0.20",
+    "modelscope>=1.11",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0",
+    "pytest-asyncio>=1.4",
+    "soundfile>=0.13",
+    "scipy>=1.17",
+]
