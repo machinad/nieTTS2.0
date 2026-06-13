@@ -21,19 +21,19 @@ class TranslateService:
 
     def _build_engines(self):
         providers = self.config.get("translation_provider", {}).get("providers", [])
-        self._engines: dict[str, BaseTranslate] = {}
+        self.engines: dict[str, BaseTranslate] = {}
         for p in providers:
             name = p.get("name", "")
             cls = _REGISTRY.get(name)
             if cls is None:
                 continue
             try:
-                self._engines[name] = cls.from_config(p)
+                self.engines[name] = cls.from_config(p)
             except Exception as e:
                 logger.warning("%s translate init skipped: %s", name, e)
 
     def get_available_engines(self) -> list[str]:
-        return [name for name, engine in self._engines.items() if engine.is_available()]
+        return [name for name, engine in self.engines.items() if engine.is_available()]
 
     def get_all_engines(self) -> list[str]:
         providers = self.config.get("translation_provider", {}).get("providers", [])
@@ -44,20 +44,23 @@ class TranslateService:
         return {p["name"]: p.get("description", "") for p in providers if p.get("name")}
 
     async def reload_engines(self):
-        for engine in self._engines.values():
+        await self.close()
+        self.engines.clear()
+        self._active_provider = self.config.get("translation_provider.provider")
+        self._build_engines()
+
+    async def close(self):
+        for engine in self.engines.values():
             try:
                 await engine.close()
             except Exception:
                 pass
-        self._engines.clear()
-        self._active_provider = self.config.get("translation_provider.provider")
-        self._build_engines()
 
     async def translate(self, text: str, provider: str = None,
                         source_lang: str = "中文", target_lang: str = "",
                         **kwargs) -> TranslateResult:
         provider = provider or self.config.get("translation_provider.provider")
-        engine = self._engines.get(provider)
+        engine = self.engines.get(provider)
         if engine is None:
             return TranslateResult(
                 success=False,

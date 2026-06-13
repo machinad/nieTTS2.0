@@ -91,6 +91,13 @@ default_config = {
     "osc_host": "127.0.0.1",
     "osc_port": 9000,
     "port": 11451,
+    "overlay_hotkey": {
+        "ctrl": True,
+        "shift": False,
+        "alt": False,
+        "key": 84,
+        "display": "Ctrl+T"
+    },
 }
 
 

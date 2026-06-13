@@ -454,6 +454,28 @@ class SettingsPage(QWidget):
         port_l.addLayout(_field_col("web端口（重启生效）", port_spin, lambda: self.bridge.update_config({"port": port_spin.value()})))
         layout.addWidget(port_card)
 
+        # 快捷键设置
+        hotkey_card = QFrame()
+        hotkey_card.setObjectName("card")
+        hotkey_card.setProperty("class", "card")
+        hotkey_l = QVBoxLayout(hotkey_card)
+        hotkey_l.setContentsMargins(20, 16, 20, 20)
+        hotkey_l.setSpacing(12)
+        hotkey_l.addWidget(_label("快捷键设置", "font-size: 15px; font-weight: 600; color: #1a1a1a; background: transparent;"))
+        hotkey_l.addWidget(_label("覆盖层快捷键", "font-size: 12px; font-weight: 600; color: #9b9a98; background: transparent;"))
+
+        from gui.hotkey import HotkeyRecordButton
+        self._hotkey_btn = HotkeyRecordButton()
+        hotkey_cfg = cfg.get("overlay_hotkey", {})
+        self._hotkey_btn.set_display(hotkey_cfg.get("display", "Ctrl+T"))
+        self._hotkey_btn.hotkey_recorded.connect(self._on_hotkey_recorded)
+        self._hotkey_btn.recording_started.connect(self.bridge.overlay_hotkey_suspend)
+        self._hotkey_btn.recording_cancelled.connect(self.bridge.overlay_hotkey_resume)
+        hotkey_l.addWidget(self._hotkey_btn)
+
+        hotkey_l.addWidget(_label("点击按钮录制快捷键，ESC 取消录制", "font-size: 13px; color: #9b9a98; background: transparent;"))
+        layout.addWidget(hotkey_card)
+
         layout.addStretch()
         scroll.setWidget(container)
         return scroll
@@ -594,6 +616,10 @@ class SettingsPage(QWidget):
         vad = dict(cfg.get("vad", {}))
         vad[key] = value
         self.bridge.update_config({"vad": vad})
+
+    def _on_hotkey_recorded(self, hotkey_data: dict):
+        self.bridge.update_config({"overlay_hotkey": hotkey_data})
+        self.bridge.overlay_hotkey_changed.emit()
 
     def _reload_async(self):
         try:

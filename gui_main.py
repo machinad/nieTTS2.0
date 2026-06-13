@@ -115,6 +115,7 @@ def main():
     async def _shutdown():
         qt_log_handler.disable()
         await pipeline.stop()
+        await translate.close()
         logger.info("nieTTS 已停止")
 
     try:

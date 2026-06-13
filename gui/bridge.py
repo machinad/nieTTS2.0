@@ -15,6 +15,9 @@ logger = logging.getLogger(__name__)
 
 class GuiBridge(QObject):
     config_changed = Signal()
+    overlay_hotkey_changed = Signal()
+    overlay_hotkey_suspend = Signal()
+    overlay_hotkey_resume = Signal()
 
     def __init__(
         self,
@@ -81,3 +84,23 @@ class GuiBridge(QObject):
         downloader = Downloader(source=source, registry=registry)
         ok, fail = await asyncio.to_thread(downloader.download_all)
         return ok, fail
+
+    def build_submit_opts(self, source_lang: str | None = None, target_lang: str | None = None) -> dict:
+        cfg = self.get_config()
+        providers = cfg.get("tts_provider", {}).get("providers", [])
+        engine = cfg.get("tts_provider", {}).get("provider", "edge_tts")
+        voice = ""
+        for p in providers:
+            if p.get("name") == engine:
+                voice = p.get("voice", "")
+                break
+        return {
+            "tts_provider": engine,
+            "voice": voice,
+            "translate": cfg.get("isTranslate"),
+            "play_audio": cfg.get("isPlayAudio"),
+            "play_translation": cfg.get("isPlayTranslation"),
+            "osc_enabled": cfg.get("osc_enabled"),
+            "source_lang": source_lang or cfg.get("source_lang"),
+            "target_lang": target_lang or cfg.get("target_lang"),
+        }

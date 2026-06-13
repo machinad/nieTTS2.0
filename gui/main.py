@@ -12,6 +12,8 @@ from gui.pages.logs import LogsPage
 from gui.pages.about import AboutPage
 from gui.audio import GuiAudioInput
 from gui.log_handler import QtLogHandler
+from gui.overlay import OverlayInput
+from gui.hotkey import GlobalHotkeyManager
 
 logger = logging.getLogger(__name__)
 
@@ -31,11 +33,30 @@ class MainWindow(QMainWindow):
         self._setup_ui()
         self._connect_signals()
 
+        self._overlay = OverlayInput(bridge)
+        self._overlay.submit_text.connect(self._on_overlay_submit)
+
+        self._hotkey_mgr = GlobalHotkeyManager(self)
+        self._hotkey_mgr.install_filter()
+        self._hotkey_mgr.hotkey_pressed.connect(self._toggle_overlay)
+        self.bridge.overlay_hotkey_suspend.connect(self._hotkey_mgr.unregister)
+        self.bridge.overlay_hotkey_resume.connect(self._init_hotkey)
+        self._init_hotkey()
+
         loop = asyncio.get_event_loop()
         loop.call_soon(self._init_async)
 
     def closeEvent(self, event):
         self._audio.stop_recording()
+        self._overlay.close()
+        self._hotkey_mgr.close()
+        for engine in self.bridge.translate.engines.values():
+            if hasattr(engine, '_process') and engine._process is not None:
+                try:
+                    engine._process.kill()
+                    engine._process.wait(timeout=3)
+                except Exception:
+                    pass
         loop = asyncio.get_event_loop()
         loop.call_soon(loop.stop)
         event.accept()
@@ -82,6 +103,8 @@ class MainWindow(QMainWindow):
         self._home_page.recording_started.connect(self._start_recording)
         self._home_page.recording_stopped.connect(self._stop_recording)
 
+        self.bridge.overlay_hotkey_changed.connect(self._init_hotkey)
+
     def _init_async(self):
         asyncio.create_task(self._load_config_and_status())
 
@@ -114,3 +137,25 @@ class MainWindow(QMainWindow):
 
     def _on_audio_level(self, level: float, freq_levels: list):
         self._home_page.update_waveform(level, freq_levels)
+
+    def _init_hotkey(self):
+        cfg = self.bridge.get_config()
+        hotkey_cfg = cfg.get("overlay_hotkey", {})
+        ok, err = self._hotkey_mgr.update_hotkey(hotkey_cfg)
+        if not ok:
+            logger.warning("全局快捷键注册失败: %s", err)
+
+    def _toggle_overlay(self):
+        if self._overlay.isVisible():
+            self._overlay.hide()
+        else:
+            self._overlay.show_overlay()
+
+    def _on_overlay_submit(self, text: str, opts: dict):
+        async def _do():
+            try:
+                req_id = await self.bridge.pipeline.submit(text=text, **opts)
+                logger.info("覆盖层请求已提交: %s", req_id)
+            except Exception as e:
+                logger.error("覆盖层发送失败: %s", e)
+        asyncio.create_task(_do())

@@ -283,24 +283,10 @@ class HomePage(QWidget):
         text = self._text_edit.toPlainText().strip()
         if not text:
             return
-        cfg = self.bridge.get_config()
-        providers = cfg.get("tts_provider", {}).get("providers", [])
-        engine = cfg.get("tts_provider", {}).get("provider", "edge_tts")
-        voice = ""
-        for p in providers:
-            if p.get("name") == engine:
-                voice = p.get("voice", "")
-                break
-        opts = {
-            "tts_provider": engine,
-            "voice": voice,
-            "translate": cfg.get("isTranslate"),
-            "play_audio": cfg.get("isPlayAudio"),
-            "play_translation": cfg.get("isPlayTranslation"),
-            "osc_enabled": cfg.get("osc_enabled"),
-            "source_lang": self._src_combo.currentText(),
-            "target_lang": self._tgt_combo.currentText(),
-        }
+        opts = self.bridge.build_submit_opts(
+            source_lang=self._src_combo.currentText(),
+            target_lang=self._tgt_combo.currentText(),
+        )
         self._text_edit.clear()
         self.request_send.emit(text, opts)
 
