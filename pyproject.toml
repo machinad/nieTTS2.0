@@ -2,12 +2,13 @@
 name = "nietts"
 version = "2.1.2"
 description = "TTS + Translation + STT desktop app for VR social platforms"
-requires-python = ">=3.11"
+requires-python = "==3.14.2"
 
 dependencies = [
     # 核心运行时
     "numpy>=2.4",
     "sherpa-onnx>=1.13",
+    "sherpa-onnx-core>=1.13",
     "miniaudio>=1.71",
     "edge-tts>=7.2",
     "quart>=0.20",
