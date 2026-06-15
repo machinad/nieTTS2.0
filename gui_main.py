@@ -1,6 +1,18 @@
+import os
 import sys
 import asyncio
 import logging
+
+# PyInstaller 打包后 CWD 不是应用目录，导致相对路径（如 models/...）失效
+if getattr(sys, 'frozen', False):
+    os.chdir(sys._MEIPASS)
+
+# PyInstaller GUI 模式下 stdout/stderr 为 None，tqdm 等库会崩溃
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, 'w', encoding='utf-8')
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, 'w', encoding='utf-8')
+
 from PySide6.QtWidgets import QApplication
 import qasync
 from config.default import ConfigManager

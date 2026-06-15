@@ -18,6 +18,7 @@ class CertificateServer:
             self.ip_address = "127.0.0.1"
         # 证书文件生成在当前 py 文件所在目录，其他类可通过 server.cert_path 访问
         self.cert_path = Path(__file__).parent
+        self.cert_path.mkdir(parents=True, exist_ok=True)
         self.key_path = self.cert_path / "key.pem"
         self.cert_file_path = self.cert_path / "cert.pem"
         self.generate_self_signed_certificate()

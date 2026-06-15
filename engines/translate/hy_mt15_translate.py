@@ -70,6 +70,7 @@ class HyMT15Translate(BaseTranslate):
             cmd,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            creationflags=subprocess.CREATE_NO_WINDOW,
         )
         logger.info("llama-server 已启动 (PID: %s)", self._process.pid)
 
