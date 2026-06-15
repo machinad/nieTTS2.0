@@ -9,6 +9,10 @@ config.json
 /docs/原始代码(已废弃)
 /docs/sherpa_extracted.txt
 /docs/sherpa_full.txt
+/docs/sherpa.pdf
+/docs/API_CONTRACT.md
+/docs/architecture.svg
+/docs/FRONTEND_SPEC.md
 /models/*
 /models/*/*
 !models/matcha-icefall-zh-en/
