@@ -35,7 +35,7 @@ default_config = {
                 "matcha_lexicon": "models/matcha-icefall-zh-en/lexicon.txt",
                 "matcha_data_dir": "models/matcha-icefall-zh-en",
                 "matcha_dict_dir": "",
-                "description": "本地离线TTS，完全本地推理无需网络（需要模型文件）"
+                "description": "本地离线TTS，完全本地推理无需网络（需要模型文件）本地推理，性能开销小，延迟低，推荐使用"
             }
 
         ]
@@ -49,7 +49,7 @@ default_config = {
                 "encoder": "models/qwen3-asr-0.6B-int8/encoder.int8.onnx",
                 "decoder": "models/qwen3-asr-0.6B-int8/decoder.int8.onnx",
                 "tokenizer": "models/qwen3-asr-0.6B-int8/tokenizer",
-                "description": "通义千问Qwen3本地离线语音识别，基于0.6B参数量化模型（需要模型文件）"
+                "description": "通义千问Qwen3本地离线语音识别，基于0.6B参数量化模型（需要模型文件）约1GB的内存开销"
             }
         ]
     },
@@ -68,14 +68,14 @@ default_config = {
                 "model_path": "models/HY-mt/Hy-MT2-1.8B-2Bit.gguf",
                 "server_url": "http://127.0.0.1:8081",
                 "llama_cpp_path": "llama-cpp",
-                "description": "HY-MT1.5本地离线翻译模型，基于1.8B参数GGUF量化模型（需要模型文件）"
+                "description": "HY-MT1.5本地离线翻译模型，基于1.8B参数GGUF量化模型（需要模型文件）约1GB的内存开销"
             },
         ]
     },
     "vad": {
         "model_path": "models/silero_vad.onnx",
         "sample_rate": 16000,
-        "threshold": 0.5,
+        "threshold": 0.3,
         "min_silence_duration": 0.25,
         "min_speech_duration": 0.25,
         "max_speech_duration": 15.0,
