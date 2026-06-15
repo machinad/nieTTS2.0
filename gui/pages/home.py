@@ -83,6 +83,7 @@ class HomePage(QWidget):
         self._setup_ui()
         self._load_config()
         self.bridge.config_changed.connect(self._refresh_from_config)
+        self.bridge.engine_changed.connect(self._update_engine_badge)
 
     def _setup_ui(self):
         root = QVBoxLayout(self)

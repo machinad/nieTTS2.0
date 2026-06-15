@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 
 class GuiBridge(QObject):
     config_changed = Signal()
+    engine_changed = Signal()
+    download_done = Signal(int, int)
     overlay_hotkey_changed = Signal()
     overlay_hotkey_suspend = Signal()
     overlay_hotkey_resume = Signal()
@@ -48,9 +50,16 @@ class GuiBridge(QObject):
         ok = self.config.update(data)
         if not ok:
             logger.error("配置保存失败!")
-        elif self._notifier:
-            self._notifier.notify(source="gui")
+        else:
+            if self._notifier:
+                self._notifier.notify(source="gui")
+            if self._is_engine_config(data):
+                self.engine_changed.emit()
         return ok
+
+    def _is_engine_config(self, data: dict) -> bool:
+        engine_keys = {"tts_provider", "stt_provider", "translation_provider"}
+        return bool(engine_keys & set(data.keys()))
 
     def get_config(self) -> dict:
         cfg = dict(self.config.config)
@@ -83,6 +92,7 @@ class GuiBridge(QObject):
         registry = ModelRegistry()
         downloader = Downloader(source=source, registry=registry)
         ok, fail = await asyncio.to_thread(downloader.download_all)
+        self.download_done.emit(ok, fail)
         return ok, fail
 
     def build_submit_opts(self, source_lang: str | None = None, target_lang: str | None = None) -> dict:

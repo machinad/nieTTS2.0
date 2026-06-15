@@ -103,6 +103,7 @@ class SettingsPage(QWidget):
         self._translate_switches: dict[str, ToggleSwitch] = {}
         self._setup_ui()
         self.bridge.config_changed.connect(self.rebuild_ui)
+        self.bridge.download_done.connect(self._on_download_done)
 
     def _setup_ui(self):
         root = QVBoxLayout(self)
@@ -647,15 +648,18 @@ class SettingsPage(QWidget):
 
         async def _do_download():
             try:
-                ok, fail = await self.bridge.download_models(source)
-                self._download_btn.setEnabled(True)
-                self._download_btn.setText("开始下载")
+                await self.bridge.download_models(source)
             except Exception as e:
                 logger.error("下载失败: %s", e)
                 self._download_btn.setEnabled(True)
                 self._download_btn.setText("开始下载")
 
         asyncio.create_task(_do_download())
+
+    def _on_download_done(self, ok: int, fail: int):
+        self._download_btn.setEnabled(True)
+        self._download_btn.setText("开始下载")
+        self.refresh_models_status()
 
     def refresh_models_status(self):
         from scripts.download_models import get_model_status
