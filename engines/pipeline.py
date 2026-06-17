@@ -109,14 +109,19 @@ class RequestPipeline:
 
     async def stop(self):
         self._running = False
-        for task in (self._request_task, self._play_task):
-            if task and not task.done():
-                task.cancel()
-        for task in list(self._bg_tasks):
+        # 取消并等待 worker tasks
+        worker_tasks = [t for t in (self._request_task, self._play_task) if t and not t.done()]
+        for task in worker_tasks:
+            task.cancel()
+        if worker_tasks:
+            await asyncio.gather(*worker_tasks, return_exceptions=True)
+        # 取消并等待后台翻译 tasks
+        bg_tasks = list(self._bg_tasks)
+        for task in bg_tasks:
             if not task.done():
                 task.cancel()
-        if self._bg_tasks:
-            await asyncio.gather(*self._bg_tasks, return_exceptions=True)
+        if bg_tasks:
+            await asyncio.gather(*bg_tasks, return_exceptions=True)
             self._bg_tasks.clear()
         logger.info("RequestPipeline 已停止")
 
@@ -244,23 +249,28 @@ class RequestPipeline:
         while self._running:
             try:
                 path = await self._play_queue.get()
+            except asyncio.CancelledError:
+                break
+            try:
                 if path is None:
-                    self._play_queue.task_done()
+                    logger.debug("播放队列收到 None，跳过")
                     continue
                 if path.exists():
                     device_name = self.config.get("device")
                     await play_file(path, device_name=device_name)
                 else:
                     logger.warning(f"音频文件不存在，跳过播放: {path}")
-                for _ in range(10):
+                for i in range(10):
                     try:
                         path.unlink(missing_ok=True)
                         break
                     except PermissionError:
                         await asyncio.sleep(0.05)
-                self._play_queue.task_done()
+                else:
+                    logger.warning("无法删除临时文件（可能被占用）: %s", path)
             except asyncio.CancelledError:
-                break
+                raise
             except Exception as e:
                 logger.exception(f"_play_worker 异常: {e}")
+            finally:
                 self._play_queue.task_done()

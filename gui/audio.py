@@ -46,6 +46,7 @@ class GuiAudioInput(QObject):
         except Exception as e:
             logger.error("VAD 模型加载失败: %s", e)
             self._vad = None
+            return  # 直接返回，不启动录音
 
         fmt = QAudioFormat()
         fmt.setSampleRate(16000)
@@ -93,6 +94,10 @@ class GuiAudioInput(QObject):
             self._vad.flush()
             self._process_segments()
             self._vad = None
+
+        # 调度 STT 延迟关闭
+        if self.bridge.pipeline.stt:
+            self.bridge.pipeline.stt.schedule_close()
 
         logger.info("GUI 录音停止")
 
@@ -166,14 +171,19 @@ class GuiAudioInput(QObject):
         cfg = self.bridge.config.config
         while not self._vad.empty():
             seg = self._vad.front
-            asyncio.ensure_future(self.bridge.pipeline.submit(
-                audio_samples=seg.samples,
-                sample_rate=seg.sample_rate,
-                translate=cfg.get("isTranslate"),
-                play_audio=cfg.get("isPlayAudio"),
-                play_translation=cfg.get("isPlayTranslation"),
-                osc_enabled=cfg.get("osc_enabled"),
-                source_lang=cfg.get("source_lang"),
-                target_lang=cfg.get("target_lang"),
-            ))
+            async def _submit(seg=seg):
+                try:
+                    await self.bridge.pipeline.submit(
+                        audio_samples=seg.samples,
+                        sample_rate=seg.sample_rate,
+                        translate=cfg.get("isTranslate"),
+                        play_audio=cfg.get("isPlayAudio"),
+                        play_translation=cfg.get("isPlayTranslation"),
+                        osc_enabled=cfg.get("osc_enabled"),
+                        source_lang=cfg.get("source_lang"),
+                        target_lang=cfg.get("target_lang"),
+                    )
+                except Exception as e:
+                    logger.error("提交音频请求失败: %s", e)
+            asyncio.ensure_future(_submit())
             self._vad.pop()

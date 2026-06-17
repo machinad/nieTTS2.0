@@ -160,8 +160,10 @@ class ConfigManager:
         return copy.deepcopy(default_config)
 
     def _save_file(self, config):
-        with open(self.config_file, 'w', encoding='utf-8') as f:
+        tmp = self.config_file.with_suffix('.tmp')
+        with open(tmp, 'w', encoding='utf-8') as f:
             json.dump(config, f, ensure_ascii=False, indent=4)
+        tmp.replace(self.config_file)
 
     def save_config(self, config=None):
         if config is None:

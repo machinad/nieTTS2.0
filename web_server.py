@@ -64,7 +64,6 @@ class WebServer:
         self.osc = osc
         self.pipeline = pipeline
         self._notifier = notifier
-        self._stt_result_ws_map: dict = {}
         if notifier:
             notifier.on_change(self._on_config_changed, source="gui")
 
@@ -225,9 +224,16 @@ class WebServer:
         vad: SileroVAD | None = None
 
         def _on_stt_done(req_id, text):
-            asyncio.ensure_future(ws_obj.send(json.dumps({
-                "type": "stt_result", "text": text,
-            }, ensure_ascii=False)))
+            async def _send():
+                try:
+                    await ws_obj.send(json.dumps({
+                        "type": "stt_result",
+                        "request_id": req_id,
+                        "text": text,
+                    }, ensure_ascii=False))
+                except Exception:
+                    pass  # WebSocket 已断开，静默忽略
+            asyncio.ensure_future(_send())
 
         try:
             while True:
@@ -244,25 +250,27 @@ class WebServer:
                         self._vad_instances[ws_obj] = vad
                     elif typ == "stop":
                         logger.info("WS: audio stream stop requested")
-                        if vad is not None:
-                            vad.flush()
-                            while not vad.empty():
-                                seg = vad.front
-                                cfg = self.config.config
-                                await self.pipeline.submit(
-                                    audio_samples=seg.samples,
-                                    sample_rate=seg.sample_rate,
-                                    stt_callback=_on_stt_done,
-                                    translate=cfg.get("isTranslate"),
-                                    play_audio=cfg.get("isPlayAudio"),
-                                    play_translation=cfg.get("isPlayTranslation"),
-                                    osc_enabled=cfg.get("osc_enabled"),
-                                    source_lang=cfg.get("source_lang"),
-                                    target_lang=cfg.get("target_lang"),
-                                )
-                                vad.pop()
-                        vad = None
-                        self._vad_instances.pop(ws_obj, None)
+                        try:
+                            if vad is not None:
+                                vad.flush()
+                                while not vad.empty():
+                                    seg = vad.front
+                                    cfg = self.config.config
+                                    await self.pipeline.submit(
+                                        audio_samples=seg.samples,
+                                        sample_rate=seg.sample_rate,
+                                        stt_callback=_on_stt_done,
+                                        translate=cfg.get("isTranslate"),
+                                        play_audio=cfg.get("isPlayAudio"),
+                                        play_translation=cfg.get("isPlayTranslation"),
+                                        osc_enabled=cfg.get("osc_enabled"),
+                                        source_lang=cfg.get("source_lang"),
+                                        target_lang=cfg.get("target_lang"),
+                                    )
+                                    vad.pop()
+                        finally:
+                            vad = None
+                            self._vad_instances.pop(ws_obj, None)
                 elif isinstance(raw, bytes):
                     if vad is None:
                         continue
