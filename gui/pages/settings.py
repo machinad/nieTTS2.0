@@ -434,11 +434,11 @@ class SettingsPage(QWidget):
         osc_l.addWidget(osc_toggle)
 
         osc_host_edit = QLineEdit(cfg.get("osc_host", "127.0.0.1"))
-        osc_l.addLayout(_field_col("OSC Host", osc_host_edit, lambda: self.bridge.update_config({"osc_host": osc_host_edit.text()})))
+        osc_l.addLayout(_field_col("OSC Host", osc_host_edit, lambda: (self.bridge.update_config({"osc_host": osc_host_edit.text()}), self._reload_async())))
         osc_port_spin = QSpinBox()
         osc_port_spin.setRange(1, 65535)
         osc_port_spin.setValue(cfg.get("osc_port", 9000))
-        osc_l.addLayout(_field_col("OSC Port", osc_port_spin, lambda: self.bridge.update_config({"osc_port": osc_port_spin.value()})))
+        osc_l.addLayout(_field_col("OSC Port", osc_port_spin, lambda: (self.bridge.update_config({"osc_port": osc_port_spin.value()}), self._reload_async())))
         layout.addWidget(osc_card)
 
         # Web 端口设置
@@ -556,6 +556,7 @@ class SettingsPage(QWidget):
             sw.setChecked(n == name)
             sw.blockSignals(False)
         self.bridge.update_config({"tts_provider": {"provider": name}})
+        self._reload_async()
 
     def _set_default_stt(self, name: str):
         for n, sw in self._stt_switches.items():
@@ -563,6 +564,7 @@ class SettingsPage(QWidget):
             sw.setChecked(n == name)
             sw.blockSignals(False)
         self.bridge.update_config({"stt_provider": {"provider": name}})
+        self._reload_async()
 
     def _set_default_translate(self, name: str):
         for n, sw in self._translate_switches.items():

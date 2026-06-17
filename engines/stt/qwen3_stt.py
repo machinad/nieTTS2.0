@@ -1,4 +1,5 @@
 import asyncio
+import gc
 import logging
 from pathlib import Path
 import numpy as np
@@ -56,7 +57,10 @@ class Qwen3STT(BaseSTT):
         logger.info("Qwen3 ASR model loaded")
 
     async def close(self):
-        self._recognizer = None
+        if self._recognizer is not None:
+            self._recognizer = None
+            await asyncio.to_thread(gc.collect)
+            logger.info("Qwen3 STT 资源已释放")
 
     async def transcribe(self, samples: np.ndarray, sample_rate: int) -> STTResult:
         if not self.is_available():
