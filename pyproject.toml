@@ -1,6 +1,6 @@
 [project]
 name = "nietts"
-version = "2.1.2"
+version = "2.5.0"
 description = "TTS + Translation + STT desktop app for VR social platforms"
 requires-python = "==3.14.2"
 

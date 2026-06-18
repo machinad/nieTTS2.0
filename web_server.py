@@ -72,6 +72,7 @@ class WebServer:
         self._templates = self.config.project_root / "templates"
 
         self.app.route("/")(self.index)
+        self.app.route("/api/version")(self.get_version)
         self.app.route("/tts", methods=["POST"])(self.tts_endpoint)
         self.app.route("/config", methods=["GET"])(self.get_config)
         self.app.route("/config", methods=["POST"])(self.update_config)
@@ -110,6 +111,10 @@ class WebServer:
             response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
             return response
         return "<h1>nieTTS 2.0</h1><p>请运行 <code>cd frontend && npm run build</code></p>"
+
+    async def get_version(self):
+        from version import VERSION
+        return jsonify({"version": VERSION})
 
     async def tts_endpoint(self):
         data = await request.get_json()

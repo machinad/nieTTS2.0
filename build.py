@@ -34,10 +34,10 @@ def build_frontend():
     """构建前端 SPA"""
     if not os.path.exists(os.path.join(FRONTEND_DIR, "node_modules")):
         print("  安装前端依赖...")
-        subprocess.check_call(["npm", "install"], cwd=FRONTEND_DIR)
+        subprocess.check_call(["npm.cmd", "install"], cwd=FRONTEND_DIR)
 
     print("  构建前端...")
-    subprocess.check_call(["npm", "run", "build"], cwd=FRONTEND_DIR)
+    subprocess.check_call(["npm.cmd", "run", "build"], cwd=FRONTEND_DIR)
     print("  前端构建完成")
 
 
