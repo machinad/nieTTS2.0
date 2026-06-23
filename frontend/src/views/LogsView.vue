@@ -13,9 +13,10 @@ const filteredLogs = computed(() => {
 
 function levelIcon(level: LogEntry["level"]) {
   switch (level) {
-    case "error": return "✕"
-    case "warn": return "⚠"
-    default: return "●"
+    case "error": return "\u2715"
+    case "warn": return "\u26A0"
+    case "debug": return "\u2699"
+    default: return "\u25CF"
   }
 }
 
@@ -34,7 +35,7 @@ function clearLogs() {
 }
 
 const logCounts = computed(() => {
-  const counts = { all: appStore.logs.length, info: 0, warn: 0, error: 0 }
+  const counts = { all: appStore.logs.length, debug: 0, info: 0, warn: 0, error: 0 }
   for (const l of appStore.logs) {
     counts[l.level]++
   }
@@ -48,7 +49,7 @@ const logCounts = computed(() => {
     <div class="toolbar">
       <div class="toolbar__filters">
         <button
-          v-for="level in (['all', 'info', 'warn', 'error'] as const)"
+          v-for="level in (['all', 'debug', 'info', 'warn', 'error'] as const)"
           :key="level"
           class="filter-btn"
           :class="{ 'filter-btn--active': filterLevel === level, [`filter-btn--${level}`]: filterLevel === level }"
@@ -140,6 +141,11 @@ const logCounts = computed(() => {
   background: var(--error-muted);
   color: var(--error);
 }
+.filter-btn--active.filter-btn--debug {
+  border-color: #8080ff;
+  background: rgba(128, 128, 255, 0.1);
+  color: #8080ff;
+}
 .filter-btn--active.filter-btn--warn {
   border-color: var(--warning);
   background: var(--warning-muted);
@@ -226,6 +232,7 @@ const logCounts = computed(() => {
 .terminal__level--info { color: var(--info); }
 .terminal__level--warn { color: var(--warning); }
 .terminal__level--error { color: var(--error); }
+.terminal__level--debug { color: #8080ff; }
 
 .terminal__msg {
   color: var(--text-secondary);
@@ -237,6 +244,9 @@ const logCounts = computed(() => {
 }
 .terminal__msg--warn {
   color: var(--warning);
+}
+.terminal__msg--debug {
+  color: #8080ff;
 }
 
 .terminal__empty {

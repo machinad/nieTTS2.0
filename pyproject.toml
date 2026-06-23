@@ -23,6 +23,8 @@ dependencies = [
     "dashscope>=1.25",
     # OSC（VRChat）
     "python-osc>=1.9",
+    # VR 覆盖层（SteamVR）
+    "openvr>=2.0",
     # 模型下载
     "huggingface-hub>=0.20",
     "modelscope>=1.11",

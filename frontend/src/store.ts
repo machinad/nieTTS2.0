@@ -2,7 +2,7 @@ import { reactive } from "vue"
 
 export interface LogEntry {
   time: string
-  level: "info" | "warn" | "error"
+  level: "debug" | "info" | "warn" | "error"
   message: string
 }
 
@@ -11,7 +11,7 @@ export interface WSMessage {
   text?: string
   request_id?: string
   state?: "queued" | "processing" | "playing" | "done"
-  level?: "info" | "warn" | "error"
+  level?: "debug" | "info" | "warn" | "error"
   message?: string
   ok?: number
   fail?: number

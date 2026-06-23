@@ -9,15 +9,15 @@ from PySide6.QtWidgets import (
 
 logger = logging.getLogger(__name__)
 
-COLOR_MAP = {"info": "#6b6a68", "warn": "#c48520", "error": "#d04840"}
-ICON_MAP = {"info": "\u25CF", "warn": "\u26A0", "error": "\u2715"}
+COLOR_MAP = {"debug": "#8080ff", "info": "#6b6a68", "warn": "#c48520", "error": "#d04840"}
+ICON_MAP = {"debug": "\u2699", "info": "\u25CF", "warn": "\u26A0", "error": "\u2715"}
 
 
 class LogsPage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._filter = "all"
-        self._counts = {"all": 0, "info": 0, "warn": 0, "error": 0}
+        self._counts = {"all": 0, "debug": 0, "info": 0, "warn": 0, "error": 0}
         self._entries: list[tuple[str, str]] = []
         self._setup_ui()
 
@@ -34,7 +34,7 @@ class LogsPage(QWidget):
         toolbar.setSpacing(8)
 
         self._filter_buttons = {}
-        for level in ("all", "info", "warn", "error"):
+        for level in ("all", "debug", "info", "warn", "error"):
             btn = QPushButton()
             btn.setObjectName("filter_btn")
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -104,12 +104,12 @@ class LogsPage(QWidget):
             btn.style().polish(btn)
 
     def _update_filter_btn_text(self, btn: QPushButton, level: str):
-        label_map = {"all": "全部", "info": "info", "warn": "warn", "error": "error"}
+        label_map = {"all": "全部", "debug": "debug", "info": "info", "warn": "warn", "error": "error"}
         count = self._counts.get(level, 0)
         btn.setText(f"  {label_map[level]}  {count}")
 
     def _clear_logs(self):
-        self._counts = {"all": 0, "info": 0, "warn": 0, "error": 0}
+        self._counts = {"all": 0, "debug": 0, "info": 0, "warn": 0, "error": 0}
         self._entries.clear()
         self._terminal.clear()
         for btn_level, btn in self._filter_buttons.items():

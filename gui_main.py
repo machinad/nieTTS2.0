@@ -1,6 +1,7 @@
 import os
 import sys
 import asyncio
+import argparse
 import logging
 
 # PyInstaller 打包后 CWD 不是应用目录，导致相对路径（如 models/...）失效
@@ -43,8 +44,12 @@ logger = logging.getLogger(__name__)
 
 
 def main():
+    parser = argparse.ArgumentParser(description="nieTTS 2.0")
+    parser.add_argument("--debug", action="store_true", help="启用 debug 日志模式")
+    args, _ = parser.parse_known_args()
+
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.DEBUG if args.debug else logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
@@ -87,11 +92,24 @@ def main():
     window = MainWindow(bridge, qt_log_handler)
     window.show()
 
+    # VR 覆盖层
+    vr_manager = None
+
     async def _startup():
+        nonlocal vr_manager
         ws_log_handler.set_loop(asyncio.get_running_loop())
         logging.getLogger().addHandler(ws_log_handler)
         await pipeline.start()
         logger.info("Pipeline 已启动")
+
+        # VR 覆盖层（async 非阻塞初始化 + 60Hz 主循环）
+        vr_cfg = config.get("vr_overlay", {})
+        if vr_cfg.get("enabled", False):
+            from gui.vr_overlay import VROverlayManager, VROverlayTestWidget
+            vr_manager = VROverlayManager()
+            vr_widget = VROverlayTestWidget(manager=vr_manager)
+            asyncio.create_task(vr_manager.run(vr_widget, config.config))
+            logger.info("VR 覆盖层任务已创建")
 
         cert_server = CertificateServer()
         host = config.get("host", "0.0.0.0")
@@ -125,9 +143,15 @@ def main():
         )
 
     async def _shutdown():
+        nonlocal vr_manager
         qt_log_handler.disable()
         await pipeline.stop()
         await translate.close()
+        # 清理 VR 覆盖层（异步停止主循环 + 清理资源）
+        if vr_manager is not None:
+            await vr_manager.stop()
+            vr_manager = None
+            logger.info("VR 覆盖层已关闭")
         logger.info("nieTTS 已停止")
 
     try:

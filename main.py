@@ -1,4 +1,5 @@
 ﻿import asyncio
+import argparse
 import logging
 
 from config.default import ConfigManager
@@ -12,8 +13,12 @@ from certificates.certificates_server import CertificateServer
 
 from version import VERSION
 
+_parser = argparse.ArgumentParser(description="nieTTS 2.0")
+_parser.add_argument("--debug", action="store_true", help="启用 debug 日志模式")
+_args, _ = _parser.parse_known_args()
+
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG if _args.debug else logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
