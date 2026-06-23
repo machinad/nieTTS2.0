@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -39,6 +40,7 @@ class ControllerHit:
     distance: float
     origin: tuple[float, float, float] = (0, 0, 0)
     direction: tuple[float, float, float] = (0, 0, 0)
+    hit_world_pos: tuple[float, float, float] = (0, 0, 0)
 
 
 @dataclass
@@ -140,10 +142,10 @@ class VRRayTracker:
                     state.hit = None
                     continue
 
-                # 从 3x4 矩阵提取射线
+                # 从 3x4 矩阵提取射线（用 pitched 方向，和激光束一致）
                 m = pose.mDeviceToAbsoluteTracking
                 origin = _extract_position(m)
-                direction = _extract_forward(m)
+                direction = _extract_pitched_forward(m)
 
                 # computeOverlayIntersection
                 params = ov.VROverlayIntersectionParams_t()
@@ -159,6 +161,12 @@ class VRRayTracker:
                 if hit:
                     uv = results.vUVs
                     widget_pos = self._uv_to_widget_pos(uv.v[0], uv.v[1])
+                    # 计算交点世界坐标
+                    hit_world_pos = (
+                        origin[0] + direction[0] * results.fDistance,
+                        origin[1] + direction[1] * results.fDistance,
+                        origin[2] + direction[2] * results.fDistance,
+                    )
                     controller_hit = ControllerHit(
                         controller_index=idx,
                         widget_pos=widget_pos,
@@ -167,6 +175,7 @@ class VRRayTracker:
                         distance=results.fDistance,
                         origin=origin,
                         direction=direction,
+                        hit_world_pos=hit_world_pos,
                     )
                     state.is_hitting = True
                     state.hit = controller_hit
@@ -240,3 +249,29 @@ def _extract_position(m) -> tuple[float, float, float]:
 def _extract_forward(m) -> tuple[float, float, float]:
     """从 HmdMatrix34_t 提取前方向量（-Z 方向）。"""
     return (-m.m[0][2], -m.m[1][2], -m.m[2][2])
+
+
+def _extract_pitched_forward(m, pitch_deg: float = -38) -> tuple[float, float, float]:
+    """从设备矩阵提取 pitched 前方向（世界空间）。
+
+    在控制器局部空间中应用 pitch 旋转，然后转换到世界空间。
+    这样方向在控制器扭转时保持一致（局部空间旋转不影响世界空间方向）。
+
+    Args:
+        m: HmdMatrix34_t 设备矩阵
+        pitch_deg: 俯仰偏移角度（度），默认 -38°
+    """
+    # 控制器局部空间中的 pitched 前方向
+    # 原始前方向 = (0, 0, -1)
+    # 绕 X 轴旋转 pitch_deg 后 = (0, sin(pitch_deg), -cos(pitch_deg))
+    pitch_rad = math.radians(pitch_deg)
+    local_x = 0.0
+    local_y = math.sin(pitch_rad)
+    local_z = -math.cos(pitch_rad)
+
+    # 转换到世界空间：world = R × local
+    return (
+        m.m[0][0] * local_x + m.m[0][1] * local_y + m.m[0][2] * local_z,
+        m.m[1][0] * local_x + m.m[1][1] * local_y + m.m[1][2] * local_z,
+        m.m[2][0] * local_x + m.m[2][1] * local_y + m.m[2][2] * local_z,
+    )
