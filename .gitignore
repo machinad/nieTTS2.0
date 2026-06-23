@@ -14,6 +14,7 @@ config.json
 /docs/architecture.svg
 /docs/FRONTEND_SPEC.md
 /docs/openvr
+/docs/openxr
 /models/*
 /models/*/*
 !models/matcha-icefall-zh-en/
