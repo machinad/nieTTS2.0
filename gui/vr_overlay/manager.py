@@ -73,6 +73,7 @@ class VROverlayManager:
         self._input_handler = None
         self._widget = None
         self._crosshair = None
+        self._ray_tracker = None
 
         # 状态
         self._initialized = False
@@ -135,10 +136,14 @@ class VROverlayManager:
                 # 1. 轮询 OpenVR 事件
                 self._pump_events()
 
-                # 2. 按需渲染并提交纹理
+                # 2. 感应式射线追踪（每帧检测控制器与覆盖层的交点）
+                if self._ray_tracker:
+                    self._ray_tracker.update()
+
+                # 3. 按需渲染并提交纹理
                 self._render_and_submit()
 
-                # 3. 精确休眠到下一帧
+                # 4. 精确休眠到下一帧
                 elapsed = time.monotonic() - t0
                 await asyncio.sleep(max(0, dt - elapsed))
 
@@ -278,12 +283,7 @@ class VROverlayManager:
             mouse_scale.v[1] = tex_h
             self._vr_overlay.setOverlayMouseScale(self._overlay_handle, mouse_scale)
 
-            # 设置交互 Flag
-            self._vr_overlay.setOverlayFlag(
-                self._overlay_handle,
-                ov.VROverlayFlags_MakeOverlaysInteractiveIfVisible,
-                True
-            )
+            # 设置交互 Flag（不启用 SteamVR 内置激光，使用自定义射线追踪）
             self._vr_overlay.setOverlayFlag(
                 self._overlay_handle,
                 ov.VROverlayFlags_SendVRDiscreteScrollEvents,
@@ -329,6 +329,17 @@ class VROverlayManager:
             self._widget, self._crosshair, manager=self,
             tex_w=tex_w, tex_h=tex_h,
         )
+
+        # 初始化感应式射线追踪器
+        from gui.vr_overlay.ray_tracker import VRRayTracker
+        self._ray_tracker = VRRayTracker(
+            overlay=self._vr_overlay,
+            overlay_handle=self._overlay_handle,
+            input_handler=self._input_handler,
+            tex_width=tex_w,
+            tex_height=tex_h,
+        )
+        self._ray_tracker.init()
 
         # 标记脏，主循环首帧会渲染
         self._dirty = True
@@ -398,12 +409,6 @@ class VROverlayManager:
             return
 
         try:
-            ov = _ensure_openvr()
-            self._vr_overlay.setOverlayFlag(
-                self._overlay_handle,
-                ov.VROverlayFlags_MakeOverlaysInteractiveIfVisible,
-                True
-            )
             self._vr_overlay.showOverlay(self._overlay_handle)
             self._visible = True
             self._dirty = True
@@ -417,12 +422,6 @@ class VROverlayManager:
             return
 
         try:
-            ov = _ensure_openvr()
-            self._vr_overlay.setOverlayFlag(
-                self._overlay_handle,
-                ov.VROverlayFlags_MakeOverlaysInteractiveIfVisible,
-                False
-            )
             self._vr_overlay.hideOverlay(self._overlay_handle)
             self._visible = False
             logger.info("VR 覆盖层已隐藏")

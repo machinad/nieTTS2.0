@@ -102,7 +102,7 @@ def main():
         await pipeline.start()
         logger.info("Pipeline 已启动")
 
-        # VR 覆盖层（async 非阻塞初始化 + 60Hz 主循环）
+        # VR 覆盖层（OpenVR + 感应式射线）
         vr_cfg = config.get("vr_overlay", {})
         if vr_cfg.get("enabled", False):
             from gui.vr_overlay import VROverlayManager, VROverlayTestWidget
@@ -147,7 +147,7 @@ def main():
         qt_log_handler.disable()
         await pipeline.stop()
         await translate.close()
-        # 清理 VR 覆盖层（异步停止主循环 + 清理资源）
+        # 清理 VR 覆盖层
         if vr_manager is not None:
             await vr_manager.stop()
             vr_manager = None
