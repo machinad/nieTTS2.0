@@ -13,6 +13,7 @@ config.json
 /docs/API_CONTRACT.md
 /docs/architecture.svg
 /docs/FRONTEND_SPEC.md
+/docs/AUDIT_CHECKLIST.md
 /docs/openvr
 /docs/openxr
 /models/*
@@ -35,6 +36,5 @@ AUDIT_REPORT.md
 FIX_PLAN.md
 AGENTS.md
 CLAUDE.md
-pytest.ini
 skill-lock.json
 test_hy_mt.py

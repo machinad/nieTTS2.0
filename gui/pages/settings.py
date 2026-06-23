@@ -640,7 +640,6 @@ class SettingsPage(QWidget):
         self._tabs.addTab(self._build_translate_tab(), "翻译")
         self._tabs.addTab(self._build_audio_tab(), "音频 && 其它")
         self._tabs.addTab(self._build_download_tab(), "模型下载")
-        self.bridge.download_done.connect(self._on_download_done)
 
     def _on_download(self):
         btn_id = self._download_source_group.checkedId()

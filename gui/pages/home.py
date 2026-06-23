@@ -5,7 +5,7 @@ from PySide6.QtGui import QIcon, QPixmap, QPainter
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPlainTextEdit,
-    QComboBox, QPushButton, QFrame,
+    QComboBox, QPushButton, QFrame, QScrollArea,
 )
 from gui.widgets.waveform import WaveformWidget
 
@@ -90,8 +90,12 @@ class HomePage(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(16)
 
-        scroll = QWidget()
-        scroll_layout = QVBoxLayout(scroll)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setContentsMargins(0, 0, 0, 0)
+        container = QWidget()
+        scroll_layout = QVBoxLayout(container)
         scroll_layout.setContentsMargins(24, 24, 24, 24)
         scroll_layout.setSpacing(16)
 
@@ -222,6 +226,7 @@ class HomePage(QWidget):
         scroll_layout.addWidget(self._log_box)
 
         scroll_layout.addStretch()
+        scroll.setWidget(container)
         root.addWidget(scroll)
 
     def _load_config(self):
