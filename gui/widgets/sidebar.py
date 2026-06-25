@@ -61,6 +61,14 @@ _SVG_CHEVRON_RIGHT = b'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24
   <path d="m9 6 6 6-6 6"/>
 </svg>'''
 
+_SVG_GRID = b'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <rect width="7" height="7" x="3" y="3" rx="1"/>
+  <rect width="7" height="7" x="14" y="3" rx="1"/>
+  <rect width="7" height="7" x="14" y="14" rx="1"/>
+  <rect width="7" height="7" x="3" y="14" rx="1"/>
+</svg>'''
+
 
 class _NavButton(QPushButton):
     def __init__(self, svg_data: bytes, label: str, parent=None):
@@ -102,6 +110,7 @@ class Sidebar(QFrame):
 
     NAV_ITEMS = [
         (_SVG_HOUSE, "主页"),
+        (_SVG_GRID, "键盘"),
         (_SVG_GEAR, "设置"),
         (_SVG_DOCUMENT, "日志"),
         (_SVG_INFO, "关于"),

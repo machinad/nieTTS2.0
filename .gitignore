@@ -25,6 +25,7 @@ config.json
 !models/matcha-icefall-zh-en/number-zh.fst
 !models/matcha-icefall-zh-en/phone-zh.fst
 !models/matcha-icefall-zh-en/espeak-ng-data.zip
+rime_user_data*
 /frontend/node_modules
 /llama-cpp
 /.agents*

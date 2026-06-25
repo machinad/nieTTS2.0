@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
 from gui.widgets.sidebar import Sidebar
 from gui.widgets.header import Header
 from gui.pages.home import HomePage
+from gui.pages.keyboard import KeyboardPage
 from gui.pages.settings import SettingsPage
 from gui.pages.logs import LogsPage
 from gui.pages.about import AboutPage
@@ -82,11 +83,13 @@ class MainWindow(QMainWindow):
         self._stack.setStyleSheet("QStackedWidget { background: #f5f3f0; }")
 
         self._home_page = HomePage(self.bridge)
+        self._keyboard_page = KeyboardPage(self.bridge)
         self._settings_page = SettingsPage(self.bridge)
         self._logs_page = LogsPage()
         self._about_page = AboutPage()
 
         self._stack.addWidget(self._home_page)
+        self._stack.addWidget(self._keyboard_page)
         self._stack.addWidget(self._settings_page)
         self._stack.addWidget(self._logs_page)
         self._stack.addWidget(self._about_page)
@@ -102,6 +105,8 @@ class MainWindow(QMainWindow):
         self._home_page.request_send.connect(self._on_send_tts)
         self._home_page.recording_started.connect(self._start_recording)
         self._home_page.recording_stopped.connect(self._stop_recording)
+
+        self._keyboard_page.request_send.connect(self._on_send_tts)
 
         self.bridge.overlay_hotkey_changed.connect(self._init_hotkey)
 

@@ -9,6 +9,7 @@ from engines.translate.service import TranslateService
 from engines.osc.service import OSCService
 from engines.pipeline import RequestPipeline
 from engines.audio.playback import get_playback_devices
+from engines.rime.service import RimeService
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,7 @@ class GuiBridge(QObject):
         translate: TranslateService,
         osc: OSCService,
         pipeline: RequestPipeline,
+        rime: RimeService | None = None,
         notifier: ConfigNotifier | None = None,
         parent: QObject | None = None,
     ):
@@ -37,6 +39,7 @@ class GuiBridge(QObject):
         self.translate = translate
         self.osc = osc
         self.pipeline = pipeline
+        self.rime = rime
         self.ip_address = "127.0.0.1"
         self.web_port = 11451
         self._notifier = notifier
@@ -114,3 +117,29 @@ class GuiBridge(QObject):
             "source_lang": source_lang or cfg.get("source_lang"),
             "target_lang": target_lang or cfg.get("target_lang"),
         }
+
+    # ---- Rime 输入法（同步调用，librime 非线程安全） ----
+
+    def rime_key(self, keycode: int, mask: int = 0) -> dict:
+        """处理按键"""
+        return self.rime.process_key(keycode, mask)
+
+    def rime_select(self, index: int) -> dict:
+        """选择候选词"""
+        return self.rime.select_candidate(index)
+
+    def rime_page(self, backward: bool = False) -> dict:
+        """候选词翻页"""
+        return self.rime.change_page(backward)
+
+    def rime_toggle_mode(self) -> dict:
+        """切换中英文模式"""
+        return self.rime.toggle_ascii_mode()
+
+    def rime_clear(self):
+        """清除当前输入组合"""
+        self.rime.clear()
+
+    def rime_status(self) -> dict:
+        """获取 Rime 状态"""
+        return self.rime.get_status()

@@ -30,6 +30,7 @@ from gui.main import MainWindow
 from gui.log_handler import QtLogHandler
 from gui.bridge import GuiBridge
 from gui.theme import apply_theme
+from engines.rime.service import RimeService
 
 BANNER = r"""
 ███╗   ██╗  ██╗  ███████╗  ████████╗  ████████╗  ███████╗
@@ -84,10 +85,11 @@ def main():
     translate = TranslateService(config)
     osc = OSCService(config)
     stt = STTService(config)
+    rime = RimeService()
     pipeline = RequestPipeline(config, tts, translate, osc, stt=stt)
 
     notifier = ConfigNotifier()
-    bridge = GuiBridge(config, tts, translate, osc, pipeline, notifier=notifier)
+    bridge = GuiBridge(config, tts, translate, osc, pipeline, rime=rime, notifier=notifier)
 
     window = MainWindow(bridge, qt_log_handler)
     window.show()
@@ -147,6 +149,7 @@ def main():
         qt_log_handler.disable()
         await pipeline.stop()
         await translate.close()
+        rime.shutdown()
         # 清理 VR 覆盖层
         if vr_manager is not None:
             await vr_manager.stop()
