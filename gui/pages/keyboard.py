@@ -343,9 +343,9 @@ class KeyboardPage(QWidget):
         h.setContentsMargins(0, 0, 0, 0)
         h.setSpacing(_BASE_SPACING)
 
-        sh = self._mk_fn("⇧")
-        sh.clicked.connect(self._toggle_case)
-        h.addWidget(sh)
+        self._shift_btn = self._mk_fn("分词")
+        self._shift_btn.clicked.connect(self._shift_action)
+        h.addWidget(self._shift_btn)
 
         for ch in "zxcvbnm":
             h.addWidget(self._mk_key(ch))
@@ -530,6 +530,7 @@ class KeyboardPage(QWidget):
             r = self.bridge.rime_toggle_mode()
             self._ascii = r.get("is_ascii_mode", False)
             self._mode_btn.setText("英" if self._ascii else "中")
+            self._shift_btn.setText("⇧" if self._ascii else "分词")
             if self._ascii:
                 self._preedit = ""
                 self._candidates = []
@@ -538,15 +539,25 @@ class KeyboardPage(QWidget):
         except Exception as e:
             logger.error("toggle_mode 失败: %s", e)
 
+    def _shift_action(self):
+        if self._ascii:
+            self._toggle_case()
+        else:
+            # 中文模式：插入隔音符（apostrophe keycode 39）
+            self._rime_key(39)
+
     def _toggle_case(self):
         self._upper = not self._upper
         self._refresh_labels()
 
     def _punct(self, ch: str):
-        if self._cn_punct and not self._ascii:
-            ch = _CN_PUNCT.get(ch, ch)
-        self._committed += ch
-        self._refresh_preview()
+        if not self._ascii and self.bridge.rime:
+            # 中文模式：标点走 Rime，Rime 会先上屏拼音再输出中文标点
+            code = ord(ch)
+            self._rime_key(code)
+        else:
+            self._committed += ch
+            self._refresh_preview()
 
     def _clear_rime(self):
         try:
