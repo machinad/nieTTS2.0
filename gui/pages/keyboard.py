@@ -64,12 +64,12 @@ QPushButton#send:hover {
 /* ── 候选栏 ── */
 QFrame#candbar {
     background: #ffffff; border: 1px solid #e0dfdc;
-    border-radius: 5px; min-height: 32px; max-height: 32px;
+    border-radius: 5px;
 }
 QLabel#preedit { color: #d6608a; font-size: 13px; font-weight: 600; padding-left: 4px; }
 QPushButton#pg {
     background: transparent; border: none; color: #9b9a98; font-size: 13px;
-    min-width: 20px; max-width: 20px; min-height: 28px; max-height: 28px;
+    min-width: 24px; max-width: 24px; min-height: 44px; max-height: 44px;
 }
 QPushButton#pg:hover { color: #d6608a; }
 QPushButton#pg:disabled { color: #d0cfcc; }
@@ -78,7 +78,7 @@ QPushButton#cand {
     background: #ffffff; border: 1px solid #e8e7e4;
     border-radius: 3px; padding: 0 8px;
     font-size: 14px; color: #1a1a1a;
-    min-height: 26px; max-height: 26px;
+    min-height: 48px; max-height: 48px;
 }
 QPushButton#cand:hover { background: #f5f0ff; border-color: #9a6ad6; }
 
@@ -258,34 +258,47 @@ class KeyboardPage(QWidget):
     def _mk_candbar(self) -> QFrame:
         f = QFrame()
         f.setObjectName("candbar")
-        h = QHBoxLayout(f)
-        h.setContentsMargins(4, 0, 4, 0)
-        h.setSpacing(3)
+        v = QVBoxLayout(f)
+        v.setContentsMargins(6, 4, 16, 4)
+        v.setSpacing(3)
 
-        self._preedit_lbl = QLabel("")
-        self._preedit_lbl.setObjectName("preedit")
-        self._preedit_lbl.hide()
-        h.addWidget(self._preedit_lbl)
-
-        self._prev_btn = QPushButton("◀")
-        self._prev_btn.setObjectName("pg")
-        self._prev_btn.clicked.connect(lambda: self._page(True))
-        h.addWidget(self._prev_btn)
+        # 第一行：候选词 + 翻页（翻页在右侧）
+        row1 = QHBoxLayout()
+        row1.setContentsMargins(0, 0, 0, 0)
+        row1.setSpacing(4)
 
         self._cand_box = QHBoxLayout()
         self._cand_box.setContentsMargins(0, 0, 0, 0)
         self._cand_box.setSpacing(3)
         self._cand_btns: list[QPushButton] = []
-        h.addLayout(self._cand_box, 1)
+        row1.addLayout(self._cand_box, 1)
+
+        self._prev_btn = QPushButton("◀")
+        self._prev_btn.setObjectName("pg")
+        self._prev_btn.clicked.connect(lambda: self._page(True))
+        row1.addWidget(self._prev_btn)
 
         self._pg_info = QLabel("")
         self._pg_info.setObjectName("pginfo")
-        h.addWidget(self._pg_info)
+        row1.addWidget(self._pg_info)
 
         self._next_btn = QPushButton("▶")
         self._next_btn.setObjectName("pg")
         self._next_btn.clicked.connect(lambda: self._page(False))
-        h.addWidget(self._next_btn)
+        row1.addWidget(self._next_btn)
+        v.addLayout(row1)
+
+        # 第二行：拼音
+        row2 = QHBoxLayout()
+        row2.setContentsMargins(0, 0, 0, 0)
+        row2.setSpacing(0)
+        self._preedit_lbl = QLabel("")
+        self._preedit_lbl.setObjectName("preedit")
+        self._preedit_lbl.hide()
+        row2.addWidget(self._preedit_lbl)
+        row2.addStretch(1)
+        v.addLayout(row2)
+
         return f
 
     # ── 键盘 ──
