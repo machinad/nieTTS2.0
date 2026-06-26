@@ -3,17 +3,20 @@ RimeEngine — librime 的高层 Python 封装。
 
 自动管理会话生命周期，提供简洁的输入法操作接口。
 所有 T1-T6 级别的 API 统一通过此层调用。
+
+线程安全：此类不是线程安全的。每个线程应使用独立的 RimeEngine 实例。
 """
 
+import logging
 import time
 from pathlib import Path
 from dataclasses import dataclass, field
 
+logger = logging.getLogger("rime")
+
 from rime.binding import (
-    RimeApiWrapper, RimeTraits, RimeContext, RimeCandidate,
-    RimeConfig, RimeStatus,
+    RimeApiWrapper, RimeTraits, RimeConfig,
     rime_struct_init, RimeNotificationHandler,
-    c_void_p, c_char_p,
 )
 from rime._utils import find_dll, find_data_dir
 
@@ -70,6 +73,12 @@ class RimeEngine:
     封装了 librime 的会话管理，提供简洁的输入法操作接口。
     所有 T1-T6 级别的 API 统一通过此类调用。
 
+    支持上下文管理器，自动处理 shutdown：
+        with RimeEngine(user_data_dir="./data") as engine:
+            engine.process_key(ord('a'))
+
+    线程安全：此类不是线程安全的。每个线程应使用独立的 RimeEngine 实例。
+
     Args:
         shared_data_dir: 方案数据目录，None 则使用包内数据
         user_data_dir: 用户数据目录，None 则使用 ./rime_user_data
@@ -124,12 +133,12 @@ class RimeEngine:
         self._api.set_notification_handler(self._notify_cb)
         self._api.initialize(traits)
 
-    def _on_notification(self, context_object, session_id,
+    def _on_notification(self, _context_object, _session_id,
                          message_type, message_value):
-        """librime 部署通知回调。"""
+        """librime 部署通知回调（内部使用）。"""
         t = self._api._decode(message_type) or ""
         v = self._api._decode(message_value) or ""
-        print(f"[rime] {t}: {v}")
+        logger.info("%s: %s", t, v)
 
     # ══════════════════════════════════════════
     # T5: 部署与维护
@@ -180,8 +189,8 @@ class RimeEngine:
         # 默认启用简体中文
         self._api.set_option(self._session_id, "zh_hans", True)
 
-        print(f"[rime] 已部署方案: {self._schema_id}")
-        print(f"[rime] librime 版本: {self._api.get_version()}")
+        logger.info("已部署方案: %s", self._schema_id)
+        logger.info("librime 版本: %s", self._api.get_version())
 
     def start_maintenance(self, full_check: bool = True) -> bool:
         """启动部署维护（重新编译方案数据）。
@@ -421,17 +430,29 @@ class RimeEngine:
         self._ensure_deployed()
         return self._api.set_input(self._session_id, text)
 
-    def simulate_key_sequence(self, key_sequence: str) -> bool:
+    def simulate_key_sequence(self, key_sequence: str) -> InputResult:
         """模拟按键序列（主要用于测试）。
 
         Args:
             key_sequence: 按键序列字符串
 
         Returns:
-            是否成功处理
+            InputResult
         """
         self._ensure_deployed()
-        return self._api.simulate_key_sequence(self._session_id, key_sequence)
+        result = InputResult()
+
+        handled = self._api.simulate_key_sequence(
+            self._session_id, key_sequence)
+        if not handled:
+            return result
+
+        committed = self._api.get_commit(self._session_id)
+        if committed is not None:
+            result.committed = committed
+
+        self._read_context(result)
+        return result
 
     # ══════════════════════════════════════════
     # T2: 方案管理
@@ -788,6 +809,24 @@ class RimeEngine:
     # 生命周期
     # ══════════════════════════════════════════
 
+    def __enter__(self):
+        """上下文管理器入口：自动调用 deploy()。"""
+        self.deploy()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """上下文管理器出口：自动调用 shutdown()。"""
+        self.shutdown()
+        return False
+
+    def __del__(self):
+        """析构函数：确保资源被释放。"""
+        if getattr(self, "_session_id", 0):
+            try:
+                self.shutdown()
+            except Exception:
+                pass
+
     def shutdown(self):
         """销毁会话并释放引擎资源。"""
         if self._session_id:
@@ -815,11 +854,8 @@ class RimeEngine:
             # 读取预编辑文本
             if ctx.composition.length > 0 and ctx.composition.preedit:
                 preedit_raw = ctx.composition.preedit
-                if isinstance(preedit_raw, bytes):
-                    result.preedit = preedit_raw.decode("utf-8",
-                                                         errors="replace")
-                else:
-                    result.preedit = str(preedit_raw or "")
+                result.preedit = preedit_raw.decode("utf-8",
+                                                     errors="replace") if preedit_raw else ""
 
             # 读取候选词（直接访问数组，不用迭代器）
             num = ctx.menu.num_candidates

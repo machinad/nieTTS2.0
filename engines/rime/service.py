@@ -52,6 +52,32 @@ class RimeService:
         engine = self._ensure_engine()
         engine.clear()
 
+    def get_schema_list(self) -> list[dict]:
+        """获取所有可用输入方案"""
+        engine = self._ensure_engine()
+        return engine.get_schema_list()
+
+    def get_current_schema(self) -> str | None:
+        """获取当前输入方案 ID"""
+        engine = self._ensure_engine()
+        return engine.get_current_schema()
+
+    def switch_schema(self, schema_id: str) -> bool:
+        """切换输入方案"""
+        engine = self._ensure_engine()
+        return engine.switch_schema(schema_id)
+
+    def set_input(self, text: str) -> dict:
+        """直接设置输入字符串（支持标点嵌入拼音）"""
+        engine = self._ensure_engine()
+        engine.set_input(text)
+        result = InputResult()
+        committed = engine._api.get_commit(engine._session_id)
+        if committed is not None:
+            result.committed = committed
+        engine._read_context(result)
+        return self._to_dict(result)
+
     def get_status(self) -> dict:
         engine = self._ensure_engine()
         status = engine.get_status()

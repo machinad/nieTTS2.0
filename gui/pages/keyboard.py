@@ -1,5 +1,5 @@
 import logging
-from PySide6.QtCore import Qt, Signal, QSize, QByteArray
+from PySide6.QtCore import Qt, Signal, QSize, QByteArray, QTimer
 from PySide6.QtGui import QIcon, QPixmap, QPainter
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
@@ -9,13 +9,18 @@ from PySide6.QtWidgets import (
 
 logger = logging.getLogger(__name__)
 
-_SVG_SEND = b'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-  stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <path d="m22 2-7 20-4-9-9-4Z"/>
-  <path d="M22 2 11 13"/>
-</svg>'''
 
 _CN_PUNCT = {",": "，", ".": "。", "?": "？", "!": "！", ";": "；", ":": "："}
+
+# 长按上滑输入映射
+_SWIPE_MAP = {
+    "q": "1", "w": "2", "e": "3", "r": "4", "t": "5",
+    "y": "6", "u": "7", "i": "8", "o": "9", "p": "0",
+    "a": "~", "s": "!", "d": "@", "f": "#", "g": "%",
+    "h": "“", "j": "”", "k": "*", "l": "?",
+    "z": "(", "x": ")", "c": "-", "v": "_", "b": ":",
+    "n": ";", "m": "/",
+}
 
 # 键盘基准尺寸（scale=1.0 时的像素值，实际由 resizeEvent 等比缩放）
 _KEY_W = 48
@@ -42,42 +47,105 @@ def _icon(svg: bytes, sz: int = 16) -> QIcon:
     return QIcon(pm)
 
 
+class SwipeKey(QPushButton):
+    """支持上滑输入的按键：短按触发 clicked，上滑触发 swipe_up 信号。"""
+
+    swipe_up = Signal(str)  # 滑动时发出特殊字符
+
+    def __init__(self, text: str, swipe_char: str | None = None, parent=None):
+        super().__init__(text, parent)
+        self._swipe_char = swipe_char
+        self._press_pos = None
+        self._swiped = False
+        self._swipe_threshold = 20  # 上滑最小像素
+
+        # 在按键上方显示小号特殊字符
+        if swipe_char:
+            self._tip = QLabel(swipe_char, self)
+            self._tip.setStyleSheet(
+                "font-size: 10px; color: #9b9a98; background: transparent; border: none;")
+            self._tip.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self._tip.setGeometry(0, 0, self.width(), 14)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, '_tip'):
+            self._tip.setGeometry(0, 0, self.width(), 14)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._press_pos = event.position().toPoint()
+            self._swiped = False
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self._press_pos and not self._swiped:
+            dy = self._press_pos.y() - event.position().toPoint().y()
+            if dy > self._swipe_threshold and self._swipe_char:
+                self._swiped = True
+                self.swipe_up.emit(self._swipe_char)
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if self._swiped:
+            # 滑动已触发，阻止 clicked 信号
+            self._press_pos = None
+            self._swiped = False
+            return
+        self._press_pos = None
+        super().mouseReleaseEvent(event)
+
+    def touchEvent(self, event):
+        points = event.points()
+        if not points:
+            return False
+        pt = points[0]
+        pos = pt.position().toPoint()
+        if pt.state() == Qt.TouchPointState.TouchPointPressed:
+            self._press_pos = pos
+            self._swiped = False
+        elif pt.state() == Qt.TouchPointState.TouchPointMoved:
+            if self._press_pos and not self._swiped:
+                dy = self._press_pos.y() - pos.y()
+                if dy > self._swipe_threshold and self._swipe_char:
+                    self._swiped = True
+                    self.swipe_up.emit(self._swipe_char)
+        elif pt.state() == Qt.TouchPointState.TouchPointReleased:
+            if self._swiped:
+                self._press_pos = None
+                self._swiped = False
+                return True
+            self._press_pos = None
+        return False
+
+
 _QSS = """
 /* ── 预览行 ── */
 QLineEdit#preview {
     background: #fafaf8; border: 1px solid #d8d7d4;
     border-radius: 5px; padding: 4px 8px;
-    font-size: 14px; color: #1a1a1a;
+    font-size: 20px; color: #1a1a1a;
     min-height: 28px; max-height: 28px;
 }
 QLineEdit#preview:focus { border-color: #9a6ad6; }
-QLabel#count { font-family: 'Consolas', monospace; font-size: 11px; color: #9b9a98; }
-QPushButton#send {
-    background: qlineargradient(x1:0,y1:0,x2:1,y2:0, stop:0 #d6608a, stop:1 #9a6ad6);
-    border: none; border-radius: 5px;
-    min-width: 36px; max-width: 36px; min-height: 32px; max-height: 32px;
-}
-QPushButton#send:hover {
-    background: qlineargradient(x1:0,y1:0,x2:1,y2:0, stop:0 #c4507a, stop:1 #8a5ac6);
-}
-
+QLabel#count { font-family: 'Consolas', monospace; font-size: 22px; color: #9b9a98; }
 /* ── 候选栏 ── */
 QFrame#candbar {
     background: #ffffff; border: 1px solid #e0dfdc;
     border-radius: 5px;
 }
-QLabel#preedit { color: #d6608a; font-size: 13px; font-weight: 600; padding-left: 4px; }
+QLabel#preedit { color: #d6608a; font-size: 26px; font-weight: 600; padding-left: 4px; }
 QPushButton#pg {
-    background: transparent; border: none; color: #9b9a98; font-size: 13px;
+    background: transparent; border: none; color: #9b9a98; font-size: 26px;
     min-width: 24px; max-width: 24px; min-height: 44px; max-height: 44px;
 }
 QPushButton#pg:hover { color: #d6608a; }
 QPushButton#pg:disabled { color: #d0cfcc; }
-QLabel#pginfo { font-size: 11px; color: #9b9a98; min-width: 16px; max-width: 16px; }
+QLabel#pginfo { font-size: 22px; color: #9b9a98; min-width: 16px; max-width: 16px; }
 QPushButton#cand {
     background: #ffffff; border: 1px solid #e8e7e4;
     border-radius: 3px; padding: 0 8px;
-    font-size: 14px; color: #1a1a1a;
+    font-size: 20px; color: #1a1a1a;
     min-height: 48px; max-height: 48px;
 }
 QPushButton#cand:hover { background: #f5f0ff; border-color: #9a6ad6; }
@@ -92,7 +160,7 @@ QFrame#kb_container {
 /* ── 字母键 ── */
 QPushButton#k {
     background: #ffffff; border: 1px solid #c8c7c4; border-radius: 5px;
-    font-size: 15px; font-weight: 500; color: #1a1a1a;
+    font-size: 30px; font-weight: 500; color: #1a1a1a;
 }
 QPushButton#k:hover { background: #eae9e6; }
 QPushButton#k:pressed { background: #d8d7d4; border-color: #b0afac; }
@@ -100,22 +168,22 @@ QPushButton#k:pressed { background: #d8d7d4; border-color: #b0afac; }
 /* ── 功能键 ⌫ ── */
 QPushButton#fn {
     background: #c8c7c4; border: 1px solid #b8b7b4; border-radius: 5px;
-    font-size: 14px; font-weight: 600; color: #ffffff;
+    font-size: 28px; font-weight: 600; color: #ffffff;
 }
 QPushButton#fn:hover { background: #b8b7b4; }
 QPushButton#fn:pressed { background: #a8a7a4; }
 
-/* ── 中/英 ── */
+/* ── 中英 ── */
 QPushButton#mode {
     background: #d6608a; border: 1px solid #c4507a; border-radius: 5px;
-    font-size: 14px; font-weight: 700; color: #ffffff;
+    font-size: 28px; font-weight: 700; color: #ffffff;
 }
 QPushButton#mode:hover { background: #c4507a; }
 
 /* ── 标点 ── */
 QPushButton#p {
     background: #e8e7e4; border: 1px solid #d0cfcc; border-radius: 5px;
-    font-size: 15px; color: #4a4a48;
+    font-size: 30px; color: #4a4a48;
 }
 QPushButton#p:hover { background: #dddcda; }
 QPushButton#p:pressed { background: #d0cfcc; }
@@ -123,7 +191,7 @@ QPushButton#p:pressed { background: #d0cfcc; }
 /* ── 空格 ── */
 QPushButton#sp {
     background: #ffffff; border: 1px solid #c8c7c4; border-radius: 5px;
-    font-size: 13px; color: #9b9a98;
+    font-size: 26px; color: #9b9a98;
 }
 QPushButton#sp:hover { background: #eae9e6; }
 QPushButton#sp:pressed { background: #d8d7d4; }
@@ -131,10 +199,25 @@ QPushButton#sp:pressed { background: #d8d7d4; }
 /* ── 回车 ── */
 QPushButton#ent {
     background: #9a6ad6; border: 1px solid #8a5ac6; border-radius: 5px;
-    font-size: 15px; font-weight: 700; color: #ffffff;
+    font-size: 30px; font-weight: 700; color: #ffffff;
 }
 QPushButton#ent:hover { background: #8a5ac6; }
 QPushButton#ent:pressed { background: #7a5ab6; }
+
+/* ── 方案选择栏 ── */
+QFrame#schema_bar {
+    background: #f8f7f5; border: 1px solid #e0dfdc;
+    border-radius: 5px;
+}
+QPushButton#schema {
+    background: transparent; border: 1px solid transparent;
+    border-radius: 3px; padding: 2px 8px;
+    font-size: 13px; color: #6a6a68;
+}
+QPushButton#schema:hover { background: #eae9e6; }
+QPushButton#schema[active="true"] {
+    background: #9a6ad6; color: #ffffff; border-color: #8a5ac6;
+}
 """
 
 
@@ -160,6 +243,10 @@ class KeyboardPage(QWidget):
         self._all_key_btns: list[tuple[QPushButton, float]] = []  # (btn, width_ratio)
         self._kb_frame: QFrame | None = None
         self._kb_outer_layout: QVBoxLayout | None = None
+        self._bs_held = False
+        self._bs_timer = QTimer(self)
+        self._bs_timer.setInterval(100)
+        self._bs_timer.timeout.connect(self._backspace)
 
         self._build_ui()
 
@@ -174,6 +261,8 @@ class KeyboardPage(QWidget):
         root.addWidget(self._mk_preview())
         # 候选栏
         root.addWidget(self._mk_candbar())
+        # 方案选择栏
+        root.addWidget(self._mk_schema_bar())
         # 键盘（占满剩余空间）
         kb = self._mk_keyboard()
         kb.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -243,14 +332,6 @@ class KeyboardPage(QWidget):
         self._count = QLabel("0")
         self._count.setObjectName("count")
         h.addWidget(self._count)
-
-        btn = QPushButton()
-        btn.setObjectName("send")
-        btn.setIcon(_icon(_SVG_SEND, 16))
-        btn.setIconSize(QSize(16, 16))
-        btn.setToolTip("发送合成")
-        btn.clicked.connect(self._on_send)
-        h.addWidget(btn)
         return w
 
     # ── 候选栏 ──
@@ -301,6 +382,57 @@ class KeyboardPage(QWidget):
 
         return f
 
+    # ── 方案选择栏 ──
+
+    def _mk_schema_bar(self) -> QFrame:
+        f = QFrame()
+        f.setObjectName("schema_bar")
+        h = QHBoxLayout(f)
+        h.setContentsMargins(4, 2, 4, 2)
+        h.setSpacing(4)
+
+        self._schema_btns: dict[str, QPushButton] = {}
+        try:
+            schemas = self.bridge.rime_schema_list()
+            current = self.bridge.rime_current_schema()
+        except Exception:
+            schemas, current = [], None
+
+        for s in schemas:
+            sid = s.get("schema_id", "")
+            name = s.get("name", sid)
+            b = QPushButton(name)
+            b.setObjectName("schema")
+            b.setProperty("schema_id", sid)
+            if sid == current:
+                b.setProperty("active", True)
+                b.style().unpolish(b)
+                b.style().polish(b)
+            b.clicked.connect(lambda _, s=sid: self._switch_schema(s))
+            h.addWidget(b)
+            self._schema_btns[sid] = b
+
+        h.addStretch(1)
+        return f
+
+    def _switch_schema(self, schema_id: str):
+        try:
+            ok = self.bridge.rime_switch_schema(schema_id)
+            if ok:
+                # 更新按钮高亮状态
+                for sid, b in self._schema_btns.items():
+                    active = sid == schema_id
+                    b.setProperty("active", active)
+                    b.style().unpolish(b)
+                    b.style().polish(b)
+                # 清空当前输入状态
+                self._preedit = ""
+                self._candidates = []
+                self._refresh_preview()
+                self._refresh_cands()
+        except Exception as e:
+            logger.error("切换方案失败: %s", e)
+
     # ── 键盘 ──
 
     def _mk_keyboard(self) -> QFrame:
@@ -350,9 +482,10 @@ class KeyboardPage(QWidget):
         for ch in "zxcvbnm":
             h.addWidget(self._mk_key(ch))
 
-        bs = self._mk_fn("⌫")
-        bs.clicked.connect(self._backspace)
-        h.addWidget(bs)
+        self._bs_btn = self._mk_fn("⌫")
+        self._bs_btn.pressed.connect(self._bs_start)
+        self._bs_btn.released.connect(self._bs_stop)
+        h.addWidget(self._bs_btn)
         return w
 
     def _mk_row_bottom(self) -> QWidget:
@@ -362,22 +495,32 @@ class KeyboardPage(QWidget):
         h.setContentsMargins(0, 0, 0, 0)
         h.setSpacing(_BASE_SPACING)
 
-        self._mode_btn = QPushButton("中")
-        self._mode_btn.setObjectName("mode")
-        self._mode_btn.setFixedSize(_KEY_W, _KEY_H)
-        self._mode_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._mode_btn.clicked.connect(self._toggle_mode)
-        self._all_key_btns.append((self._mode_btn, 1.0))
-        h.addWidget(self._mode_btn)
+        # 符号
+        sym = QPushButton("符号")
+        sym.setObjectName("fn")
+        sym.setFixedSize(_KEY_W, _KEY_H)
+        sym.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._all_key_btns.append((sym, 1.0))
+        h.addWidget(sym)
 
-        comma = QPushButton("，")
+        # 123
+        num = QPushButton("123")
+        num.setObjectName("fn")
+        num.setFixedSize(_KEY_W, _KEY_H)
+        num.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._all_key_btns.append((num, 1.0))
+        h.addWidget(num)
+
+        # 逗号
+        comma = QPushButton(",")
         comma.setObjectName("p")
-        comma.setFixedSize(_KEY_W, _KEY_H)
+        comma.setFixedSize(int(_KEY_W * 0.5), _KEY_H)
         comma.setCursor(Qt.CursorShape.PointingHandCursor)
         comma.clicked.connect(lambda: self._punct(","))
-        self._all_key_btns.append((comma, 1.0))
+        self._all_key_btns.append((comma, 0.5))
         h.addWidget(comma)
 
+        # 空格
         sp = QPushButton("空格")
         sp.setObjectName("sp")
         sp.setFixedSize(int(_KEY_W * _SPACE_RATIO), _KEY_H)
@@ -386,14 +529,25 @@ class KeyboardPage(QWidget):
         self._all_key_btns.append((sp, _SPACE_RATIO))
         h.addWidget(sp)
 
-        period = QPushButton("。")
+        # 句号
+        period = QPushButton(".")
         period.setObjectName("p")
-        period.setFixedSize(_KEY_W, _KEY_H)
+        period.setFixedSize(int(_KEY_W * 0.5), _KEY_H)
         period.setCursor(Qt.CursorShape.PointingHandCursor)
         period.clicked.connect(lambda: self._punct("."))
-        self._all_key_btns.append((period, 1.0))
+        self._all_key_btns.append((period, 0.5))
         h.addWidget(period)
 
+        # 中英切换
+        self._mode_btn = QPushButton("中英")
+        self._mode_btn.setObjectName("mode")
+        self._mode_btn.setFixedSize(_KEY_W, _KEY_H)
+        self._mode_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._mode_btn.clicked.connect(self._toggle_mode)
+        self._all_key_btns.append((self._mode_btn, 1.0))
+        h.addWidget(self._mode_btn)
+
+        # 回车
         ent = QPushButton("↵")
         ent.setObjectName("ent")
         ent.setFixedSize(int(_KEY_W * _FN_RATIO), _KEY_H)
@@ -404,11 +558,14 @@ class KeyboardPage(QWidget):
         return w
 
     def _mk_key(self, ch: str) -> QPushButton:
-        b = QPushButton(ch)
+        swipe_ch = _SWIPE_MAP.get(ch)
+        b = SwipeKey(ch, swipe_ch)
         b.setObjectName("k")
         b.setFixedSize(_KEY_W, _KEY_H)
         b.setCursor(Qt.CursorShape.PointingHandCursor)
         b.clicked.connect(lambda _, c=ch: self._key(c))
+        if swipe_ch:
+            b.swipe_up.connect(self._on_swipe)
         if ch.isalpha():
             self._letter_btns[ch] = b
         self._all_key_btns.append((b, 1.0))
@@ -451,7 +608,7 @@ class KeyboardPage(QWidget):
 
     def _refresh_labels(self):
         for ch, b in self._letter_btns.items():
-            b.setText(ch.upper() if self._upper and not self._ascii else ch)
+            b.setText(ch.upper() if self._upper else ch)
 
     # ── 按键逻辑 ────────────────────────────────────────────────
 
@@ -460,7 +617,7 @@ class KeyboardPage(QWidget):
             self._committed += ch.upper() if self._upper else ch
             self._refresh_preview()
         else:
-            self._rime_key(ord(ch))
+            self._set_input(self._preedit + ch)
 
     def _rime_key(self, code: int, mask: int = 0):
         try:
@@ -476,12 +633,61 @@ class KeyboardPage(QWidget):
         except Exception as e:
             logger.error("rime_key 失败: %s", e)
 
+    def _set_input(self, text: str):
+        try:
+            r = self.bridge.rime_set_input(text)
+            self._preedit = r.get("preedit", "")
+            self._candidates = r.get("candidates", [])
+            self._page_no = r.get("page_no", 0)
+            self._is_last = r.get("is_last_page", False)
+            if r.get("committed"):
+                self._committed += r["committed"]
+            self._refresh_preview()
+            self._refresh_cands()
+        except Exception as e:
+            logger.error("rime_set_input 失败: %s", e)
+
+    def _on_swipe(self, ch: str):
+        if self._preedit:
+            self._set_input(self._preedit + ch)
+        else:
+            self._committed += ch
+            self._refresh_preview()
+
     def _backspace(self):
         if self._preedit:
-            self._rime_key(0xFF08)
+            new_input = self._preedit[:-1]
+            if new_input:
+                self._set_input(new_input)
+            else:
+                self._clear_rime()
+                self._preedit = ""
+                self._candidates = []
+                self._refresh_preview()
+                self._refresh_cands()
         elif self._committed:
             self._committed = self._committed[:-1]
             self._refresh_preview()
+
+    def _bs_start(self):
+        self._backspace()
+        self._bs_held = True
+        self._bs_delay = QTimer(self)
+        self._bs_delay.setSingleShot(True)
+        self._bs_delay.setInterval(400)
+        self._bs_delay.timeout.connect(self._bs_repeat_start)
+        self._bs_delay.start()
+
+    def _bs_repeat_start(self):
+        if self._bs_held:
+            self._bs_timer.start()
+
+    def _bs_stop(self):
+        self._bs_held = False
+        if hasattr(self, '_bs_delay') and self._bs_delay.isActive():
+            self._bs_delay.stop()
+        if hasattr(self, '_bs_timer') and self._bs_timer.isActive():
+            self._bs_timer.stop()
 
     def _enter(self):
         if self._preedit:
@@ -529,7 +735,7 @@ class KeyboardPage(QWidget):
         try:
             r = self.bridge.rime_toggle_mode()
             self._ascii = r.get("is_ascii_mode", False)
-            self._mode_btn.setText("英" if self._ascii else "中")
+            self._mode_btn.setText("中英" if self._ascii else "中英")
             self._shift_btn.setText("⇧" if self._ascii else "分词")
             if self._ascii:
                 self._preedit = ""
@@ -543,18 +749,21 @@ class KeyboardPage(QWidget):
         if self._ascii:
             self._toggle_case()
         else:
-            # 中文模式：插入隔音符（apostrophe keycode 39）
-            self._rime_key(39)
+            # 中文模式：插入隔音符，仅在有拼音时有效
+            if self._preedit:
+                self._set_input(self._preedit + "'")
 
     def _toggle_case(self):
         self._upper = not self._upper
         self._refresh_labels()
 
     def _punct(self, ch: str):
-        if not self._ascii and self.bridge.rime:
-            # 中文模式：标点走 Rime，Rime 会先上屏拼音再输出中文标点
-            code = ord(ch)
-            self._rime_key(code)
+        if not self._ascii and self._preedit:
+            # 中文模式有拼音：用 set_input 将标点嵌入拼音
+            self._set_input(self._preedit + ch)
+        elif self._cn_punct and not self._ascii:
+            self._committed += _CN_PUNCT.get(ch, ch)
+            self._refresh_preview()
         else:
             self._committed += ch
             self._refresh_preview()

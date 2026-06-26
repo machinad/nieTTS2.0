@@ -118,7 +118,7 @@ class RimeTraits(Structure):
         ("distribution_code_name", c_char_p),
         ("distribution_version", c_char_p),
         ("app_name", c_char_p),
-        ("modules", c_void_p),
+        ("modules", POINTER(c_char_p)),
         ("min_log_level", c_int),
         ("log_dir", c_char_p),
         ("prebuilt_data_dir", c_char_p),
@@ -137,7 +137,9 @@ class RimeCommit(Structure):
 class RimeContext(Structure):
     """输入上下文（组合信息 + 候选词菜单）。
 
-    注意：commit_text_preview 是 char*（指针），不是 char[96]。
+    注意：在 librime 1.x 中 commit_text_preview 是 char*（指针），
+    在更早版本中可能是 char[96]（固定数组），两者布局完全不同。
+    当前绑定针对 librime 1.17.0 验证通过（data_size = 84）。
     """
     _fields_ = [
         ("data_size", c_int),
@@ -356,11 +358,29 @@ class RimeApiWrapper:
         # 防止 GC 回收通知回调
         self._notification_handler = None
 
+        # 缓存转换后的函数指针，避免重复 cast
+        self._cache = {}
+
+        # 验证 RimeContext 布局与 DLL 版本匹配
+        ctx = RimeContext()
+        rime_struct_init(ctx)
+        if ctx.data_size != 84:
+            raise RuntimeError(
+                f"RimeContext.data_size = {ctx.data_size}，预期 84。"
+                "可能是 librime 版本不兼容（需要 1.x），"
+                "或 commit_text_preview 字段类型不匹配。"
+            )
+
     def _call(self, field, restype, argtypes, *args):
-        """将 c_void_p 转换为 CFUNCTYPE 并调用。"""
-        fn_type = CFUNCTYPE(restype, *argtypes)
-        func = cast(field, fn_type)
-        return func(*args)
+        """将 c_void_p 转换为 CFUNCTYPE 并调用。
+
+        内部使用缓存避免重复创建函数类型和 cast。
+        """
+        key = (field, restype, tuple(argtypes))
+        if key not in self._cache:
+            fn_type = CFUNCTYPE(restype, *argtypes)
+            self._cache[key] = cast(field, fn_type)
+        return self._cache[key](*args)
 
     # ──────────────────────────────────────────
     # T5: 部署与维护
@@ -491,6 +511,10 @@ class RimeApiWrapper:
         """获取输入上下文（组合 + 候选词）。
 
         注意：内部自动设置 data_size，调用者无需关心。
+
+        警告：返回的 RimeContext 包含 librime 内部分配的资源，
+        使用完毕后必须调用 free_context() 释放，否则会内存泄漏。
+        推荐使用 engine 层的接口，它会自动管理资源。
         """
         ctx = RimeContext()
         rime_struct_init(ctx)
@@ -506,7 +530,12 @@ class RimeApiWrapper:
                    [POINTER(RimeContext)], byref(ctx))
 
     def get_status(self, session_id: int) -> RimeStatus | None:
-        """获取引擎状态。"""
+        """获取引擎状态。
+
+        警告：返回的 RimeStatus 包含 librime 内部分配的资源，
+        使用完毕后必须调用 free_status() 释放，否则会内存泄漏。
+        推荐使用 engine 层的接口，它会自动管理资源。
+        """
         status = RimeStatus()
         rime_struct_init(status)
         if self._call(self._api.get_status, Bool,
@@ -539,7 +568,7 @@ class RimeApiWrapper:
     def select_candidate(self, session_id: int, index: int) -> bool:
         """按全局索引选择候选词。"""
         return bool(self._call(self._api.select_candidate, Bool,
-                               [RimeSessionId, c_size_t],
+                               [RimeSessionId, c_int],
                                session_id, index))
 
     def select_candidate_on_current_page(self, session_id: int,
@@ -547,12 +576,12 @@ class RimeApiWrapper:
         """按页内索引选择候选词。"""
         return bool(self._call(
             self._api.select_candidate_on_current_page, Bool,
-            [RimeSessionId, c_size_t], session_id, index))
+            [RimeSessionId, c_int], session_id, index))
 
     def delete_candidate(self, session_id: int, index: int) -> bool:
         """按全局索引删除候选词。"""
         return bool(self._call(self._api.delete_candidate, Bool,
-                               [RimeSessionId, c_size_t],
+                               [RimeSessionId, c_int],
                                session_id, index))
 
     def delete_candidate_on_current_page(self, session_id: int,
@@ -560,12 +589,12 @@ class RimeApiWrapper:
         """按页内索引删除候选词。"""
         return bool(self._call(
             self._api.delete_candidate_on_current_page, Bool,
-            [RimeSessionId, c_size_t], session_id, index))
+            [RimeSessionId, c_int], session_id, index))
 
     def highlight_candidate(self, session_id: int, index: int) -> bool:
         """按全局索引高亮候选词。"""
         return bool(self._call(self._api.highlight_candidate, Bool,
-                               [RimeSessionId, c_size_t],
+                               [RimeSessionId, c_int],
                                session_id, index))
 
     def highlight_candidate_on_current_page(self, session_id: int,
@@ -573,7 +602,7 @@ class RimeApiWrapper:
         """按页内索引高亮候选词。"""
         return bool(self._call(
             self._api.highlight_candidate_on_current_page, Bool,
-            [RimeSessionId, c_size_t], session_id, index))
+            [RimeSessionId, c_int], session_id, index))
 
     def change_page(self, session_id: int, backward: bool = False) -> bool:
         """翻页。backward=True 上一页，False 下一页。"""
@@ -822,9 +851,10 @@ class RimeApiWrapper:
 
     @staticmethod
     def _decode(raw_bytes: bytes | None) -> str | None:
-        """解码 UTF-8 字节串，替换无效字符。"""
+        """解码 UTF-8 字节串，替换无效字符。
+
+        c_char_p 始终返回 bytes 或 None，不会返回其他类型。
+        """
         if raw_bytes is None:
             return None
-        if isinstance(raw_bytes, bytes):
-            return raw_bytes.decode("utf-8", errors="replace")
-        return str(raw_bytes)
+        return raw_bytes.decode("utf-8", errors="replace")

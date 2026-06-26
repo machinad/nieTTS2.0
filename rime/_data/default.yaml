@@ -4,12 +4,20 @@
 config_version: '0.50'
 
 schema_list:
+  # rime-ice 方案
+  - schema: rime_ice               # 雾凇拼音（全拼，大词库）
+  - schema: t9                     # 中文九键（九宫格）
+  - schema: double_pinyin          # 自然码双拼
+  - schema: double_pinyin_abc      # 智能 ABC 双拼
+  - schema: double_pinyin_mspy     # 微软双拼
+  - schema: double_pinyin_sogou    # 搜狗双拼
+  - schema: double_pinyin_flypy    # 小鹤双拼
+  - schema: double_pinyin_ziguang  # 紫光双拼
+  - schema: double_pinyin_jiajia   # 拼音加加双拼
+  # 原有方案
   - schema: luna_pinyin
-  - schema: bopomofo
-  - schema: cangjie5
-  - schema: quick5
-  - schema: stroke
   - schema: terra_pinyin
+  - schema: stroke
 
 switcher:
   caption: 〔方案選單〕

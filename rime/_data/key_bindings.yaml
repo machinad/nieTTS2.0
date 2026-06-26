@@ -33,8 +33,9 @@ paging_with_minus_equal:
 
 paging_with_comma_period:
   __append:
-    - { when: paging, accept: comma, send: Page_Up }
-    - { when: has_menu, accept: period, send: Page_Down }
+    # 已禁用：让逗号和句号正常输入中文标点，而不是翻页
+    # - { when: paging, accept: comma, send: Page_Up }
+    # - { when: has_menu, accept: period, send: Page_Down }
 
 paging_with_brackets:
   __append:

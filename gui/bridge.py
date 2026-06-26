@@ -140,6 +140,22 @@ class GuiBridge(QObject):
         """清除当前输入组合"""
         self.rime.clear()
 
+    def rime_set_input(self, text: str) -> dict:
+        """直接设置输入字符串（支持标点嵌入）"""
+        return self.rime.set_input(text)
+
     def rime_status(self) -> dict:
         """获取 Rime 状态"""
         return self.rime.get_status()
+
+    def rime_schema_list(self) -> list[dict]:
+        """获取可用输入方案列表"""
+        return self.rime.get_schema_list()
+
+    def rime_current_schema(self) -> str | None:
+        """获取当前输入方案 ID"""
+        return self.rime.get_current_schema()
+
+    def rime_switch_schema(self, schema_id: str) -> bool:
+        """切换输入方案"""
+        return self.rime.switch_schema(schema_id)
