@@ -1,5 +1,6 @@
-from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+
 import numpy as np
 
 
@@ -18,14 +19,11 @@ class STTResult:
 
 
 class BaseSTT(ABC):
+    @abstractmethod
+    async def transcribe(self, samples: np.ndarray, sample_rate: int) -> STTResult: ...
 
     @abstractmethod
-    async def transcribe(self, samples: np.ndarray, sample_rate: int) -> STTResult:
-        ...
-
-    @abstractmethod
-    def is_available(self) -> bool:
-        ...
+    def is_available(self) -> bool: ...
 
     async def close(self):
         """释放引擎持有的资源（模型、连接等）。子类按需覆盖。"""
@@ -33,5 +31,4 @@ class BaseSTT(ABC):
 
     @property
     @abstractmethod
-    def engine_name(self) -> str:
-        ...
+    def engine_name(self) -> str: ...

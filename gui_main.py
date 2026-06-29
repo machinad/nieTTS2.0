@@ -1,36 +1,37 @@
+import argparse
+import asyncio
+import logging
 import os
 import sys
-import asyncio
-import argparse
-import logging
 
 # PyInstaller 打包后 CWD 不是应用目录，导致相对路径（如 models/...）失效
-if getattr(sys, 'frozen', False):
+if getattr(sys, "frozen", False):
     os.chdir(sys._MEIPASS)
 
 # PyInstaller GUI 模式下 stdout/stderr 为 None，tqdm 等库会崩溃
 if sys.stdout is None:
-    sys.stdout = open(os.devnull, 'w', encoding='utf-8')
+    sys.stdout = open(os.devnull, "w", encoding="utf-8")
 if sys.stderr is None:
-    sys.stderr = open(os.devnull, 'w', encoding='utf-8')
+    sys.stderr = open(os.devnull, "w", encoding="utf-8")
 
-from PySide6.QtWidgets import QApplication
 import qasync
+from PySide6.QtWidgets import QApplication
+
+from certificates.certificates_server import CertificateServer
 from config.default import ConfigManager
 from config.notifier import ConfigNotifier
-from engines.tts.service import TTSService
-from engines.translate.service import TranslateService
 from engines.osc.service import OSCService
-from engines.stt.service import STTService
 from engines.pipeline import RequestPipeline
-from web_server import WebServer, WSLogHandler
-from certificates.certificates_server import CertificateServer
-from version import VERSION
-from gui.main import MainWindow
-from gui.log_handler import QtLogHandler
-from gui.bridge import GuiBridge
-from gui.theme import apply_theme
 from engines.rime.service import RimeService
+from engines.stt.service import STTService
+from engines.translate.service import TranslateService
+from engines.tts.service import TTSService
+from gui.bridge import GuiBridge
+from gui.log_handler import QtLogHandler
+from gui.main import MainWindow
+from gui.theme import apply_theme
+from version import VERSION
+from web_server import WebServer, WSLogHandler
 
 BANNER = r"""
 ███╗   ██╗  ██╗  ███████╗  ████████╗  ████████╗  ███████╗
@@ -39,7 +40,7 @@ BANNER = r"""
 ██║╚██╗██║  ██║  ██╔══╝       ██║        ██║     ╚════██║
 ██║ ╚████║  ██║  ███████╗     ██║        ██║     ███████║
 ╚═╝  ╚═══╝  ╚═╝  ╚══════╝     ╚═╝        ╚═╝     ╚══════╝
-""" 
+"""
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +109,7 @@ def main():
         vr_cfg = config.get("vr_overlay", {})
         if vr_cfg.get("enabled", False):
             from gui.vr_overlay import VROverlayManager, VROverlayTestWidget
+
             vr_manager = VROverlayManager()
             vr_widget = VROverlayTestWidget(manager=vr_manager)
             asyncio.create_task(vr_manager.run(vr_widget, config.config))

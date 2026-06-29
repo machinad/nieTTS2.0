@@ -1,9 +1,14 @@
 import logging
-from PySide6.QtCore import Qt, Signal, QEvent, QTimer
+
+from PySide6.QtCore import QEvent, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QCursor
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QFrame,
-    QApplication, QGraphicsDropShadowEffect,
+    QApplication,
+    QFrame,
+    QGraphicsDropShadowEffect,
+    QLineEdit,
+    QVBoxLayout,
+    QWidget,
 )
 
 logger = logging.getLogger(__name__)
@@ -20,11 +25,7 @@ class OverlayInput(QWidget):
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
         self._bridge = bridge
-        self.setWindowFlags(
-            Qt.WindowType.WindowStaysOnTopHint
-            | Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.Tool
-        )
+        self.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self._setup_ui()
         self.hide()

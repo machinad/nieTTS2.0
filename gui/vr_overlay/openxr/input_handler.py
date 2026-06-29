@@ -64,10 +64,10 @@ class OpenXRInputHandler:
     def update_quad_surface(self, pose: xr.Posef) -> None:
         """根据当前面板 pose 更新 QuadSurface 几何。"""
         pos = (pose.position.x, pose.position.y, pose.position.z)
-        rot = (pose.orientation.x, pose.orientation.y,
-               pose.orientation.z, pose.orientation.w)
+        rot = (pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w)
         self._quad_surface = QuadSurface.from_pose_and_size(
-            pos, rot,
+            pos,
+            rot,
             self._overlay_width_meters,
             self._overlay_height_meters,
         )
@@ -102,8 +102,10 @@ class OpenXRInputHandler:
         if hit.hit:
             # 转换到 Widget 坐标
             widget_pos = uv_to_widget_pos(
-                hit.u, hit.v,
-                self._widget.width(), self._widget.height(),
+                hit.u,
+                hit.v,
+                self._widget.width(),
+                self._widget.height(),
             )
             self._last_widget_pos = widget_pos
 

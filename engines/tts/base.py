@@ -1,7 +1,7 @@
+import uuid
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from abc import ABC, abstractmethod
-import uuid
 
 
 @dataclass
@@ -18,7 +18,6 @@ class TTSResult:
 
 
 class BaseTTS(ABC):
-
     def __init__(self, save_dir: Path):
         self.save_dir = save_dir
 
@@ -26,12 +25,10 @@ class BaseTTS(ABC):
         return self.save_dir / f"{uuid.uuid4()}{suffix}"
 
     @abstractmethod
-    async def synthesize(self, text: str, voice: str, **kwargs) -> TTSResult:
-        ...
+    async def synthesize(self, text: str, voice: str, **kwargs) -> TTSResult: ...
 
     @abstractmethod
-    def is_available(self) -> bool:
-        ...
+    def is_available(self) -> bool: ...
 
     async def close(self):
         """释放引擎持有的资源（模型、连接等）。子类按需覆盖。"""
@@ -39,5 +36,4 @@ class BaseTTS(ABC):
 
     @property
     @abstractmethod
-    def engine_name(self) -> str:
-        ...
+    def engine_name(self) -> str: ...

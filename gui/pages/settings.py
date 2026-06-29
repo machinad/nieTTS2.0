@@ -1,12 +1,26 @@
 import asyncio
 import logging
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTabWidget, QFrame,
-    QComboBox, QLineEdit, QPushButton, QDoubleSpinBox,
-    QSpinBox, QRadioButton, QButtonGroup, QProgressBar, QScrollArea,
+    QButtonGroup,
+    QComboBox,
+    QDoubleSpinBox,
+    QFrame,
     QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QProgressBar,
+    QPushButton,
+    QRadioButton,
+    QScrollArea,
+    QSpinBox,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
 )
+
 from gui.widgets.toggle import ToggleSwitch
 
 logger = logging.getLogger(__name__)
@@ -75,6 +89,7 @@ def _engine_tab_panel(
     default_row.addWidget(default_label)
     default_row.addStretch()
     switch = ToggleSwitch(checked=is_default)
+
     def _on_switch(checked, sw=switch):
         if checked:
             on_set_default()
@@ -82,6 +97,7 @@ def _engine_tab_panel(
             sw.blockSignals(True)
             sw.setChecked(True)
             sw.blockSignals(False)
+
     switch.toggled.connect(_on_switch)
     default_row.addWidget(switch)
     layout.addLayout(default_row)
@@ -144,7 +160,7 @@ class SettingsPage(QWidget):
                 logger.warning("跳过无效 TTS provider: %r", prov)
                 continue
             desc = prov.get("description", "")
-            is_default = (name == active)
+            is_default = name == active
             voices = voices_map.get(name, [])
 
             fields = []
@@ -161,9 +177,7 @@ class SettingsPage(QWidget):
                 else:
                     voice_combo.setCurrentText(current_voice)
             voice_combo.blockSignals(False)
-            voice_combo.currentTextChanged.connect(
-                lambda v, n=name: self._update_tts_provider_field(n, "voice", v)
-            )
+            voice_combo.currentTextChanged.connect(lambda v, n=name: self._update_tts_provider_field(n, "voice", v))
             fields.append(_field_col("音色", voice_combo))
 
             # API Key for cosyvoice / sambert
@@ -172,10 +186,15 @@ class SettingsPage(QWidget):
                 api_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
                 api_key_edit.setPlaceholderText("请输入 API Key")
                 api_key_edit.setText(prov.get("ali_api_key", ""))
-                fields.append(_field_col(
-                    "阿里 API Key", api_key_edit,
-                    lambda checked, n=name, w=api_key_edit: self._update_tts_provider_field(n, "ali_api_key", w.text(), reload=True)
-                ))
+                fields.append(
+                    _field_col(
+                        "阿里 API Key",
+                        api_key_edit,
+                        lambda checked, n=name, w=api_key_edit: self._update_tts_provider_field(
+                            n, "ali_api_key", w.text(), reload=True
+                        ),
+                    )
+                )
 
             # MatchaTTS fields
             if name == "MatchaTTS":
@@ -183,13 +202,19 @@ class SettingsPage(QWidget):
                     edit = QLineEdit()
                     edit.setPlaceholderText(f"请输入 {key}")
                     edit.setText(prov.get(f"matcha_{key}", ""))
-                    fields.append(_field_col(
-                        key, edit,
-                        lambda checked, n=name, k=key, w=edit: self._update_tts_provider_field(n, f"matcha_{k}", w.text(), reload=True)
-                    ))
+                    fields.append(
+                        _field_col(
+                            key,
+                            edit,
+                            lambda checked, n=name, k=key, w=edit: self._update_tts_provider_field(
+                                n, f"matcha_{k}", w.text(), reload=True
+                            ),
+                        )
+                    )
 
             panel, switch = _engine_tab_panel(
-                desc, is_default,
+                desc,
+                is_default,
                 lambda n=name: self._set_default_tts(n),
                 fields,
             )
@@ -221,7 +246,7 @@ class SettingsPage(QWidget):
                 logger.warning("跳过无效 STT provider: %r", prov)
                 continue
             desc = prov.get("description", "")
-            is_default = (name == active)
+            is_default = name == active
             fields = []
 
             model_fields = ["conv_frontend", "encoder", "decoder", "tokenizer"]
@@ -236,7 +261,8 @@ class SettingsPage(QWidget):
                         fields.append(_field_col(key, read_edit))
 
             panel, switch = _engine_tab_panel(
-                desc, is_default,
+                desc,
+                is_default,
                 lambda n=name: self._set_default_stt(n),
                 fields,
             )
@@ -275,7 +301,7 @@ class SettingsPage(QWidget):
             vbox.addWidget(lbl)
             range_lbl = _label(
                 f"{mn} — {mx}",
-                "font-size: 11px; color: #9b9a98; font-family: 'Consolas', monospace; background: transparent;"
+                "font-size: 11px; color: #9b9a98; font-family: 'Consolas', monospace; background: transparent;",
             )
             vbox.addWidget(range_lbl)
             spin = QDoubleSpinBox()
@@ -310,7 +336,7 @@ class SettingsPage(QWidget):
                 logger.warning("跳过无效翻译 provider: %r", prov)
                 continue
             desc = prov.get("description", "")
-            is_default = (name == active)
+            is_default = name == active
             fields = []
 
             if name == "openai":
@@ -320,23 +346,38 @@ class SettingsPage(QWidget):
                     if field_key == "api_key":
                         edit.setEchoMode(QLineEdit.EchoMode.Password)
                     edit.setText(prov.get(field_key, ""))
-                    fields.append(_field_col(
-                        field_label, edit,
-                        lambda checked, n=name, k=field_key, w=edit: self._update_translate_provider_field(n, k, w.text(), reload=True)
-                    ))
+                    fields.append(
+                        _field_col(
+                            field_label,
+                            edit,
+                            lambda checked, n=name, k=field_key, w=edit: self._update_translate_provider_field(
+                                n, k, w.text(), reload=True
+                            ),
+                        )
+                    )
 
             elif name == "hy_mt15":
-                for field_key, field_label in [("server_url", "Server URL"), ("model_path", "Model Path"), ("llama_cpp_path", "Llama.cpp Path")]:
+                for field_key, field_label in [
+                    ("server_url", "Server URL"),
+                    ("model_path", "Model Path"),
+                    ("llama_cpp_path", "Llama.cpp Path"),
+                ]:
                     edit = QLineEdit()
                     edit.setPlaceholderText(f"请输入 {field_label}")
                     edit.setText(prov.get(field_key, ""))
-                    fields.append(_field_col(
-                        field_label, edit,
-                        lambda checked, n=name, k=field_key, w=edit: self._update_translate_provider_field(n, k, w.text(), reload=True)
-                    ))
+                    fields.append(
+                        _field_col(
+                            field_label,
+                            edit,
+                            lambda checked, n=name, k=field_key, w=edit: self._update_translate_provider_field(
+                                n, k, w.text(), reload=True
+                            ),
+                        )
+                    )
 
             panel, switch = _engine_tab_panel(
-                desc, is_default,
+                desc,
+                is_default,
                 lambda n=name: self._set_default_translate(n),
                 fields,
             )
@@ -366,7 +407,9 @@ class SettingsPage(QWidget):
         dev_l = QVBoxLayout(dev_card)
         dev_l.setContentsMargins(20, 16, 20, 20)
         dev_l.setSpacing(12)
-        dev_l.addWidget(_label("播放设备", "font-size: 15px; font-weight: 600; color: #1a1a1a; background: transparent;"))
+        dev_l.addWidget(
+            _label("播放设备", "font-size: 15px; font-weight: 600; color: #1a1a1a; background: transparent;")
+        )
         self._playback_combo = QComboBox()
         devices = self.bridge.get_playback_devices()
         for d in devices:
@@ -376,9 +419,7 @@ class SettingsPage(QWidget):
             idx = self._playback_combo.findText(current_device)
             if idx >= 0:
                 self._playback_combo.setCurrentIndex(idx)
-        self._playback_combo.currentTextChanged.connect(
-            lambda v: self.bridge.update_config({"device": v})
-        )
+        self._playback_combo.currentTextChanged.connect(lambda v: self.bridge.update_config({"device": v}))
         dev_l.addWidget(self._playback_combo)
         layout.addWidget(dev_card)
 
@@ -389,7 +430,9 @@ class SettingsPage(QWidget):
         input_l = QVBoxLayout(input_card)
         input_l.setContentsMargins(20, 16, 20, 20)
         input_l.setSpacing(12)
-        input_l.addWidget(_label("输入设备（麦克风）", "font-size: 15px; font-weight: 600; color: #1a1a1a; background: transparent;"))
+        input_l.addWidget(
+            _label("输入设备（麦克风）", "font-size: 15px; font-weight: 600; color: #1a1a1a; background: transparent;")
+        )
         self._input_combo = QComboBox()
         self._input_combo.setPlaceholderText("选择麦克风设备")
         self._refresh_input_devices()
@@ -405,7 +448,12 @@ class SettingsPage(QWidget):
         beh_l = QVBoxLayout(beh_card)
         beh_l.setContentsMargins(20, 16, 20, 20)
         beh_l.setSpacing(0)
-        beh_l.addWidget(_label("默认行为", "font-size: 15px; font-weight: 600; color: #1a1a1a; background: transparent; padding-bottom: 8px;"))
+        beh_l.addWidget(
+            _label(
+                "默认行为",
+                "font-size: 15px; font-weight: 600; color: #1a1a1a; background: transparent; padding-bottom: 8px;",
+            )
+        )
         for label, key in [("播放音频", "isPlayAudio"), ("翻译", "isTranslate"), ("播放译文", "isPlayTranslation")]:
             row = QFrame()
             row.setProperty("class", "toggle_row")
@@ -427,18 +475,32 @@ class SettingsPage(QWidget):
         osc_l = QVBoxLayout(osc_card)
         osc_l.setContentsMargins(20, 16, 20, 20)
         osc_l.setSpacing(12)
-        osc_l.addWidget(_label("OSC 设置", "font-size: 15px; font-weight: 600; color: #1a1a1a; background: transparent;"))
+        osc_l.addWidget(
+            _label("OSC 设置", "font-size: 15px; font-weight: 600; color: #1a1a1a; background: transparent;")
+        )
         osc_l.addWidget(_label("启用 OSC", "font-size: 14px; color: #1a1a1a; background: transparent;"))
         osc_toggle = ToggleSwitch(checked=cfg.get("osc_enabled", True))
         osc_toggle.toggled.connect(lambda checked: self.bridge.update_config({"osc_enabled": checked}))
         osc_l.addWidget(osc_toggle)
 
         osc_host_edit = QLineEdit(cfg.get("osc_host", "127.0.0.1"))
-        osc_l.addLayout(_field_col("OSC Host", osc_host_edit, lambda: (self.bridge.update_config({"osc_host": osc_host_edit.text()}), self._reload_async())))
+        osc_l.addLayout(
+            _field_col(
+                "OSC Host",
+                osc_host_edit,
+                lambda: (self.bridge.update_config({"osc_host": osc_host_edit.text()}), self._reload_async()),
+            )
+        )
         osc_port_spin = QSpinBox()
         osc_port_spin.setRange(1, 65535)
         osc_port_spin.setValue(cfg.get("osc_port", 9000))
-        osc_l.addLayout(_field_col("OSC Port", osc_port_spin, lambda: (self.bridge.update_config({"osc_port": osc_port_spin.value()}), self._reload_async())))
+        osc_l.addLayout(
+            _field_col(
+                "OSC Port",
+                osc_port_spin,
+                lambda: (self.bridge.update_config({"osc_port": osc_port_spin.value()}), self._reload_async()),
+            )
+        )
         layout.addWidget(osc_card)
 
         # Web 端口设置
@@ -448,11 +510,15 @@ class SettingsPage(QWidget):
         port_l = QVBoxLayout(port_card)
         port_l.setContentsMargins(20, 16, 20, 20)
         port_l.setSpacing(12)
-        port_l.addWidget(_label("Web 端口", "font-size: 15px; font-weight: 600; color: #1a1a1a; background: transparent;"))
+        port_l.addWidget(
+            _label("Web 端口", "font-size: 15px; font-weight: 600; color: #1a1a1a; background: transparent;")
+        )
         port_spin = QSpinBox()
         port_spin.setRange(1, 65535)
         port_spin.setValue(cfg.get("port", 11451))
-        port_l.addLayout(_field_col("web端口（重启生效）", port_spin, lambda: self.bridge.update_config({"port": port_spin.value()})))
+        port_l.addLayout(
+            _field_col("web端口（重启生效）", port_spin, lambda: self.bridge.update_config({"port": port_spin.value()}))
+        )
         layout.addWidget(port_card)
 
         # 快捷键设置
@@ -462,10 +528,15 @@ class SettingsPage(QWidget):
         hotkey_l = QVBoxLayout(hotkey_card)
         hotkey_l.setContentsMargins(20, 16, 20, 20)
         hotkey_l.setSpacing(12)
-        hotkey_l.addWidget(_label("快捷键设置", "font-size: 15px; font-weight: 600; color: #1a1a1a; background: transparent;"))
-        hotkey_l.addWidget(_label("覆盖层快捷键", "font-size: 12px; font-weight: 600; color: #9b9a98; background: transparent;"))
+        hotkey_l.addWidget(
+            _label("快捷键设置", "font-size: 15px; font-weight: 600; color: #1a1a1a; background: transparent;")
+        )
+        hotkey_l.addWidget(
+            _label("覆盖层快捷键", "font-size: 12px; font-weight: 600; color: #9b9a98; background: transparent;")
+        )
 
         from gui.hotkey import HotkeyRecordButton
+
         self._hotkey_btn = HotkeyRecordButton()
         hotkey_cfg = cfg.get("overlay_hotkey", {})
         self._hotkey_btn.set_display(hotkey_cfg.get("display", "Ctrl+T"))
@@ -474,7 +545,9 @@ class SettingsPage(QWidget):
         self._hotkey_btn.recording_cancelled.connect(self.bridge.overlay_hotkey_resume)
         hotkey_l.addWidget(self._hotkey_btn)
 
-        hotkey_l.addWidget(_label("点击按钮录制快捷键，ESC 取消录制", "font-size: 13px; color: #9b9a98; background: transparent;"))
+        hotkey_l.addWidget(
+            _label("点击按钮录制快捷键，ESC 取消录制", "font-size: 13px; color: #9b9a98; background: transparent;")
+        )
         layout.addWidget(hotkey_card)
 
         layout.addStretch()
@@ -523,10 +596,14 @@ class SettingsPage(QWidget):
         self._engines_l = QVBoxLayout(self._engines_card)
         self._engines_l.setContentsMargins(20, 16, 20, 20)
         self._engines_l.setSpacing(12)
-        self._engines_l.addWidget(_label("引擎状态", "font-size: 15px; font-weight: 600; color: #1a1a1a; background: transparent;"))
+        self._engines_l.addWidget(
+            _label("引擎状态", "font-size: 15px; font-weight: 600; color: #1a1a1a; background: transparent;")
+        )
         self._engines_container = QVBoxLayout()
         self._engines_l.addLayout(self._engines_container)
-        self._loading_label = _label("加载中...", "text-align: center; color: #9b9a98; font-size: 13px; background: transparent;")
+        self._loading_label = _label(
+            "加载中...", "text-align: center; color: #9b9a98; font-size: 13px; background: transparent;"
+        )
         self._engines_l.addWidget(self._loading_label)
         layout.addWidget(self._engines_card)
 
@@ -536,6 +613,7 @@ class SettingsPage(QWidget):
     # ---- Helpers ----
     def _refresh_input_devices(self):
         from PySide6.QtMultimedia import QMediaDevices
+
         devices = QMediaDevices.audioInputs()
         self._input_combo.clear()
         for d in devices:
@@ -546,9 +624,7 @@ class SettingsPage(QWidget):
             idx = self._input_combo.findText(saved)
             if idx >= 0:
                 self._input_combo.setCurrentIndex(idx)
-        self._input_combo.currentTextChanged.connect(
-            lambda v: self.bridge.update_config({"gui_input_device": v})
-        )
+        self._input_combo.currentTextChanged.connect(lambda v: self.bridge.update_config({"gui_input_device": v}))
 
     def _set_default_tts(self, name: str):
         for n, sw in self._tts_switches.items():
@@ -607,7 +683,9 @@ class SettingsPage(QWidget):
                 matched = True
                 break
         if not matched:
-            logger.error("Translate provider '%s' 未找到, providers: %s", provider_name, [p.get("name") for p in providers])
+            logger.error(
+                "Translate provider '%s' 未找到, providers: %s", provider_name, [p.get("name") for p in providers]
+            )
             return
         ok = self.bridge.update_config({"translation_provider": {"providers": providers}})
         logger.info("保存 Translate [%s].%s = %r → %s", provider_name, key, value, "成功" if ok else "失败")
@@ -665,6 +743,7 @@ class SettingsPage(QWidget):
 
     def refresh_models_status(self):
         from scripts.download_models import get_model_status
+
         try:
             engines = get_model_status()
         except Exception:
@@ -691,7 +770,7 @@ class SettingsPage(QWidget):
             info.addStretch()
             count_lbl = _label(
                 f"{ok} / {total}",
-                "font-family: 'Consolas', monospace; font-size: 13px; color: #6b6a68; background: transparent;"
+                "font-family: 'Consolas', monospace; font-size: 13px; color: #6b6a68; background: transparent;",
             )
             info.addWidget(count_lbl)
             row.addLayout(info)

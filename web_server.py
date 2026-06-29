@@ -2,18 +2,21 @@ import asyncio
 import json
 import logging
 import threading
+
 import numpy as np
-from quart import Quart, request, jsonify, websocket, send_from_directory
+from quart import Quart, jsonify, request, send_from_directory, websocket
 from quart_cors import cors
+
 from config.default import ConfigManager
 from config.notifier import ConfigNotifier
-from engines.tts.service import TTSService
-from engines.translate.service import TranslateService
-from engines.osc.service import OSCService
-from engines.stt.vad.silero_vad import SileroVAD
-from engines.pipeline import RequestPipeline
 from engines.audio.playback import get_playback_devices
+from engines.osc.service import OSCService
+from engines.pipeline import RequestPipeline
+from engines.stt.vad.silero_vad import SileroVAD
+from engines.translate.service import TranslateService
+from engines.tts.service import TTSService
 from scripts.download_models import Downloader, ModelRegistry, get_model_status
+
 logger = logging.getLogger(__name__)
 
 _WSS = set()
@@ -46,6 +49,7 @@ class WSLogHandler(logging.Handler):
                 self._loop.call_soon_threadsafe(self._loop.create_task, coro)
         except Exception:
             import sys
+
             try:
                 sys.stderr.write(f"WSLogHandler error: {record.getMessage()}\n")
             except Exception:
@@ -53,11 +57,15 @@ class WSLogHandler(logging.Handler):
 
 
 class WebServer:
-
-    def __init__(self, config: ConfigManager, tts: TTSService,
-                 translate: TranslateService, osc: OSCService,
-                 pipeline: RequestPipeline,
-                 notifier: ConfigNotifier | None = None):
+    def __init__(
+        self,
+        config: ConfigManager,
+        tts: TTSService,
+        translate: TranslateService,
+        osc: OSCService,
+        pipeline: RequestPipeline,
+        notifier: ConfigNotifier | None = None,
+    ):
         self.config = config
         self.tts = tts
         self.translate = translate
@@ -103,17 +111,17 @@ class WebServer:
 
     async def index(self):
         from quart import make_response
+
         index_path = self._templates / "index.html"
         if index_path.exists():
-            response = await make_response(
-                await send_from_directory(str(self._templates), "index.html")
-            )
+            response = await make_response(await send_from_directory(str(self._templates), "index.html"))
             response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
             return response
         return "<h1>nieTTS 2.0</h1><p>请运行 <code>cd frontend && npm run build</code></p>"
 
     async def get_version(self):
         from version import VERSION
+
         return jsonify({"version": VERSION})
 
     async def tts_endpoint(self):
@@ -148,11 +156,10 @@ class WebServer:
             ali_tts_voices,
             sambert_tts_voices,
         )
+
         cfg = dict(self.config.config)
         try:
-            cfg["available_devices"] = [
-                {"name": d["name"]} for d in get_playback_devices()
-            ]
+            cfg["available_devices"] = [{"name": d["name"]} for d in get_playback_devices()]
         except Exception:
             cfg["available_devices"] = []
         cfg["voices"] = {
@@ -193,6 +200,7 @@ class WebServer:
 
     async def models_status(self):
         from quart import make_response
+
         response = await make_response(jsonify(get_model_status()))
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         return response
@@ -231,13 +239,19 @@ class WebServer:
         def _on_stt_done(req_id, text):
             async def _send():
                 try:
-                    await ws_obj.send(json.dumps({
-                        "type": "stt_result",
-                        "request_id": req_id,
-                        "text": text,
-                    }, ensure_ascii=False))
+                    await ws_obj.send(
+                        json.dumps(
+                            {
+                                "type": "stt_result",
+                                "request_id": req_id,
+                                "text": text,
+                            },
+                            ensure_ascii=False,
+                        )
+                    )
                 except Exception:
                     pass  # WebSocket 已断开，静默忽略
+
             asyncio.ensure_future(_send())
 
         try:

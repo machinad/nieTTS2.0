@@ -1,8 +1,7 @@
-import pytest
 import numpy as np
-from unittest.mock import AsyncMock, MagicMock, patch
+import pytest
+
 from engines.stt.qwen3_stt import Qwen3STT
-from engines.stt.base import STTResult
 
 
 class TestQwen3STT:
@@ -51,9 +50,7 @@ class TestQwen3STT:
 
     @pytest.mark.asyncio
     async def test_transcribe_empty_samples(self, engine_with_paths):
-        result = await engine_with_paths.transcribe(
-            np.array([], dtype=np.float32), 16000
-        )
+        result = await engine_with_paths.transcribe(np.array([], dtype=np.float32), 16000)
         assert result.success is False
         assert "empty" in result.error.lower()
 

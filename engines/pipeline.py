@@ -1,18 +1,18 @@
 import asyncio
 import logging
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional, Callable
 
 import numpy as np
 
 from config.default import ConfigManager
-from engines.tts.service import TTSService
-from engines.tts.base import TTSResult
-from engines.translate.service import TranslateService
-from engines.osc.service import OSCService
 from engines.audio.playback import play_file
+from engines.osc.service import OSCService
+from engines.translate.service import TranslateService
+from engines.tts.base import TTSResult
+from engines.tts.service import TTSService
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +59,7 @@ class PipelineRequest:
     request_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     # 输入（二选一）
     text: str = ""
-    audio_samples: Optional[np.ndarray] = field(default=None, repr=False)
+    audio_samples: np.ndarray | None = field(default=None, repr=False)
     sample_rate: int = 16000
     # TTS 参数
     tts_provider: str = ""
@@ -71,9 +71,7 @@ class PipelineRequest:
     source_lang: str = "中文"
     target_lang: str = ""
     # STT 结果回调（可选，优先于全局回调）
-    _stt_callback: Optional[Callable[[str, str], None]] = field(
-        default=None, repr=False, compare=False
-    )
+    _stt_callback: Callable[[str, str], None] | None = field(default=None, repr=False, compare=False)
 
 
 # 向后兼容
@@ -81,10 +79,7 @@ TTSRequest = PipelineRequest
 
 
 class RequestPipeline:
-
-    def __init__(self, config: ConfigManager, tts: TTSService,
-                 translate: TranslateService, osc: OSCService,
-                 stt=None):
+    def __init__(self, config: ConfigManager, tts: TTSService, translate: TranslateService, osc: OSCService, stt=None):
         self.config = config
         self.tts = tts
         self.translate = translate
@@ -95,8 +90,8 @@ class RequestPipeline:
         self._play_queue: asyncio.Queue[Path | None] = asyncio.Queue()
 
         self._running = False
-        self._request_task: Optional[asyncio.Task] = None
-        self._play_task: Optional[asyncio.Task] = None
+        self._request_task: asyncio.Task | None = None
+        self._play_task: asyncio.Task | None = None
         self._bg_tasks: set[asyncio.Task] = set()
 
     async def start(self):
@@ -125,16 +120,21 @@ class RequestPipeline:
             self._bg_tasks.clear()
         logger.info("RequestPipeline 已停止")
 
-    async def submit(self, *, text: str = "",
-                     audio_samples: np.ndarray | None = None,
-                     sample_rate: int = 16000,
-                     stt_callback: Callable | None = None,
-                     **opts) -> str:
+    async def submit(
+        self,
+        *,
+        text: str = "",
+        audio_samples: np.ndarray | None = None,
+        sample_rate: int = 16000,
+        stt_callback: Callable | None = None,
+        **opts,
+    ) -> str:
         req = PipelineRequest(
-            text=text, audio_samples=audio_samples, sample_rate=sample_rate,
+            text=text,
+            audio_samples=audio_samples,
+            sample_rate=sample_rate,
             _stt_callback=stt_callback,
-            **{k: v for k, v in opts.items()
-               if k in PipelineRequest.__dataclass_fields__ and k != "request_id"},
+            **{k: v for k, v in opts.items() if k in PipelineRequest.__dataclass_fields__ and k != "request_id"},
         )
         if not req.tts_provider:
             req.tts_provider = self.config.get("tts_provider.provider")
@@ -156,9 +156,7 @@ class RequestPipeline:
                 req = await self._request_queue.get()
                 try:
                     if req.audio_samples is not None and self.stt is not None:
-                        stt_result = await self.stt.transcribe(
-                            req.audio_samples, req.sample_rate
-                        )
+                        stt_result = await self.stt.transcribe(req.audio_samples, req.sample_rate)
                         if not stt_result.is_success or not stt_result.text:
                             logger.warning("STT 失败，跳过: %s", stt_result.error)
                             continue
@@ -188,15 +186,11 @@ class RequestPipeline:
             original_result: TTSResult
             try:
                 if _engine_supports_lang(req.tts_provider, req.source_lang):
-                    original_result = await self.tts.synthesize(
-                        req.text, provider=req.tts_provider, voice=req.voice
-                    )
+                    original_result = await self.tts.synthesize(req.text, provider=req.tts_provider, voice=req.voice)
                 else:
                     logger.warning(f"{req.tts_provider} 不支持{req.source_lang}，自动使用 edge_tts")
                     edge_voice = _resolve_edge_voice(req.source_lang)
-                    original_result = await self.tts.synthesize(
-                        req.text, provider="edge_tts", voice=edge_voice
-                    )
+                    original_result = await self.tts.synthesize(req.text, provider="edge_tts", voice=edge_voice)
             except Exception as e:
                 logger.exception(f"TTS(原文) 执行异常: {e}")
                 original_result = TTSResult(success=False, text=req.text, error=str(e))

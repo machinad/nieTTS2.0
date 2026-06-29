@@ -6,26 +6,31 @@ librime.dll 的 ctypes 绑定。
 """
 
 import ctypes
-from ctypes import (
-    Structure, CFUNCTYPE, POINTER, byref, cast,
-    c_int, c_char, c_char_p, c_void_p, c_size_t, c_double,
-)
 import os
+from ctypes import (
+    CFUNCTYPE,
+    POINTER,
+    Structure,
+    byref,
+    c_char_p,
+    c_double,
+    c_int,
+    c_size_t,
+    c_void_p,
+    cast,
+)
 from pathlib import Path
 
 from rime._utils import find_dll
 
-
 # ──────────────────────────────────────────────
 # 类型别名
 # ──────────────────────────────────────────────
-Bool = c_int            # librime 使用 int 表示 bool
+Bool = c_int  # librime 使用 int 表示 bool
 RimeSessionId = c_size_t  # typedef uintptr_t
 
 # 通知回调类型
-RimeNotificationHandler = CFUNCTYPE(
-    None, c_void_p, RimeSessionId, c_char_p, c_char_p
-)
+RimeNotificationHandler = CFUNCTYPE(None, c_void_p, RimeSessionId, c_char_p, c_char_p)
 
 
 # ──────────────────────────────────────────────
@@ -33,6 +38,7 @@ RimeNotificationHandler = CFUNCTYPE(
 # ──────────────────────────────────────────────
 class RimeComposition(Structure):
     """输入组合信息（拼音预编辑）。"""
+
     _fields_ = [
         ("length", c_int),
         ("cursor_pos", c_int),
@@ -44,6 +50,7 @@ class RimeComposition(Structure):
 
 class RimeCandidate(Structure):
     """单个候选词。"""
+
     _fields_ = [
         ("text", c_char_p),
         ("comment", c_char_p),
@@ -53,6 +60,7 @@ class RimeCandidate(Structure):
 
 class RimeMenu(Structure):
     """候选词菜单。"""
+
     _fields_ = [
         ("page_size", c_int),
         ("page_no", c_int),
@@ -66,11 +74,13 @@ class RimeMenu(Structure):
 
 class RimeConfig(Structure):
     """配置对象句柄。"""
+
     _fields_ = [("ptr", c_void_p)]
 
 
 class RimeSchemaListItem(Structure):
     """方案列表中的单个条目。"""
+
     _fields_ = [
         ("schema_id", c_char_p),
         ("name", c_char_p),
@@ -80,6 +90,7 @@ class RimeSchemaListItem(Structure):
 
 class RimeSchemaList(Structure):
     """方案列表。"""
+
     _fields_ = [
         ("size", c_size_t),
         ("list", POINTER(RimeSchemaListItem)),
@@ -88,6 +99,7 @@ class RimeSchemaList(Structure):
 
 class RimeCandidateListIterator(Structure):
     """候选词列表迭代器。"""
+
     _fields_ = [
         ("ptr", c_void_p),
         ("index", c_int),
@@ -97,6 +109,7 @@ class RimeCandidateListIterator(Structure):
 
 class RimeStringSlice(Structure):
     """字符串切片。"""
+
     _fields_ = [
         ("str", c_char_p),
         ("length", c_size_t),
@@ -110,6 +123,7 @@ class RimeStringSlice(Structure):
 # ──────────────────────────────────────────────
 class RimeTraits(Structure):
     """引擎特征配置（路径、应用信息等）。"""
+
     _fields_ = [
         ("data_size", c_int),
         ("shared_data_dir", c_char_p),
@@ -128,6 +142,7 @@ class RimeTraits(Structure):
 
 class RimeCommit(Structure):
     """已提交的文本。"""
+
     _fields_ = [
         ("data_size", c_int),
         ("text", c_char_p),
@@ -141,6 +156,7 @@ class RimeContext(Structure):
     在更早版本中可能是 char[96]（固定数组），两者布局完全不同。
     当前绑定针对 librime 1.17.0 验证通过（data_size = 84）。
     """
+
     _fields_ = [
         ("data_size", c_int),
         ("composition", RimeComposition),
@@ -152,6 +168,7 @@ class RimeContext(Structure):
 
 class RimeStatus(Structure):
     """引擎状态信息。"""
+
     _fields_ = [
         ("data_size", c_int),
         ("schema_id", c_char_p),
@@ -168,11 +185,13 @@ class RimeStatus(Structure):
 
 class RimeModule(Structure):
     """模块（前向声明）。"""
+
     pass
 
 
 class RimeCustomApi(Structure):
     """自定义 API。"""
+
     _fields_ = [("data_size", c_int)]
 
 
@@ -182,6 +201,7 @@ class RimeCustomApi(Structure):
 # ──────────────────────────────────────────────
 class RimeApi(Structure):
     """librime 导出的全部 API 函数指针表。"""
+
     _fields_ = [
         ("data_size", c_int),
         # setup
@@ -393,14 +413,13 @@ class RimeApiWrapper:
     def set_notification_handler(self, handler, context_object=None):
         """注册部署通知回调。"""
         self._notification_handler = handler
-        self._call(self._api.set_notification_handler, None,
-                   [RimeNotificationHandler, c_void_p],
-                   handler, context_object)
+        self._call(
+            self._api.set_notification_handler, None, [RimeNotificationHandler, c_void_p], handler, context_object
+        )
 
     def initialize(self, traits: RimeTraits):
         """初始化引擎。"""
-        self._call(self._api.initialize, None,
-                   [POINTER(RimeTraits)], byref(traits))
+        self._call(self._api.initialize, None, [POINTER(RimeTraits)], byref(traits))
 
     def finalize(self):
         """释放引擎资源。"""
@@ -408,8 +427,7 @@ class RimeApiWrapper:
 
     def start_maintenance(self, full_check: bool = True) -> bool:
         """启动部署维护（编译方案数据）。"""
-        return bool(self._call(self._api.start_maintenance, Bool,
-                               [Bool], int(full_check)))
+        return bool(self._call(self._api.start_maintenance, Bool, [Bool], int(full_check)))
 
     def is_maintenance_mode(self) -> bool:
         """查询是否正在维护中。"""
@@ -421,8 +439,7 @@ class RimeApiWrapper:
 
     def deployer_initialize(self, traits: RimeTraits):
         """仅初始化部署器（不启动完整引擎）。"""
-        self._call(self._api.deployer_initialize, None,
-                   [POINTER(RimeTraits)], byref(traits))
+        self._call(self._api.deployer_initialize, None, [POINTER(RimeTraits)], byref(traits))
 
     def prebuild(self) -> bool:
         """预构建。"""
@@ -434,15 +451,19 @@ class RimeApiWrapper:
 
     def deploy_schema(self, schema_file: str) -> bool:
         """部署指定方案文件。"""
-        return bool(self._call(self._api.deploy_schema, Bool,
-                               [c_char_p], schema_file.encode("utf-8")))
+        return bool(self._call(self._api.deploy_schema, Bool, [c_char_p], schema_file.encode("utf-8")))
 
     def deploy_config_file(self, file_name: str, version_key: str) -> bool:
         """部署配置文件。"""
-        return bool(self._call(self._api.deploy_config_file, Bool,
-                               [c_char_p, c_char_p],
-                               file_name.encode("utf-8"),
-                               version_key.encode("utf-8")))
+        return bool(
+            self._call(
+                self._api.deploy_config_file,
+                Bool,
+                [c_char_p, c_char_p],
+                file_name.encode("utf-8"),
+                version_key.encode("utf-8"),
+            )
+        )
 
     def sync_user_data(self) -> bool:
         """同步用户数据。"""
@@ -458,13 +479,11 @@ class RimeApiWrapper:
 
     def find_session(self, session_id: int) -> bool:
         """查找会话是否存在。"""
-        return bool(self._call(self._api.find_session, Bool,
-                               [RimeSessionId], session_id))
+        return bool(self._call(self._api.find_session, Bool, [RimeSessionId], session_id))
 
     def destroy_session(self, session_id: int) -> bool:
         """销毁会话。"""
-        return bool(self._call(self._api.destroy_session, Bool,
-                               [RimeSessionId], session_id))
+        return bool(self._call(self._api.destroy_session, Bool, [RimeSessionId], session_id))
 
     def cleanup_stale_sessions(self):
         """清理过期会话。"""
@@ -480,30 +499,23 @@ class RimeApiWrapper:
 
     def process_key(self, session_id: int, keycode: int, mask: int = 0) -> bool:
         """处理按键事件。keycode 为 X11 keysym 值。"""
-        return bool(self._call(self._api.process_key, Bool,
-                               [RimeSessionId, c_int, c_int],
-                               session_id, keycode, mask))
+        return bool(self._call(self._api.process_key, Bool, [RimeSessionId, c_int, c_int], session_id, keycode, mask))
 
     def commit_composition(self, session_id: int) -> bool:
         """提交当前组合文本。"""
-        return bool(self._call(self._api.commit_composition, Bool,
-                               [RimeSessionId], session_id))
+        return bool(self._call(self._api.commit_composition, Bool, [RimeSessionId], session_id))
 
     def clear_composition(self, session_id: int):
         """清空当前组合。"""
-        self._call(self._api.clear_composition, None,
-                   [RimeSessionId], session_id)
+        self._call(self._api.clear_composition, None, [RimeSessionId], session_id)
 
     def get_commit(self, session_id: int) -> str | None:
         """获取已提交的文本（UTF-8 解码）。"""
         commit = RimeCommit()
         rime_struct_init(commit)
-        if self._call(self._api.get_commit, Bool,
-                      [RimeSessionId, POINTER(RimeCommit)],
-                      session_id, byref(commit)):
+        if self._call(self._api.get_commit, Bool, [RimeSessionId, POINTER(RimeCommit)], session_id, byref(commit)):
             text = self._decode(commit.text)
-            self._call(self._api.free_commit, Bool,
-                       [POINTER(RimeCommit)], byref(commit))
+            self._call(self._api.free_commit, Bool, [POINTER(RimeCommit)], byref(commit))
             return text
         return None
 
@@ -518,16 +530,13 @@ class RimeApiWrapper:
         """
         ctx = RimeContext()
         rime_struct_init(ctx)
-        if self._call(self._api.get_context, Bool,
-                      [RimeSessionId, POINTER(RimeContext)],
-                      session_id, byref(ctx)):
+        if self._call(self._api.get_context, Bool, [RimeSessionId, POINTER(RimeContext)], session_id, byref(ctx)):
             return ctx
         return None
 
     def free_context(self, ctx: RimeContext):
         """释放上下文资源。"""
-        self._call(self._api.free_context, Bool,
-                   [POINTER(RimeContext)], byref(ctx))
+        self._call(self._api.free_context, Bool, [POINTER(RimeContext)], byref(ctx))
 
     def get_status(self, session_id: int) -> RimeStatus | None:
         """获取引擎状态。
@@ -538,90 +547,76 @@ class RimeApiWrapper:
         """
         status = RimeStatus()
         rime_struct_init(status)
-        if self._call(self._api.get_status, Bool,
-                      [RimeSessionId, POINTER(RimeStatus)],
-                      session_id, byref(status)):
+        if self._call(self._api.get_status, Bool, [RimeSessionId, POINTER(RimeStatus)], session_id, byref(status)):
             return status
         return None
 
     def free_status(self, status: RimeStatus):
         """释放状态资源。"""
-        self._call(self._api.free_status, Bool,
-                   [POINTER(RimeStatus)], byref(status))
+        self._call(self._api.free_status, Bool, [POINTER(RimeStatus)], byref(status))
 
     def get_input(self, session_id: int) -> str | None:
         """获取原始输入字符串。"""
-        raw = self._call(self._api.get_input, c_char_p, [RimeSessionId],
-                         session_id)
+        raw = self._call(self._api.get_input, c_char_p, [RimeSessionId], session_id)
         return self._decode(raw)
 
     def get_caret_pos(self, session_id: int) -> int:
         """获取光标位置。"""
-        return self._call(self._api.get_caret_pos, c_size_t,
-                          [RimeSessionId], session_id)
+        return self._call(self._api.get_caret_pos, c_size_t, [RimeSessionId], session_id)
 
     def set_caret_pos(self, session_id: int, pos: int):
         """设置光标位置。"""
-        self._call(self._api.set_caret_pos, None,
-                   [RimeSessionId, c_size_t], session_id, pos)
+        self._call(self._api.set_caret_pos, None, [RimeSessionId, c_size_t], session_id, pos)
 
     def select_candidate(self, session_id: int, index: int) -> bool:
         """按全局索引选择候选词。"""
-        return bool(self._call(self._api.select_candidate, Bool,
-                               [RimeSessionId, c_int],
-                               session_id, index))
+        return bool(self._call(self._api.select_candidate, Bool, [RimeSessionId, c_int], session_id, index))
 
-    def select_candidate_on_current_page(self, session_id: int,
-                                          index: int) -> bool:
+    def select_candidate_on_current_page(self, session_id: int, index: int) -> bool:
         """按页内索引选择候选词。"""
-        return bool(self._call(
-            self._api.select_candidate_on_current_page, Bool,
-            [RimeSessionId, c_int], session_id, index))
+        return bool(
+            self._call(self._api.select_candidate_on_current_page, Bool, [RimeSessionId, c_int], session_id, index)
+        )
 
     def delete_candidate(self, session_id: int, index: int) -> bool:
         """按全局索引删除候选词。"""
-        return bool(self._call(self._api.delete_candidate, Bool,
-                               [RimeSessionId, c_int],
-                               session_id, index))
+        return bool(self._call(self._api.delete_candidate, Bool, [RimeSessionId, c_int], session_id, index))
 
-    def delete_candidate_on_current_page(self, session_id: int,
-                                          index: int) -> bool:
+    def delete_candidate_on_current_page(self, session_id: int, index: int) -> bool:
         """按页内索引删除候选词。"""
-        return bool(self._call(
-            self._api.delete_candidate_on_current_page, Bool,
-            [RimeSessionId, c_int], session_id, index))
+        return bool(
+            self._call(self._api.delete_candidate_on_current_page, Bool, [RimeSessionId, c_int], session_id, index)
+        )
 
     def highlight_candidate(self, session_id: int, index: int) -> bool:
         """按全局索引高亮候选词。"""
-        return bool(self._call(self._api.highlight_candidate, Bool,
-                               [RimeSessionId, c_int],
-                               session_id, index))
+        return bool(self._call(self._api.highlight_candidate, Bool, [RimeSessionId, c_int], session_id, index))
 
-    def highlight_candidate_on_current_page(self, session_id: int,
-                                             index: int) -> bool:
+    def highlight_candidate_on_current_page(self, session_id: int, index: int) -> bool:
         """按页内索引高亮候选词。"""
-        return bool(self._call(
-            self._api.highlight_candidate_on_current_page, Bool,
-            [RimeSessionId, c_int], session_id, index))
+        return bool(
+            self._call(self._api.highlight_candidate_on_current_page, Bool, [RimeSessionId, c_int], session_id, index)
+        )
 
     def change_page(self, session_id: int, backward: bool = False) -> bool:
         """翻页。backward=True 上一页，False 下一页。"""
-        return bool(self._call(self._api.change_page, Bool,
-                               [RimeSessionId, Bool],
-                               session_id, int(backward)))
+        return bool(self._call(self._api.change_page, Bool, [RimeSessionId, Bool], session_id, int(backward)))
 
-    def simulate_key_sequence(self, session_id: int,
-                               key_sequence: str) -> bool:
+    def simulate_key_sequence(self, session_id: int, key_sequence: str) -> bool:
         """模拟按键序列（测试用）。"""
-        return bool(self._call(self._api.simulate_key_sequence, Bool,
-                               [RimeSessionId, c_char_p],
-                               session_id, key_sequence.encode("utf-8")))
+        return bool(
+            self._call(
+                self._api.simulate_key_sequence,
+                Bool,
+                [RimeSessionId, c_char_p],
+                session_id,
+                key_sequence.encode("utf-8"),
+            )
+        )
 
     def set_input(self, session_id: int, text: str) -> bool:
         """直接设置输入字符串。"""
-        return bool(self._call(self._api.set_input, Bool,
-                               [RimeSessionId, c_char_p],
-                               session_id, text.encode("utf-8")))
+        return bool(self._call(self._api.set_input, Bool, [RimeSessionId, c_char_p], session_id, text.encode("utf-8")))
 
     # ──────────────────────────────────────────
     # T3: 选项控制
@@ -629,37 +624,52 @@ class RimeApiWrapper:
 
     def set_option(self, session_id: int, option: str, value: bool):
         """设置布尔选项（如 ascii_mode, zh_hans 等）。"""
-        self._call(self._api.set_option, None,
-                   [RimeSessionId, c_char_p, Bool],
-                   session_id, option.encode("utf-8"), int(value))
+        self._call(
+            self._api.set_option, None, [RimeSessionId, c_char_p, Bool], session_id, option.encode("utf-8"), int(value)
+        )
 
     def get_option(self, session_id: int, option: str) -> bool:
         """获取布尔选项值。"""
-        return bool(self._call(self._api.get_option, Bool,
-                               [RimeSessionId, c_char_p],
-                               session_id, option.encode("utf-8")))
+        return bool(
+            self._call(self._api.get_option, Bool, [RimeSessionId, c_char_p], session_id, option.encode("utf-8"))
+        )
 
     def set_property(self, session_id: int, key: str, value: str):
         """设置字符串属性。"""
-        self._call(self._api.set_property, None,
-                   [RimeSessionId, c_char_p, c_char_p],
-                   session_id, key.encode("utf-8"), value.encode("utf-8"))
+        self._call(
+            self._api.set_property,
+            None,
+            [RimeSessionId, c_char_p, c_char_p],
+            session_id,
+            key.encode("utf-8"),
+            value.encode("utf-8"),
+        )
 
     def get_property(self, session_id: int, key: str) -> str | None:
         """获取字符串属性。"""
         buf = ctypes.create_string_buffer(1024)
-        if self._call(self._api.get_property, Bool,
-                      [RimeSessionId, c_char_p, c_char_p, c_size_t],
-                      session_id, key.encode("utf-8"), buf, 1024):
+        if self._call(
+            self._api.get_property,
+            Bool,
+            [RimeSessionId, c_char_p, c_char_p, c_size_t],
+            session_id,
+            key.encode("utf-8"),
+            buf,
+            1024,
+        ):
             return self._decode(buf.value)
         return None
 
-    def get_state_label(self, session_id: int, option_name: str,
-                         state: bool) -> str | None:
+    def get_state_label(self, session_id: int, option_name: str, state: bool) -> str | None:
         """获取选项状态的显示标签。"""
-        raw = self._call(self._api.get_state_label, c_char_p,
-                         [RimeSessionId, c_char_p, Bool],
-                         session_id, option_name.encode("utf-8"), int(state))
+        raw = self._call(
+            self._api.get_state_label,
+            c_char_p,
+            [RimeSessionId, c_char_p, Bool],
+            session_id,
+            option_name.encode("utf-8"),
+            int(state),
+        )
         return self._decode(raw)
 
     # ──────────────────────────────────────────
@@ -668,16 +678,14 @@ class RimeApiWrapper:
 
     def select_schema(self, session_id: int, schema_id: str) -> bool:
         """切换输入方案。"""
-        return bool(self._call(self._api.select_schema, Bool,
-                               [RimeSessionId, c_char_p],
-                               session_id, schema_id.encode("utf-8")))
+        return bool(
+            self._call(self._api.select_schema, Bool, [RimeSessionId, c_char_p], session_id, schema_id.encode("utf-8"))
+        )
 
     def get_current_schema(self, session_id: int) -> str | None:
         """获取当前方案 ID。"""
         buf = ctypes.create_string_buffer(256)
-        if self._call(self._api.get_current_schema, Bool,
-                      [RimeSessionId, c_char_p, c_size_t],
-                      session_id, buf, 256):
+        if self._call(self._api.get_current_schema, Bool, [RimeSessionId, c_char_p, c_size_t], session_id, buf, 256):
             return self._decode(buf.value)
         return None
 
@@ -685,23 +693,25 @@ class RimeApiWrapper:
         """获取所有可用方案列表。"""
         schema_list = RimeSchemaList()
         result = []
-        if self._call(self._api.get_schema_list, Bool,
-                      [POINTER(RimeSchemaList)], byref(schema_list)):
+        if self._call(self._api.get_schema_list, Bool, [POINTER(RimeSchemaList)], byref(schema_list)):
             for i in range(schema_list.size):
                 item = schema_list.list[i]
-                result.append({
-                    "schema_id": self._decode(item.schema_id),
-                    "name": self._decode(item.name),
-                })
-            self._call(self._api.free_schema_list, None,
-                       [POINTER(RimeSchemaList)], byref(schema_list))
+                result.append(
+                    {
+                        "schema_id": self._decode(item.schema_id),
+                        "name": self._decode(item.name),
+                    }
+                )
+            self._call(self._api.free_schema_list, None, [POINTER(RimeSchemaList)], byref(schema_list))
         return result
 
     def schema_open(self, schema_id: str, config: RimeConfig) -> bool:
         """打开方案配置。"""
-        return bool(self._call(self._api.schema_open, Bool,
-                               [c_char_p, POINTER(RimeConfig)],
-                               schema_id.encode("utf-8"), byref(config)))
+        return bool(
+            self._call(
+                self._api.schema_open, Bool, [c_char_p, POINTER(RimeConfig)], schema_id.encode("utf-8"), byref(config)
+            )
+        )
 
     # ──────────────────────────────────────────
     # T4: 状态查询
@@ -717,119 +727,178 @@ class RimeApiWrapper:
 
     def config_open(self, config_id: str, config: RimeConfig) -> bool:
         """打开配置文件。"""
-        return bool(self._call(self._api.config_open, Bool,
-                               [c_char_p, POINTER(RimeConfig)],
-                               config_id.encode("utf-8"), byref(config)))
+        return bool(
+            self._call(
+                self._api.config_open, Bool, [c_char_p, POINTER(RimeConfig)], config_id.encode("utf-8"), byref(config)
+            )
+        )
 
     def config_close(self, config: RimeConfig) -> bool:
         """关闭配置文件。"""
-        return bool(self._call(self._api.config_close, Bool,
-                               [POINTER(RimeConfig)], byref(config)))
+        return bool(self._call(self._api.config_close, Bool, [POINTER(RimeConfig)], byref(config)))
 
     def config_init(self, config: RimeConfig) -> bool:
         """初始化空配置。"""
-        return bool(self._call(self._api.config_init, Bool,
-                               [POINTER(RimeConfig)], byref(config)))
+        return bool(self._call(self._api.config_init, Bool, [POINTER(RimeConfig)], byref(config)))
 
     def config_load_string(self, config: RimeConfig, yaml: str) -> bool:
         """从 YAML 字符串加载配置。"""
-        return bool(self._call(self._api.config_load_string, Bool,
-                               [POINTER(RimeConfig), c_char_p],
-                               byref(config), yaml.encode("utf-8")))
+        return bool(
+            self._call(
+                self._api.config_load_string, Bool, [POINTER(RimeConfig), c_char_p], byref(config), yaml.encode("utf-8")
+            )
+        )
 
     def config_get_bool(self, config: RimeConfig, key: str) -> bool | None:
         """读取布尔配置值。"""
         value = Bool()
-        if self._call(self._api.config_get_bool, Bool,
-                      [POINTER(RimeConfig), c_char_p, POINTER(Bool)],
-                      byref(config), key.encode("utf-8"), byref(value)):
+        if self._call(
+            self._api.config_get_bool,
+            Bool,
+            [POINTER(RimeConfig), c_char_p, POINTER(Bool)],
+            byref(config),
+            key.encode("utf-8"),
+            byref(value),
+        ):
             return bool(value.value)
         return None
 
     def config_get_int(self, config: RimeConfig, key: str) -> int | None:
         """读取整数配置值。"""
         value = c_int()
-        if self._call(self._api.config_get_int, Bool,
-                      [POINTER(RimeConfig), c_char_p, POINTER(c_int)],
-                      byref(config), key.encode("utf-8"), byref(value)):
+        if self._call(
+            self._api.config_get_int,
+            Bool,
+            [POINTER(RimeConfig), c_char_p, POINTER(c_int)],
+            byref(config),
+            key.encode("utf-8"),
+            byref(value),
+        ):
             return value.value
         return None
 
     def config_get_double(self, config: RimeConfig, key: str) -> float | None:
         """读取浮点配置值。"""
         value = c_double()
-        if self._call(self._api.config_get_double, Bool,
-                      [POINTER(RimeConfig), c_char_p, POINTER(c_double)],
-                      byref(config), key.encode("utf-8"), byref(value)):
+        if self._call(
+            self._api.config_get_double,
+            Bool,
+            [POINTER(RimeConfig), c_char_p, POINTER(c_double)],
+            byref(config),
+            key.encode("utf-8"),
+            byref(value),
+        ):
             return value.value
         return None
 
-    def config_get_string(self, config: RimeConfig,
-                           key: str) -> str | None:
+    def config_get_string(self, config: RimeConfig, key: str) -> str | None:
         """读取字符串配置值。"""
         buf = ctypes.create_string_buffer(1024)
-        if self._call(self._api.config_get_string, Bool,
-                      [POINTER(RimeConfig), c_char_p, c_char_p, c_size_t],
-                      byref(config), key.encode("utf-8"), buf, 1024):
+        if self._call(
+            self._api.config_get_string,
+            Bool,
+            [POINTER(RimeConfig), c_char_p, c_char_p, c_size_t],
+            byref(config),
+            key.encode("utf-8"),
+            buf,
+            1024,
+        ):
             return self._decode(buf.value)
         return None
 
     def config_set_bool(self, config: RimeConfig, key: str, value: bool) -> bool:
         """写入布尔配置值。"""
-        return bool(self._call(self._api.config_set_bool, Bool,
-                               [POINTER(RimeConfig), c_char_p, Bool],
-                               byref(config), key.encode("utf-8"), int(value)))
+        return bool(
+            self._call(
+                self._api.config_set_bool,
+                Bool,
+                [POINTER(RimeConfig), c_char_p, Bool],
+                byref(config),
+                key.encode("utf-8"),
+                int(value),
+            )
+        )
 
     def config_set_int(self, config: RimeConfig, key: str, value: int) -> bool:
         """写入整数配置值。"""
-        return bool(self._call(self._api.config_set_int, Bool,
-                               [POINTER(RimeConfig), c_char_p, c_int],
-                               byref(config), key.encode("utf-8"), value))
+        return bool(
+            self._call(
+                self._api.config_set_int,
+                Bool,
+                [POINTER(RimeConfig), c_char_p, c_int],
+                byref(config),
+                key.encode("utf-8"),
+                value,
+            )
+        )
 
-    def config_set_double(self, config: RimeConfig, key: str,
-                           value: float) -> bool:
+    def config_set_double(self, config: RimeConfig, key: str, value: float) -> bool:
         """写入浮点配置值。"""
-        return bool(self._call(self._api.config_set_double, Bool,
-                               [POINTER(RimeConfig), c_char_p, c_double],
-                               byref(config), key.encode("utf-8"), value))
+        return bool(
+            self._call(
+                self._api.config_set_double,
+                Bool,
+                [POINTER(RimeConfig), c_char_p, c_double],
+                byref(config),
+                key.encode("utf-8"),
+                value,
+            )
+        )
 
-    def config_set_string(self, config: RimeConfig, key: str,
-                           value: str) -> bool:
+    def config_set_string(self, config: RimeConfig, key: str, value: str) -> bool:
         """写入字符串配置值。"""
-        return bool(self._call(self._api.config_set_string, Bool,
-                               [POINTER(RimeConfig), c_char_p, c_char_p],
-                               byref(config), key.encode("utf-8"),
-                               value.encode("utf-8")))
+        return bool(
+            self._call(
+                self._api.config_set_string,
+                Bool,
+                [POINTER(RimeConfig), c_char_p, c_char_p],
+                byref(config),
+                key.encode("utf-8"),
+                value.encode("utf-8"),
+            )
+        )
 
     def config_clear(self, config: RimeConfig, key: str) -> bool:
         """清除配置项。"""
-        return bool(self._call(self._api.config_clear, Bool,
-                               [POINTER(RimeConfig), c_char_p],
-                               byref(config), key.encode("utf-8")))
+        return bool(
+            self._call(
+                self._api.config_clear, Bool, [POINTER(RimeConfig), c_char_p], byref(config), key.encode("utf-8")
+            )
+        )
 
     def config_create_list(self, config: RimeConfig, key: str) -> bool:
         """创建空列表配置项。"""
-        return bool(self._call(self._api.config_create_list, Bool,
-                               [POINTER(RimeConfig), c_char_p],
-                               byref(config), key.encode("utf-8")))
+        return bool(
+            self._call(
+                self._api.config_create_list, Bool, [POINTER(RimeConfig), c_char_p], byref(config), key.encode("utf-8")
+            )
+        )
 
     def config_create_map(self, config: RimeConfig, key: str) -> bool:
         """创建空映射配置项。"""
-        return bool(self._call(self._api.config_create_map, Bool,
-                               [POINTER(RimeConfig), c_char_p],
-                               byref(config), key.encode("utf-8")))
+        return bool(
+            self._call(
+                self._api.config_create_map, Bool, [POINTER(RimeConfig), c_char_p], byref(config), key.encode("utf-8")
+            )
+        )
 
     def config_list_size(self, config: RimeConfig, key: str) -> int:
         """获取列表配置项的大小。"""
-        return self._call(self._api.config_list_size, c_size_t,
-                          [POINTER(RimeConfig), c_char_p],
-                          byref(config), key.encode("utf-8"))
+        return self._call(
+            self._api.config_list_size, c_size_t, [POINTER(RimeConfig), c_char_p], byref(config), key.encode("utf-8")
+        )
 
     def config_update_signature(self, config: RimeConfig, signer: str) -> bool:
         """更新配置签名。"""
-        return bool(self._call(self._api.config_update_signature, Bool,
-                               [POINTER(RimeConfig), c_char_p],
-                               byref(config), signer.encode("utf-8")))
+        return bool(
+            self._call(
+                self._api.config_update_signature,
+                Bool,
+                [POINTER(RimeConfig), c_char_p],
+                byref(config),
+                signer.encode("utf-8"),
+            )
+        )
 
     # ──────────────────────────────────────────
     # 目录访问
@@ -837,13 +906,11 @@ class RimeApiWrapper:
 
     def get_shared_data_dir(self) -> str | None:
         """获取共享数据目录路径。"""
-        return self._decode(
-            self._call(self._api.get_shared_data_dir, c_char_p, []))
+        return self._decode(self._call(self._api.get_shared_data_dir, c_char_p, []))
 
     def get_user_data_dir(self) -> str | None:
         """获取用户数据目录路径。"""
-        return self._decode(
-            self._call(self._api.get_user_data_dir, c_char_p, []))
+        return self._decode(self._call(self._api.get_user_data_dir, c_char_p, []))
 
     # ──────────────────────────────────────────
     # 内部方法

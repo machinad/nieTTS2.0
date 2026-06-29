@@ -1,57 +1,62 @@
-from PySide6.QtCore import Qt, QByteArray, QUrl
-from PySide6.QtGui import QPixmap, QPainter, QDesktopServices
+from PySide6.QtCore import QByteArray, Qt, QUrl
+from PySide6.QtGui import QDesktopServices, QPainter, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QPushButton,
-    QScrollArea, QGridLayout,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
 )
 
 from version import VERSION
 
-_SVG_LOGO = b'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+_SVG_LOGO = b"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
   stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M12 3v18"/>
   <path d="M8 7v10"/>
   <path d="M4 10v4"/>
   <path d="M16 5v14"/>
   <path d="M20 8v8"/>
-</svg>'''
+</svg>"""
 
-_SVG_LINK = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+_SVG_LINK = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
   <polyline points="15 3 21 3 21 9"/>
   <line x1="10" y1="14" x2="21" y2="3"/>
-</svg>'''
+</svg>"""
 
-_SVG_GITHUB = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+_SVG_GITHUB = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"/>
-</svg>'''
+</svg>"""
 
-_SVG_MAIL = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+_SVG_MAIL = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
   <polyline points="22,6 12,13 2,6"/>
-</svg>'''
+</svg>"""
 
-_SVG_INFO = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+_SVG_INFO = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <circle cx="12" cy="12" r="10"/>
   <line x1="12" y1="16" x2="12" y2="12"/>
   <line x1="12" y1="8" x2="12.01" y2="8"/>
-</svg>'''
+</svg>"""
 
-_SVG_CODE = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+_SVG_CODE = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <polyline points="16 18 22 12 16 6"/>
   <polyline points="8 6 2 12 8 18"/>
-</svg>'''
+</svg>"""
 
-_SVG_HEART = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+_SVG_HEART = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
-</svg>'''
+</svg>"""
 
 
 def _card(title: str, icon: str = "") -> tuple[QFrame, QVBoxLayout]:
@@ -161,10 +166,7 @@ class AboutPage(QWidget):
         root.addWidget(title)
 
         hero = QFrame()
-        hero.setStyleSheet(
-            "QFrame { background: #ffffff;"
-            "border: 1px solid rgba(0,0,0,0.04); border-radius: 20px; }"
-        )
+        hero.setStyleSheet("QFrame { background: #ffffff;border: 1px solid rgba(0,0,0,0.04); border-radius: 20px; }")
         hero_layout = QVBoxLayout(hero)
         hero_layout.setContentsMargins(40, 36, 40, 36)
         hero_layout.setSpacing(12)
@@ -180,22 +182,15 @@ class AboutPage(QWidget):
         QSvgRenderer(QByteArray(_SVG_LOGO)).render(p)
         p.end()
         icon_lbl.setPixmap(pixmap)
-        icon_lbl.setStyleSheet(
-            "background: #d6608a;"
-            "border-radius: 16px;"
-        )
+        icon_lbl.setStyleSheet("background: #d6608a;border-radius: 16px;")
         hero_layout.addWidget(icon_lbl, 0, Qt.AlignmentFlag.AlignCenter)
 
         name_lbl = QLabel("nieTTS 2.0")
-        name_lbl.setStyleSheet(
-            "font-size: 24px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.02em;"
-        )
+        name_lbl.setStyleSheet("font-size: 24px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.02em;")
         hero_layout.addWidget(name_lbl, 0, Qt.AlignmentFlag.AlignCenter)
 
         ver_lbl = QLabel(VERSION)
-        ver_lbl.setStyleSheet(
-            "font-family: 'Consolas', monospace; font-size: 13px; color: #d6608a; font-weight: 500;"
-        )
+        ver_lbl.setStyleSheet("font-family: 'Consolas', monospace; font-size: 13px; color: #d6608a; font-weight: 500;")
         hero_layout.addWidget(ver_lbl, 0, Qt.AlignmentFlag.AlignCenter)
 
         desc_lbl = QLabel("一体化 TTS + STT + 翻译工具")
@@ -252,9 +247,7 @@ class AboutPage(QWidget):
             row.setSpacing(16)
             lbl = QLabel(label)
             lbl.setFixedWidth(48)
-            lbl.setStyleSheet(
-                "font-size: 12px; font-weight: 600; color: #9b9a98;"
-            )
+            lbl.setStyleSheet("font-size: 12px; font-weight: 600; color: #9b9a98;")
             row.addWidget(lbl)
             val = QLabel(value)
             val.setStyleSheet("font-size: 14px; color: #1a1a1a;")

@@ -114,10 +114,14 @@ class OpenXROverlayManager:
         except ValueError:
             self._position_mode = PositionMode.HEAD
 
-        logger.info("OpenXR 覆盖层配置: %dx%d, %.1fm x %.1fm, 距离=%.1fm",
-                     self._tex_width, self._tex_height,
-                     self._width_meters, self._height_meters,
-                     self._distance_meters)
+        logger.info(
+            "OpenXR 覆盖层配置: %dx%d, %.1fm x %.1fm, 距离=%.1fm",
+            self._tex_width,
+            self._tex_height,
+            self._width_meters,
+            self._height_meters,
+            self._distance_meters,
+        )
 
         try:
             # ── 阶段 1：子线程 — 创建实例和系统 ──
@@ -187,20 +191,25 @@ class OpenXROverlayManager:
                 # 上面的检查可能跳过了，仍然尝试添加
                 extensions.append("XR_EXTX_overlay")
 
-            self._instance = xr.create_instance(xr.InstanceCreateInfo(
-                application_info=xr.ApplicationInfo(
-                    application_name="nieTTS VR Overlay",
-                    application_version=1,
-                    engine_name="nieTTS",
-                    engine_version=1,
-                ),
-                enabled_extension_names=extensions,
-            ))
+            self._instance = xr.create_instance(
+                xr.InstanceCreateInfo(
+                    application_info=xr.ApplicationInfo(
+                        application_name="nieTTS VR Overlay",
+                        application_version=1,
+                        engine_name="nieTTS",
+                        engine_version=1,
+                    ),
+                    enabled_extension_names=extensions,
+                )
+            )
             logger.info("OpenXR 实例创建成功, 扩展: %s", extensions)
 
-            self._system_id = xr.get_system(self._instance, xr.SystemGetInfo(
-                form_factor=xr.FormFactor.HEAD_MOUNTED_DISPLAY,
-            ))
+            self._system_id = xr.get_system(
+                self._instance,
+                xr.SystemGetInfo(
+                    form_factor=xr.FormFactor.HEAD_MOUNTED_DISPLAY,
+                ),
+            )
             logger.info("OpenXR 系统获取成功: system_id=%s", self._system_id)
 
             return True
@@ -209,20 +218,25 @@ class OpenXROverlayManager:
             # XR_EXTX_overlay 不可用，回退到只启用 OpenGL 扩展
             logger.warning("XR_EXTX_overlay 不可用，回退到标准 VR 模式")
             try:
-                self._instance = xr.create_instance(xr.InstanceCreateInfo(
-                    application_info=xr.ApplicationInfo(
-                        application_name="nieTTS VR Overlay",
-                        application_version=1,
-                        engine_name="nieTTS",
-                        engine_version=1,
-                    ),
-                    enabled_extension_names=["XR_KHR_opengl_enable"],
-                ))
+                self._instance = xr.create_instance(
+                    xr.InstanceCreateInfo(
+                        application_info=xr.ApplicationInfo(
+                            application_name="nieTTS VR Overlay",
+                            application_version=1,
+                            engine_name="nieTTS",
+                            engine_version=1,
+                        ),
+                        enabled_extension_names=["XR_KHR_opengl_enable"],
+                    )
+                )
                 logger.info("OpenXR 实例创建成功（标准模式）")
 
-                self._system_id = xr.get_system(self._instance, xr.SystemGetInfo(
-                    form_factor=xr.FormFactor.HEAD_MOUNTED_DISPLAY,
-                ))
+                self._system_id = xr.get_system(
+                    self._instance,
+                    xr.SystemGetInfo(
+                        form_factor=xr.FormFactor.HEAD_MOUNTED_DISPLAY,
+                    ),
+                )
                 logger.info("OpenXR 系统获取成功: system_id=%s", self._system_id)
                 return True
             except Exception as e2:
@@ -257,9 +271,11 @@ class OpenXROverlayManager:
             # 查询 OpenGL 图形要求（验证兼容性）
             try:
                 from xr.ext.KHR.opengl_enable import get_graphics_requirements
+
                 reqs = get_graphics_requirements(self._instance, self._system_id)
-                logger.info("OpenGL 版本要求: min=%s, max=%s",
-                            reqs.min_api_version_supported, reqs.max_api_version_supported)
+                logger.info(
+                    "OpenGL 版本要求: min=%s, max=%s", reqs.min_api_version_supported, reqs.max_api_version_supported
+                )
             except Exception as e:
                 logger.debug("查询 OpenGL 要求失败（非致命）: %s", e)
 
@@ -298,7 +314,8 @@ class OpenXROverlayManager:
 
             # 创建渲染器（使用独立上下文，与 context_provider 共享资源）
             self._renderer = OverlayRenderer(
-                self._tex_width, self._tex_height,
+                self._tex_width,
+                self._tex_height,
                 shared_context=self._context_provider.context,
             )
             self._renderer.init_gl()
@@ -322,9 +339,9 @@ class OpenXROverlayManager:
         try:
             # 查询运行时支持的交换链格式
             supported_formats = xr.enumerate_swapchain_formats(self._session)
-            logger.info("运行时支持 %d 种交换链格式: %s",
-                        len(supported_formats),
-                        [hex(f) for f in supported_formats[:10]])
+            logger.info(
+                "运行时支持 %d 种交换链格式: %s", len(supported_formats), [hex(f) for f in supported_formats[:10]]
+            )
 
             # 选择一个 GL 格式（优先 RGBA8，其次 SRGB8_ALPHA8，再其次列表第一个）
             # GL_RGBA8=0x8058, GL_SRGB8_ALPHA8=0x8C43, GL_RGBA16F=0x881A
@@ -344,24 +361,25 @@ class OpenXROverlayManager:
             logger.info("选择交换链格式: %s", hex(swapchain_format))
 
             # 创建交换链
-            self._swapchain = xr.create_swapchain(self._session, xr.SwapchainCreateInfo(
-                usage_flags=(
-                    xr.SwapchainUsageFlags.COLOR_ATTACHMENT_BIT
-                    | xr.SwapchainUsageFlags.SAMPLED_BIT
+            self._swapchain = xr.create_swapchain(
+                self._session,
+                xr.SwapchainCreateInfo(
+                    usage_flags=(xr.SwapchainUsageFlags.COLOR_ATTACHMENT_BIT | xr.SwapchainUsageFlags.SAMPLED_BIT),
+                    format=swapchain_format,
+                    sample_count=1,
+                    width=self._tex_width,
+                    height=self._tex_height,
+                    face_count=1,
+                    array_size=1,
+                    mip_count=1,
                 ),
-                format=swapchain_format,
-                sample_count=1,
-                width=self._tex_width,
-                height=self._tex_height,
-                face_count=1,
-                array_size=1,
-                mip_count=1,
-            ))
+            )
             logger.info("OpenXR 交换链创建成功, format=%s", hex(swapchain_format))
 
             # 枚举交换链图像
             self._swapchain_images = xr.enumerate_swapchain_images(
-                self._swapchain, xr.SwapchainImageOpenGLKHR,
+                self._swapchain,
+                xr.SwapchainImageOpenGLKHR,
             )
             logger.info("交换链图像数量: %d", len(self._swapchain_images))
 
@@ -395,25 +413,35 @@ class OpenXROverlayManager:
 
     def _setup_input_actions(self) -> None:
         """创建和绑定输入动作。"""
-        self._action_set = xr.create_action_set(self._instance, xr.ActionSetCreateInfo(
-            action_set_name="overlay_interaction",
-            localized_action_set_name="Overlay Interaction",
-            priority=0,
-        ))
+        self._action_set = xr.create_action_set(
+            self._instance,
+            xr.ActionSetCreateInfo(
+                action_set_name="overlay_interaction",
+                localized_action_set_name="Overlay Interaction",
+                priority=0,
+            ),
+        )
 
-        self._aim_action = xr.create_action(self._action_set, xr.ActionCreateInfo(
-            action_name="aim",
-            action_type=xr.ActionType.POSE_INPUT,
-            localized_action_name="Controller Aim",
-        ))
-        self._trigger_action = xr.create_action(self._action_set, xr.ActionCreateInfo(
-            action_name="trigger",
-            action_type=xr.ActionType.BOOLEAN_INPUT,
-            localized_action_name="Trigger Click",
-        ))
+        self._aim_action = xr.create_action(
+            self._action_set,
+            xr.ActionCreateInfo(
+                action_name="aim",
+                action_type=xr.ActionType.POSE_INPUT,
+                localized_action_name="Controller Aim",
+            ),
+        )
+        self._trigger_action = xr.create_action(
+            self._action_set,
+            xr.ActionCreateInfo(
+                action_name="trigger",
+                action_type=xr.ActionType.BOOLEAN_INPUT,
+                localized_action_name="Trigger Click",
+            ),
+        )
 
         self._right_hand_path = xr.string_to_path(
-            self._instance, "/user/hand/right",
+            self._instance,
+            "/user/hand/right",
         )
 
         # 绑定到多种控制器
@@ -427,42 +455,49 @@ class OpenXROverlayManager:
         for profile_path in profile_paths:
             try:
                 profile = xr.string_to_path(self._instance, profile_path)
-                xr.suggest_interaction_profile_bindings(self._instance, xr.InteractionProfileSuggestedBinding(
-                    interaction_profile=profile,
-                    count_suggested_bindings=2,
-                    suggested_bindings=[
-                        xr.ActionSuggestedBinding(
-                            action=self._aim_action,
-                            binding=xr.string_to_path(
-                                self._instance,
-                                "/user/hand/right/input/aim/pose",
+                xr.suggest_interaction_profile_bindings(
+                    self._instance,
+                    xr.InteractionProfileSuggestedBinding(
+                        interaction_profile=profile,
+                        count_suggested_bindings=2,
+                        suggested_bindings=[
+                            xr.ActionSuggestedBinding(
+                                action=self._aim_action,
+                                binding=xr.string_to_path(
+                                    self._instance,
+                                    "/user/hand/right/input/aim/pose",
+                                ),
                             ),
-                        ),
-                        xr.ActionSuggestedBinding(
-                            action=self._trigger_action,
-                            binding=xr.string_to_path(
-                                self._instance,
-                                "/user/hand/right/input/trigger/click",
+                            xr.ActionSuggestedBinding(
+                                action=self._trigger_action,
+                                binding=xr.string_to_path(
+                                    self._instance,
+                                    "/user/hand/right/input/trigger/click",
+                                ),
                             ),
-                        ),
-                    ],
-                ))
+                        ],
+                    ),
+                )
                 logger.info("输入绑定成功: %s", profile_path)
             except Exception as e:
                 logger.debug("输入绑定跳过 %s: %s", profile_path, e)
 
         self._aim_space = xr.create_action_space(
-            self._session, xr.ActionSpaceCreateInfo(
+            self._session,
+            xr.ActionSpaceCreateInfo(
                 action=self._aim_action,
                 subaction_path=self._right_hand_path,
             ),
         )
 
         try:
-            xr.attach_session_action_sets(self._session, xr.SessionActionSetsAttachInfo(
-                count_action_sets=1,
-                action_sets=[self._action_set],
-            ))
+            xr.attach_session_action_sets(
+                self._session,
+                xr.SessionActionSetsAttachInfo(
+                    count_action_sets=1,
+                    action_sets=[self._action_set],
+                ),
+            )
             logger.info("动作集已附加")
         except Exception as e:
             logger.warning("动作集附加失败（可能需要在会话开始后）: %s", e)
@@ -520,9 +555,12 @@ class OpenXROverlayManager:
 
         if self._session_state == xr.SessionState.READY:
             try:
-                xr.begin_session(self._session, xr.SessionBeginInfo(
-                    primary_view_configuration_type=xr.ViewConfigurationType.PRIMARY_STEREO,
-                ))
+                xr.begin_session(
+                    self._session,
+                    xr.SessionBeginInfo(
+                        primary_view_configuration_type=xr.ViewConfigurationType.PRIMARY_STEREO,
+                    ),
+                )
                 self._session_running = True
                 logger.info("会话已开始")
             except Exception as e:
@@ -554,12 +592,15 @@ class OpenXROverlayManager:
 
             layers = self._render_and_submit()
 
-            xr.end_frame(self._session, xr.FrameEndInfo(
-                display_time=self._frame_state.predicted_display_time,
-                environment_blend_mode=xr.EnvironmentBlendMode.OPAQUE,
-                layer_count=len(layers),
-                layers=layers if layers else None,
-            ))
+            xr.end_frame(
+                self._session,
+                xr.FrameEndInfo(
+                    display_time=self._frame_state.predicted_display_time,
+                    environment_blend_mode=xr.EnvironmentBlendMode.OPAQUE,
+                    layer_count=len(layers),
+                    layers=layers if layers else None,
+                ),
+            )
 
         except xr.FrameDiscarded:
             logger.debug("帧被丢弃")
@@ -571,18 +612,27 @@ class OpenXROverlayManager:
 
     def _sync_and_process_input(self) -> None:
         """同步动作状态并处理射线输入。"""
-        if (self._action_set is None or self._aim_space is None or
-                self._overlay_space is None or self._frame_state is None):
+        if (
+            self._action_set is None
+            or self._aim_space is None
+            or self._overlay_space is None
+            or self._frame_state is None
+        ):
             return
 
         try:
-            xr.sync_actions(self._session, xr.ActionsSyncInfo(
-                count_active_action_sets=1,
-                active_action_sets=[xr.ActiveActionSet(
-                    action_set=self._action_set,
-                    subaction_path=0,
-                )],
-            ))
+            xr.sync_actions(
+                self._session,
+                xr.ActionsSyncInfo(
+                    count_active_action_sets=1,
+                    active_action_sets=[
+                        xr.ActiveActionSet(
+                            action_set=self._action_set,
+                            subaction_path=0,
+                        )
+                    ],
+                ),
+            )
 
             aim_state = xr.get_action_state_pose(
                 self._session,
@@ -601,8 +651,7 @@ class OpenXROverlayManager:
                 self._frame_state.predicted_display_time,
             )
 
-            if not (space_location.location_flags &
-                    xr.SpaceLocationFlags.POSITION_VALID):
+            if not (space_location.location_flags & xr.SpaceLocationFlags.POSITION_VALID):
                 return
 
             trigger_state_obj = xr.get_action_state_boolean(
@@ -615,10 +664,12 @@ class OpenXROverlayManager:
             trigger_pressed = bool(trigger_state_obj.current_state)
 
             # 更新面板几何
-            self._input_handler.update_quad_surface(xr.Posef(
-                orientation=xr.Quaternionf(x=0, y=0, z=0, w=1),
-                position=xr.Vector3f(x=0, y=0, z=0),
-            ))
+            self._input_handler.update_quad_surface(
+                xr.Posef(
+                    orientation=xr.Quaternionf(x=0, y=0, z=0, w=1),
+                    position=xr.Vector3f(x=0, y=0, z=0),
+                )
+            )
 
             controller_pos = (
                 space_location.pose.position.x,
@@ -633,11 +684,13 @@ class OpenXROverlayManager:
             )
 
             hit = self._input_handler.process_input(
-                controller_pos, controller_rot, trigger_pressed,
+                controller_pos,
+                controller_rot,
+                trigger_pressed,
             )
 
             # 更新 widget 状态显示
-            if self._widget is not None and hasattr(self._widget, 'update_ray_status'):
+            if self._widget is not None and hasattr(self._widget, "update_ray_status"):
                 if hit.hit:
                     pos = self._input_handler.last_widget_pos
                     self._widget.update_crosshair_coord(pos.x(), pos.y())
@@ -655,8 +708,7 @@ class OpenXROverlayManager:
         """渲染 Widget 到纹理并构建合成层。"""
         layers = []
 
-        if (self._swapchain is None or self._renderer is None or
-                self._overlay_space is None or self._widget is None):
+        if self._swapchain is None or self._renderer is None or self._overlay_space is None or self._widget is None:
             return layers
 
         if not self._dirty:
@@ -670,9 +722,12 @@ class OpenXROverlayManager:
                 xr.SwapchainImageAcquireInfo(),
             )
 
-            xr.wait_swapchain_image(self._swapchain, xr.SwapchainImageWaitInfo(
-                timeout=xr.Duration(1_000_000_000),
-            ))
+            xr.wait_swapchain_image(
+                self._swapchain,
+                xr.SwapchainImageWaitInfo(
+                    timeout=xr.Duration(1_000_000_000),
+                ),
+            )
 
             xr.release_swapchain_image(self._swapchain, xr.SwapchainImageReleaseInfo())
 

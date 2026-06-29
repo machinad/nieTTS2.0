@@ -1,4 +1,4 @@
-﻿"""
+"""
 ⚠️ 此入口已废弃，不再维护。
 
 main.py 为 nieTTS 的无 GUI（Headless）启动入口，仅作为历史参考保留。
@@ -8,20 +8,19 @@ Web 前端由 gui_main.py 中内嵌的 Quart 服务器统一提供。
 请勿基于此文件进行修改或提交 PR。如有需要，请使用 gui_main.py。
 """
 
-import asyncio
 import argparse
+import asyncio
 import logging
 
-from config.default import ConfigManager
-from engines.tts.service import TTSService
-from engines.translate.service import TranslateService
-from engines.osc.service import OSCService
-from engines.stt.service import STTService
-from engines.pipeline import RequestPipeline
-from web_server import WebServer, WSLogHandler
 from certificates.certificates_server import CertificateServer
-
+from config.default import ConfigManager
+from engines.osc.service import OSCService
+from engines.pipeline import RequestPipeline
+from engines.stt.service import STTService
+from engines.translate.service import TranslateService
+from engines.tts.service import TTSService
 from version import VERSION
+from web_server import WebServer, WSLogHandler
 
 _parser = argparse.ArgumentParser(description="nieTTS 2.0")
 _parser.add_argument("--debug", action="store_true", help="启用 debug 日志模式")
@@ -47,7 +46,6 @@ BANNER = r"""
 
 
 class nieTTS:
-
     def __init__(self):
         self.config = ConfigManager()
         self.tts = TTSService(self.config)

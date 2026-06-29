@@ -1,5 +1,7 @@
 import logging
+
 from openai import AsyncOpenAI
+
 from engines.translate.base import BaseTranslate, TranslateResult
 
 logger = logging.getLogger(__name__)

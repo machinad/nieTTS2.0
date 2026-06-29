@@ -1,5 +1,6 @@
 import asyncio
 import logging
+
 from config.default import ConfigManager
 from engines.stt.base import BaseSTT, STTResult
 from engines.stt.qwen3_stt import Qwen3STT
@@ -12,7 +13,6 @@ _REGISTRY: dict[str, type[BaseSTT]] = {
 
 
 class STTService:
-
     def __init__(self, config: ConfigManager):
         self.config = config
         self._build_engines()
@@ -79,8 +79,7 @@ class STTService:
         except asyncio.CancelledError:
             pass  # 定时器被取消，正常情况
 
-    async def transcribe(self, samples, sample_rate: int = 16000,
-                         provider: str = "") -> STTResult:
+    async def transcribe(self, samples, sample_rate: int = 16000, provider: str = "") -> STTResult:
         self._cancel_close_timer()  # 使用时取消关闭定时器
         provider = provider or self.config.get("stt_provider.provider", "")
         if not provider:
@@ -88,9 +87,7 @@ class STTService:
             provider = available[0] if available else ""
         engine = self._engines.get(provider)
         if engine is None:
-            return STTResult(success=False,
-                             error=f"Unknown STT engine: {provider}")
+            return STTResult(success=False, error=f"Unknown STT engine: {provider}")
         if not engine.is_available():
-            return STTResult(success=False,
-                             error=f"Engine {provider} not available")
+            return STTResult(success=False, error=f"Engine {provider} not available")
         return await engine.transcribe(samples, sample_rate)

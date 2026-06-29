@@ -1,7 +1,9 @@
 import asyncio
 import logging
+
 import dashscope
 from dashscope.audio.tts_v2 import SpeechSynthesizer as SpeechSynthesizerV2
+
 from engines.tts.base import BaseTTS, TTSResult
 
 logger = logging.getLogger(__name__)
@@ -11,7 +13,11 @@ class CosyVoiceTTS(BaseTTS):
     engine_name = "阿里百炼cosyvoice"
 
     @classmethod
-    def from_config(cls, cfg: dict, save_dir,):
+    def from_config(
+        cls,
+        cfg: dict,
+        save_dir,
+    ):
         return cls(save_dir, api_key=cfg.get("ali_api_key", ""))
 
     def __init__(self, save_dir, api_key: str = ""):

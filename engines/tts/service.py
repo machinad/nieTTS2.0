@@ -1,10 +1,11 @@
 import logging
+
 from config.default import ConfigManager
 from config.provider_voice import Edge_TTS_voices, ali_tts_voices, sambert_tts_voices
 from engines.tts.base import BaseTTS, TTSResult
+from engines.tts.cosyvoice_tts import CosyVoiceTTS
 from engines.tts.edge_tts import EdgeTTS
 from engines.tts.matcha_tts import MatchaTTS
-from engines.tts.cosyvoice_tts import CosyVoiceTTS
 from engines.tts.sambert_tts import SambertTTS
 
 logger = logging.getLogger(__name__)
@@ -24,7 +25,6 @@ _REGISTRY: dict[str, type[BaseTTS]] = {
 
 
 class TTSService:
-
     def __init__(self, config: ConfigManager):
         self.config = config
         self._build_engines()
@@ -67,15 +67,14 @@ class TTSService:
             await eng.close()
         self._build_engines()
 
-    async def synthesize(self, text: str, provider: str = None,
-                         voice: str = "", **kwargs) -> TTSResult:
+    async def synthesize(self, text: str, provider: str = None, voice: str = "", **kwargs) -> TTSResult:
         provider = provider or self.config.get("tts_provider.provider")
         engine = self._engines.get(provider)
         if engine is None:
-            return TTSResult(success=False, text=text,
-                             error=f"未知的 TTS 引擎: {provider}")
+            return TTSResult(success=False, text=text, error=f"未知的 TTS 引擎: {provider}")
         if not engine.is_available():
-            return TTSResult(success=False, text=text,
-                             error=f"引擎 {provider} 不可用（请检查配置）: {engine.engine_name}")
+            return TTSResult(
+                success=False, text=text, error=f"引擎 {provider} 不可用（请检查配置）: {engine.engine_name}"
+            )
         resolved_voice = self._resolve_voice(provider, voice)
         return await engine.synthesize(text, resolved_voice, **kwargs)

@@ -1,6 +1,7 @@
-import pytest
 import numpy as np
-from engines.stt.vad.base import SpeechSegment, BaseVAD
+import pytest
+
+from engines.stt.vad.base import BaseVAD, SpeechSegment
 
 
 class TestSpeechSegment:
@@ -46,17 +47,23 @@ class TestBaseVAD:
     def test_concrete_can_instantiate(self):
         class Impl(BaseVAD):
             engine_name = "Test"
+
             def accept_waveform(self, samples):
                 pass
+
             def empty(self):
                 return True
+
             @property
             def front(self):
                 raise IndexError()
+
             def pop(self):
                 pass
+
             def flush(self):
                 pass
+
             @property
             def is_speech_detected(self):
                 return False

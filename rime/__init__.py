@@ -18,8 +18,8 @@ rime-python — librime 的 Python 绑定。
     engine.shutdown()
 """
 
-from rime.engine import RimeEngine, InputResult, StatusInfo
 from rime.binding import RimeApiWrapper
+from rime.engine import InputResult, RimeEngine, StatusInfo
 
 __version__ = "0.1.0"
 __all__ = [

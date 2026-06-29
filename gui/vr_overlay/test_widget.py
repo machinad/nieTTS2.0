@@ -5,11 +5,19 @@
 """
 
 import logging
+
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont, QColor, QPalette
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QFrame, QSlider, QSpinBox, QProgressBar,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QProgressBar,
+    QPushButton,
+    QSlider,
+    QSpinBox,
+    QVBoxLayout,
+    QWidget,
 )
 
 logger = logging.getLogger(__name__)

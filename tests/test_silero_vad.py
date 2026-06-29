@@ -1,7 +1,7 @@
+from unittest.mock import MagicMock
+
 import pytest
-import numpy as np
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+
 from engines.stt.vad.silero_vad import SileroVAD
 
 

@@ -1,9 +1,9 @@
 from .base import BaseKeyboardLayout, SwipeKey
+from .ninekey import NineKeyLayout
+from .numpad import NumberPadLayout
+from .page import KeyboardPage
 from .qwerty import QwertyLayout
 from .symbol import SymbolLayout
-from .numpad import NumberPadLayout
-from .ninekey import NineKeyLayout
-from .page import KeyboardPage
 
 __all__ = [
     "BaseKeyboardLayout",

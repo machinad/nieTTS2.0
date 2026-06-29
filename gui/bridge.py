@@ -1,15 +1,17 @@
 import asyncio
 import logging
+
 from PySide6.QtCore import QObject, Signal
+
 from config.default import ConfigManager
 from config.notifier import ConfigNotifier
 from config.provider_voice import Edge_TTS_voices, ali_tts_voices, sambert_tts_voices
-from engines.tts.service import TTSService
-from engines.translate.service import TranslateService
+from engines.audio.playback import get_playback_devices
 from engines.osc.service import OSCService
 from engines.pipeline import RequestPipeline
-from engines.audio.playback import get_playback_devices
 from engines.rime.service import RimeService
+from engines.translate.service import TranslateService
+from engines.tts.service import TTSService
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +94,7 @@ class GuiBridge(QObject):
 
     async def download_models(self, source: str):
         from scripts.download_models import Downloader, ModelRegistry
+
         registry = ModelRegistry()
         downloader = Downloader(source=source, registry=registry)
         ok, fail = await asyncio.to_thread(downloader.download_all)

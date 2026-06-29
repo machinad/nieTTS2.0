@@ -43,8 +43,7 @@ class OverlayRenderer:
 
         self._surface = QOffscreenSurface()
         self._surface.setFormat(
-            self._shared_context.format() if self._shared_context
-            else QSurfaceFormat.defaultFormat()
+            self._shared_context.format() if self._shared_context else QSurfaceFormat.defaultFormat()
         )
         self._surface.create()
 
@@ -58,8 +57,7 @@ class OverlayRenderer:
         self._context.doneCurrent()
 
         self._initialized = True
-        logger.info("OpenXR FBO 渲染器初始化: %dx%d, texture=%s",
-                     self.width, self.height, self._fbo.texture())
+        logger.info("OpenXR FBO 渲染器初始化: %dx%d, texture=%s", self.width, self.height, self._fbo.texture())
 
     def render_widget(self, widget: QWidget) -> int:
         """将 QWidget 渲染到 FBO 并返回纹理 ID。

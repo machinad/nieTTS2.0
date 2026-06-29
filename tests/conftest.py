@@ -1,8 +1,9 @@
 import sys
-from pathlib import Path
-import pytest
 import tempfile
+from pathlib import Path
+
 import numpy as np
+import pytest
 
 # Ensure project root is on sys.path
 _project_root = Path(__file__).parent.parent.resolve()
@@ -48,23 +49,28 @@ def sample_config_dict():
                 {"name": "edge_tts", "voice": "zh-CN-XiaoxiaoNeural"},
                 {"name": "cosyvoice", "voice": "longwan"},
                 {"name": "sambert", "voice": "zhiqi"},
-                {"name": "MatchaTTS", "voice": "0",
-                 "matcha_acoustic_model": "models/test.onnx",
-                 "matcha_vocoder": "models/test.onnx",
-                 "matcha_tokens": "models/test.txt",
-                 "matcha_lexicon": "models/test.txt",
-                 "matcha_data_dir": "models",
-                 "matcha_dict_dir": ""},
+                {
+                    "name": "MatchaTTS",
+                    "voice": "0",
+                    "matcha_acoustic_model": "models/test.onnx",
+                    "matcha_vocoder": "models/test.onnx",
+                    "matcha_tokens": "models/test.txt",
+                    "matcha_lexicon": "models/test.txt",
+                    "matcha_data_dir": "models",
+                    "matcha_dict_dir": "",
+                },
             ],
         },
         "stt_provider": {
             "provider": "Qwen3",
             "providers": [
-                {"name": "Qwen3",
-                 "conv_frontend": "models/test.onnx",
-                 "encoder": "models/test.onnx",
-                 "decoder": "models/test.onnx",
-                 "tokenizer": "models/tokenizer"},
+                {
+                    "name": "Qwen3",
+                    "conv_frontend": "models/test.onnx",
+                    "encoder": "models/test.onnx",
+                    "decoder": "models/test.onnx",
+                    "tokenizer": "models/tokenizer",
+                },
             ],
         },
         "translation_provider": {

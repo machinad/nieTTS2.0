@@ -31,6 +31,7 @@ def _load_vr_constants():
         return
     try:
         import openvr
+
         _openvr_consts = {
             "MouseMove": openvr.VREvent_MouseMove,
             "MouseButtonDown": openvr.VREvent_MouseButtonDown,
@@ -68,7 +69,7 @@ class VRInputHandler:
     def __init__(
         self,
         widget: QWidget,
-        crosshair: "VRCrosshairOverlay | None" = None,
+        crosshair: VRCrosshairOverlay | None = None,
         manager=None,
         tex_w: int = 1792,
         tex_h: int = 1208,
@@ -88,7 +89,7 @@ class VRInputHandler:
         # 控制器索引 → 手的映射（第一个控制器=左手，第二个=右手）
         self._controller_hand_map: dict[int, int] = {}
 
-    def set_crosshair(self, crosshair: "VRCrosshairOverlay"):
+    def set_crosshair(self, crosshair: VRCrosshairOverlay):
         """设置准星叠加层引用。"""
         self._crosshair = crosshair
 
@@ -106,7 +107,7 @@ class VRInputHandler:
                 self._controller_hand_map[controller_index] = 0
         return self._controller_hand_map[controller_index]
 
-    def update_controller_hits(self, hits: list["ControllerHit"]) -> None:
+    def update_controller_hits(self, hits: list[ControllerHit]) -> None:
         """更新所有控制器的命中状态（由 VRRayTracker 每帧调用）。
 
         Args:
@@ -123,7 +124,9 @@ class VRInputHandler:
             # 更新准星位置
             if self._crosshair:
                 self._crosshair.update_position(
-                    hand, hit.widget_pos.x(), hit.widget_pos.y(),
+                    hand,
+                    hit.widget_pos.x(),
+                    hit.widget_pos.y(),
                 )
 
             # 更新最后位置
@@ -151,7 +154,10 @@ class VRInputHandler:
 
         global_pos = self._widget.mapToGlobal(widget_pos.toPoint())
         qt_event = self._create_mouse_event(
-            QEvent.Type.MouseButtonPress, widget_pos, global_pos, Qt.MouseButton.LeftButton,
+            QEvent.Type.MouseButtonPress,
+            widget_pos,
+            global_pos,
+            Qt.MouseButton.LeftButton,
         )
         self._send_event(widget_pos, qt_event)
 
@@ -172,7 +178,10 @@ class VRInputHandler:
 
         global_pos = self._widget.mapToGlobal(pos.toPoint())
         qt_event = self._create_mouse_event(
-            QEvent.Type.MouseButtonRelease, pos, global_pos, Qt.MouseButton.LeftButton,
+            QEvent.Type.MouseButtonRelease,
+            pos,
+            global_pos,
+            Qt.MouseButton.LeftButton,
         )
         self._send_event(pos, qt_event)
 
@@ -188,11 +197,17 @@ class VRInputHandler:
         global_pos = self._widget.mapToGlobal(pos.toPoint())
         if self._button_pressed and self._active_hand == hand:
             qt_event = self._create_mouse_event(
-                QEvent.Type.MouseMove, pos, global_pos, Qt.MouseButton.LeftButton,
+                QEvent.Type.MouseMove,
+                pos,
+                global_pos,
+                Qt.MouseButton.LeftButton,
             )
         else:
             qt_event = self._create_mouse_event(
-                QEvent.Type.MouseMove, pos, global_pos, Qt.MouseButton.NoButton,
+                QEvent.Type.MouseMove,
+                pos,
+                global_pos,
+                Qt.MouseButton.NoButton,
             )
         self._send_event(pos, qt_event)
 
@@ -245,7 +260,10 @@ class VRInputHandler:
         self._button_pressed = True
         global_pos = self._widget.mapToGlobal(pos.toPoint())
         qt_event = self._create_mouse_event(
-            QEvent.Type.MouseButtonPress, pos, global_pos, Qt.MouseButton.LeftButton,
+            QEvent.Type.MouseButtonPress,
+            pos,
+            global_pos,
+            Qt.MouseButton.LeftButton,
         )
         self._send_event(pos, qt_event)
         if self._manager:
@@ -258,7 +276,10 @@ class VRInputHandler:
         self._active_hand = None
         global_pos = self._widget.mapToGlobal(pos.toPoint())
         qt_event = self._create_mouse_event(
-            QEvent.Type.MouseButtonRelease, pos, global_pos, Qt.MouseButton.LeftButton,
+            QEvent.Type.MouseButtonRelease,
+            pos,
+            global_pos,
+            Qt.MouseButton.LeftButton,
         )
         self._send_event(pos, qt_event)
         if self._manager:

@@ -2,8 +2,10 @@ import asyncio
 import gc
 import logging
 from pathlib import Path
+
 import numpy as np
 import sherpa_onnx
+
 from engines.stt.base import BaseSTT, STTResult
 
 logger = logging.getLogger(__name__)
@@ -21,9 +23,15 @@ class Qwen3STT(BaseSTT):
             tokenizer=cfg.get("tokenizer", ""),
         )
 
-    def __init__(self, conv_frontend: str = "", encoder: str = "",
-                 decoder: str = "", tokenizer: str = "",
-                 sample_rate: int = 16000, num_threads: int = 4):
+    def __init__(
+        self,
+        conv_frontend: str = "",
+        encoder: str = "",
+        decoder: str = "",
+        tokenizer: str = "",
+        sample_rate: int = 16000,
+        num_threads: int = 4,
+    ):
         self._conv_frontend = conv_frontend
         self._encoder = encoder
         self._decoder = decoder
@@ -37,8 +45,7 @@ class Qwen3STT(BaseSTT):
         enc = Path(self._encoder) if self._encoder else None
         dec = Path(self._decoder) if self._decoder else None
         tok = Path(self._tokenizer) if self._tokenizer else None
-        return bool(cf and enc and dec and tok
-                    and cf.exists() and enc.exists() and dec.exists() and tok.is_dir())
+        return bool(cf and enc and dec and tok and cf.exists() and enc.exists() and dec.exists() and tok.is_dir())
 
     async def _lazy_init(self):
         if self._recognizer is not None:

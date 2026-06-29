@@ -1,5 +1,5 @@
-from PySide6.QtCore import Qt, Property, QPropertyAnimation, QEasingCurve, Signal, QRectF, QSize
-from PySide6.QtGui import QPainter, QColor
+from PySide6.QtCore import Property, QEasingCurve, QPropertyAnimation, QRectF, QSize, Qt, Signal
+from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QWidget
 
 
@@ -9,7 +9,7 @@ class ToggleSwitch(QWidget):
     _TRACK_W = 44
     _TRACK_H = 24
     _THUMB_D = 18
-    _PAD = 3          # thumb inset from track edge
+    _PAD = 3  # thumb inset from track edge
     _ANIM_MS = 150
 
     def __init__(self, checked: bool = False, parent=None):

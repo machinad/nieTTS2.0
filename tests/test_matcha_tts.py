@@ -1,9 +1,9 @@
-import pytest
+from unittest.mock import MagicMock, patch
+
 import numpy as np
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+import pytest
+
 from engines.tts.matcha_tts import MatchaTTS
-from engines.tts.base import TTSResult
 
 
 class TestMatchaTTS:
@@ -79,9 +79,7 @@ class TestMatchaTTS:
         mock_tts.generate.return_value = mock_audio
         mock_sherpa.OfflineTts.return_value = mock_tts
 
-        result = await engine_with_paths.synthesize(
-            "Test", voice="0", speed=1.5
-        )
+        result = await engine_with_paths.synthesize("Test", voice="0", speed=1.5)
 
         assert result.success is True
         mock_tts.generate.assert_called_once_with("Test", sid=0, speed=1.5)
@@ -98,9 +96,7 @@ class TestMatchaTTS:
         mock_tts.generate.return_value = mock_audio
         mock_sherpa.OfflineTts.return_value = mock_tts
 
-        result = await engine_with_paths.synthesize(
-            "Test", voice="0", speed=1.0, num_steps=10
-        )
+        result = await engine_with_paths.synthesize("Test", voice="0", speed=1.0, num_steps=10)
 
         assert result.success is True
         # Should have called generate with config

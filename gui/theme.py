@@ -1,4 +1,5 @@
 import os
+
 from PySide6.QtWidgets import QApplication
 
 _ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets").replace("\\", "/")

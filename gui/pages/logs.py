@@ -1,16 +1,21 @@
 import html
 import logging
 from datetime import datetime
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
     QTextBrowser,
+    QVBoxLayout,
+    QWidget,
 )
 
 logger = logging.getLogger(__name__)
 
 COLOR_MAP = {"debug": "#8080ff", "info": "#6b6a68", "warn": "#c48520", "error": "#d04840"}
-ICON_MAP = {"debug": "\u2699", "info": "\u25CF", "warn": "\u26A0", "error": "\u2715"}
+ICON_MAP = {"debug": "\u2699", "info": "\u25cf", "warn": "\u26a0", "error": "\u2715"}
 
 
 class LogsPage(QWidget):
@@ -81,7 +86,7 @@ class LogsPage(QWidget):
 
     def _append_html(self, level: str, message: str):
         color = COLOR_MAP.get(level, "#6b6a68")
-        icon = ICON_MAP.get(level, "\u25CF")
+        icon = ICON_MAP.get(level, "\u25cf")
         timestamp = datetime.now().strftime("%H:%M:%S")
         self._terminal.append(
             f'<div style="color:{color};font-family:JetBrains Mono,Consolas,monospace;'

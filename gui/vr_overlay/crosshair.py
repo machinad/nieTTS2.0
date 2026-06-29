@@ -95,17 +95,23 @@ class VRCrosshairOverlay(QWidget):
         # 绘制左手准星（蓝色）
         if self._visible[0]:
             self._draw_crosshair(
-                painter, 0,
+                painter,
+                0,
                 self._positions[0],
-                self._COLOR_A_CROSS, self._COLOR_A_CIRCLE, self._COLOR_A_TEXT,
+                self._COLOR_A_CROSS,
+                self._COLOR_A_CIRCLE,
+                self._COLOR_A_TEXT,
             )
 
         # 绘制右手准星（红色）
         if self._visible[1]:
             self._draw_crosshair(
-                painter, 1,
+                painter,
+                1,
                 self._positions[1],
-                self._COLOR_B_CROSS, self._COLOR_B_CIRCLE, self._COLOR_B_TEXT,
+                self._COLOR_B_CROSS,
+                self._COLOR_B_CIRCLE,
+                self._COLOR_B_TEXT,
             )
 
         painter.end()

@@ -1,8 +1,8 @@
-import pytest
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 from engines.tts.edge_tts import EdgeTTS
-from engines.tts.base import TTSResult
 
 
 class TestEdgeTTS:
@@ -23,18 +23,14 @@ class TestEdgeTTS:
         mock_comm.save = AsyncMock()
         mock_edge.Communicate.return_value = mock_comm
 
-        result = await engine.synthesize(
-            text="Hello world", voice="zh-CN-XiaoxiaoNeural"
-        )
+        result = await engine.synthesize(text="Hello world", voice="zh-CN-XiaoxiaoNeural")
 
         assert result.success is True
         assert result.voice == "zh-CN-XiaoxiaoNeural"
         assert result.text == "Hello world"
         assert result.path is not None
         assert result.path.suffix == ".mp3"
-        mock_edge.Communicate.assert_called_once_with(
-            "Hello world", "zh-CN-XiaoxiaoNeural"
-        )
+        mock_edge.Communicate.assert_called_once_with("Hello world", "zh-CN-XiaoxiaoNeural")
         mock_comm.save.assert_called_once()
 
     @patch("engines.tts.edge_tts.edge")
@@ -42,9 +38,7 @@ class TestEdgeTTS:
     async def test_synthesize_failure(self, mock_edge, engine):
         mock_edge.Communicate.side_effect = Exception("Network error")
 
-        result = await engine.synthesize(
-            text="Hello", voice="zh-CN-XiaoxiaoNeural"
-        )
+        result = await engine.synthesize(text="Hello", voice="zh-CN-XiaoxiaoNeural")
 
         assert result.success is False
         assert "Network error" in result.error

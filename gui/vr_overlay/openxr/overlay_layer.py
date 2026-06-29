@@ -16,9 +16,10 @@ logger = logging.getLogger(__name__)
 
 class PositionMode(Enum):
     """覆盖层定位模式。"""
-    HEAD = "head"       # 相对头显（VIEW 空间）
+
+    HEAD = "head"  # 相对头显（VIEW 空间）
     CONTROLLER = "controller"  # 相对手柄（需要每帧更新 pose）
-    WORLD = "world"     # 相对世界（LOCAL 空间，固定位置）
+    WORLD = "world"  # 相对世界（LOCAL 空间，固定位置）
 
 
 def build_quad_layer(
@@ -82,13 +83,16 @@ def create_head_relative_space(
     Returns:
         xr.Space 参考空间
     """
-    return xr.create_reference_space(session, xr.ReferenceSpaceCreateInfo(
-        reference_space_type=xr.ReferenceSpaceType.VIEW,
-        pose_in_reference_space=xr.Posef(
-            orientation=xr.Quaternionf(x=0.0, y=0.0, z=0.0, w=1.0),
-            position=xr.Vector3f(x=0.0, y=vertical_offset, z=-distance),
+    return xr.create_reference_space(
+        session,
+        xr.ReferenceSpaceCreateInfo(
+            reference_space_type=xr.ReferenceSpaceType.VIEW,
+            pose_in_reference_space=xr.Posef(
+                orientation=xr.Quaternionf(x=0.0, y=0.0, z=0.0, w=1.0),
+                position=xr.Vector3f(x=0.0, y=vertical_offset, z=-distance),
+            ),
         ),
-    ))
+    )
 
 
 def create_world_relative_space(
@@ -106,13 +110,16 @@ def create_world_relative_space(
     Returns:
         xr.Space 参考空间
     """
-    return xr.create_reference_space(session, xr.ReferenceSpaceCreateInfo(
-        reference_space_type=xr.ReferenceSpaceType.LOCAL,
-        pose_in_reference_space=xr.Posef(
-            orientation=xr.Quaternionf(x=0.0, y=0.0, z=0.0, w=1.0),
-            position=xr.Vector3f(x=x, y=y, z=z),
+    return xr.create_reference_space(
+        session,
+        xr.ReferenceSpaceCreateInfo(
+            reference_space_type=xr.ReferenceSpaceType.LOCAL,
+            pose_in_reference_space=xr.Posef(
+                orientation=xr.Quaternionf(x=0.0, y=0.0, z=0.0, w=1.0),
+                position=xr.Vector3f(x=x, y=y, z=z),
+            ),
         ),
-    ))
+    )
 
 
 def get_quad_world_pose(
@@ -122,10 +129,10 @@ def get_quad_world_pose(
 
     如果位置或朝向无效，返回默认值。
     """
-    if (space_location.location_flags &
-            xr.SpaceLocationFlags.POSITION_VALID and
-            space_location.location_flags &
-            xr.SpaceLocationFlags.ORIENTATION_VALID):
+    if (
+        space_location.location_flags & xr.SpaceLocationFlags.POSITION_VALID
+        and space_location.location_flags & xr.SpaceLocationFlags.ORIENTATION_VALID
+    ):
         return space_location.pose
     return xr.Posef(
         orientation=xr.Quaternionf(x=0.0, y=0.0, z=0.0, w=1.0),

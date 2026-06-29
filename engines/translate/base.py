@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
 
 @dataclass
@@ -16,19 +16,15 @@ class TranslateResult:
 
 
 class BaseTranslate(ABC):
+    @abstractmethod
+    async def translate(self, text: str, source_lang: str, target_lang: str, **kwargs) -> TranslateResult: ...
 
     @abstractmethod
-    async def translate(self, text: str, source_lang: str, target_lang: str, **kwargs) -> TranslateResult:
-        ...
-
-    @abstractmethod
-    def is_available(self) -> bool:
-        ...
+    def is_available(self) -> bool: ...
 
     @property
     @abstractmethod
-    def engine_name(self) -> str:
-        ...
+    def engine_name(self) -> str: ...
 
     async def close(self):
         """释放引擎持有的资源（子进程、网络连接等）。子类按需覆盖。"""

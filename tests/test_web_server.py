@@ -3,18 +3,20 @@ Unit tests for web server REST and WebSocket endpoints.
 
 Uses Quart's built-in test client with mocked backend services.
 """
-import json
+
 import copy
-import pytest
-import numpy as np
+import json
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
+from unittest.mock import AsyncMock, MagicMock
+
+import numpy as np
+import pytest
 
 from config.default import ConfigManager, default_config
-from engines.tts.service import TTSService
-from engines.translate.service import TranslateService
 from engines.osc.service import OSCService
 from engines.pipeline import RequestPipeline
+from engines.translate.service import TranslateService
+from engines.tts.service import TTSService
 from web_server import WebServer
 
 
@@ -73,8 +75,7 @@ def mock_pipeline():
 
 @pytest.fixture
 def app(mock_config, mock_tts, mock_translate, mock_osc, mock_pipeline):
-    server = WebServer(mock_config, mock_tts, mock_translate, mock_osc,
-                       mock_pipeline)
+    server = WebServer(mock_config, mock_tts, mock_translate, mock_osc, mock_pipeline)
     return server.app
 
 
@@ -84,6 +85,7 @@ def client(app):
 
 
 # ── GET / ──────────────────────────────────────────────────────────────
+
 
 class TestIndexEndpoint:
     @pytest.mark.asyncio
@@ -98,10 +100,7 @@ class TestIndexEndpoint:
     @pytest.mark.asyncio
     async def test_returns_fallback_when_no_index(self, app, tmp_path):
         """When templates/index.html missing, return fallback HTML."""
-        server = WebServer(
-            ConfigManager(), MagicMock(), MagicMock(), MagicMock(),
-            MagicMock(), MagicMock()
-        )
+        server = WebServer(ConfigManager(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock())
         server._templates = tmp_path  # empty dir, no index.html
         c = server.app.test_client()
         resp = await c.get("/")
@@ -112,6 +111,7 @@ class TestIndexEndpoint:
 
 # ── GET /assets/<filename> ──────────────────────────────────────────────
 
+
 class TestAssetsEndpoint:
     @pytest.mark.asyncio
     async def test_serve_existing_asset(self, tmp_path):
@@ -121,10 +121,7 @@ class TestAssetsEndpoint:
         asset_file = assets_dir / "test.js"
         asset_file.write_text("console.log('hello');")
 
-        server = WebServer(
-            ConfigManager(), MagicMock(), MagicMock(), MagicMock(),
-            MagicMock(), MagicMock()
-        )
+        server = WebServer(ConfigManager(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock())
         server._templates = tmp_path
         c = server.app.test_client()
         resp = await c.get("/assets/test.js")
@@ -135,10 +132,7 @@ class TestAssetsEndpoint:
     @pytest.mark.asyncio
     async def test_missing_asset_returns_404(self, app, tmp_path):
         """Missing asset should return 404."""
-        server = WebServer(
-            ConfigManager(), MagicMock(), MagicMock(), MagicMock(),
-            MagicMock(), MagicMock()
-        )
+        server = WebServer(ConfigManager(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock())
         server._templates = tmp_path
         c = server.app.test_client()
         resp = await c.get("/assets/nonexistent.js")
@@ -147,15 +141,19 @@ class TestAssetsEndpoint:
 
 # ── POST /tts ───────────────────────────────────────────────────────────
 
+
 class TestTTSEndpoint:
     @pytest.mark.asyncio
     async def test_valid_request(self, client, mock_pipeline):
-        resp = await client.post("/tts", json={
-            "text": "你好世界",
-            "tts_provider": "edge_tts",
-            "voice": "zh-CN-XiaoxiaoNeural",
-            "translate": True,
-        })
+        resp = await client.post(
+            "/tts",
+            json={
+                "text": "你好世界",
+                "tts_provider": "edge_tts",
+                "voice": "zh-CN-XiaoxiaoNeural",
+                "translate": True,
+            },
+        )
         assert resp.status_code == 202
         data = await resp.get_json()
         assert "request_id" in data
@@ -201,7 +199,6 @@ class TestTTSEndpoint:
         assert "文本" in data["error"]
 
 
-
 # ── GET /config ─────────────────────────────────────────────────────────
 class TestGetConfig:
     @pytest.mark.asyncio
@@ -216,6 +213,7 @@ class TestGetConfig:
 
 
 # ── POST /config ────────────────────────────────────────────────────────
+
 
 class TestUpdateConfig:
     @pytest.mark.asyncio
@@ -253,6 +251,7 @@ class TestUpdateConfig:
 
 
 # ── POST /config/reload ─────────────────────────────────────────────────
+
 
 class TestReloadConfig:
     @pytest.mark.asyncio

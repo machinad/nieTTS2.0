@@ -26,6 +26,7 @@ def _ensure_openvr():
     global _openvr
     if _openvr is None:
         import openvr as ov
+
         _openvr = ov
     return _openvr
 
@@ -33,6 +34,7 @@ def _ensure_openvr():
 @dataclass
 class ControllerHit:
     """单个控制器的射线命中结果。"""
+
     controller_index: int
     widget_pos: QPointF
     u: float
@@ -46,6 +48,7 @@ class ControllerHit:
 @dataclass
 class ControllerState:
     """单个控制器的追踪状态。"""
+
     index: int
     is_hitting: bool = False
     hit: ControllerHit | None = None
@@ -122,7 +125,9 @@ class VRRayTracker:
             # 获取所有设备姿态（显式分配数组）
             pose_array = (ov.TrackedDevicePose_t * ov.k_unMaxTrackedDeviceCount)()
             self._vr_system.getDeviceToAbsoluteTrackingPose(
-                ov.TrackingUniverseStanding, 0.0, pose_array,
+                ov.TrackingUniverseStanding,
+                0.0,
+                pose_array,
             )
             poses = pose_array
 
@@ -155,7 +160,8 @@ class VRRayTracker:
 
                 results = ov.VROverlayIntersectionResults_t()
                 hit, results = self._overlay.computeOverlayIntersection(
-                    self._overlay_handle, params,
+                    self._overlay_handle,
+                    params,
                 )
 
                 if hit:
@@ -183,7 +189,10 @@ class VRRayTracker:
 
                     logger.debug(
                         "控制器 %d: 命中 UV=(%.3f, %.3f) dist=%.2f",
-                        idx, uv.v[0], uv.v[1], results.fDistance,
+                        idx,
+                        uv.v[0],
+                        uv.v[1],
+                        results.fDistance,
                     )
                 else:
                     state.is_hitting = False
@@ -216,7 +225,8 @@ class VRRayTracker:
                 # 触发器按下 → 该手柄获得鼠标控制权
                 if state.is_hitting and state.hit:
                     self._input_handler.process_trigger_press(
-                        controller_index, state.hit.widget_pos,
+                        controller_index,
+                        state.hit.widget_pos,
                     )
                     logger.debug("触发器按下: controller=%d", controller_index)
             elif not trigger_pressed and state.was_trigger_pressed:

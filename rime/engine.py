@@ -9,16 +9,19 @@ RimeEngine — librime 的高层 Python 封装。
 
 import logging
 import time
-from pathlib import Path
 from dataclasses import dataclass, field
+from pathlib import Path
 
 logger = logging.getLogger("rime")
 
+from rime._utils import find_data_dir
 from rime.binding import (
-    RimeApiWrapper, RimeTraits, RimeConfig,
-    rime_struct_init, RimeNotificationHandler,
+    RimeApiWrapper,
+    RimeConfig,
+    RimeNotificationHandler,
+    RimeTraits,
+    rime_struct_init,
 )
-from rime._utils import find_dll, find_data_dir
 
 
 @dataclass
@@ -33,6 +36,7 @@ class InputResult:
         is_last_page: 是否最后一页
         highlighted: 高亮候选词的页内索引
     """
+
     committed: str | None = None
     preedit: str = ""
     candidates: list[str] = field(default_factory=list)
@@ -56,6 +60,7 @@ class StatusInfo:
         is_ascii_punct: 是否英文标点
         is_disabled: 是否已禁用
     """
+
     schema_id: str = ""
     schema_name: str = ""
     is_composing: bool = False
@@ -100,9 +105,7 @@ class RimeEngine:
         schema_id: str = "luna_pinyin",
     ):
         self._shared_data_dir = shared_data_dir or find_data_dir()
-        self._user_data_dir = user_data_dir or str(
-            Path.cwd() / "rime_user_data"
-        )
+        self._user_data_dir = user_data_dir or str(Path.cwd() / "rime_user_data")
         self._schema_id = schema_id
         self._session_id: int = 0
         self._deployed = False
@@ -133,8 +136,7 @@ class RimeEngine:
         self._api.set_notification_handler(self._notify_cb)
         self._api.initialize(traits)
 
-    def _on_notification(self, _context_object, _session_id,
-                         message_type, message_value):
+    def _on_notification(self, _context_object, _session_id, message_type, message_value):
         """librime 部署通知回调（内部使用）。"""
         t = self._api._decode(message_type) or ""
         v = self._api._decode(message_value) or ""
@@ -165,10 +167,7 @@ class RimeEngine:
         while self._api.is_maintenance_mode():
             time.sleep(0.1)
             if time.monotonic() > deadline:
-                raise TimeoutError(
-                    "RIME 部署超时，请检查方案数据是否完整："
-                    f"{self._shared_data_dir}"
-                )
+                raise TimeoutError(f"RIME 部署超时，请检查方案数据是否完整：{self._shared_data_dir}")
 
         self._api.join_maintenance_thread()
 
@@ -180,9 +179,7 @@ class RimeEngine:
         if not ok:
             schemas = self._api.get_schema_list()
             available = [s["schema_id"] for s in schemas]
-            raise RuntimeError(
-                f"方案 '{self._schema_id}' 不存在，可用方案：{available}"
-            )
+            raise RuntimeError(f"方案 '{self._schema_id}' 不存在，可用方案：{available}")
 
         self._deployed = True
 
@@ -335,8 +332,7 @@ class RimeEngine:
             是否成功删除
         """
         self._ensure_deployed()
-        return self._api.delete_candidate_on_current_page(
-            self._session_id, index)
+        return self._api.delete_candidate_on_current_page(self._session_id, index)
 
     def delete_candidate(self, index: int) -> bool:
         """按全局索引删除候选词。
@@ -360,8 +356,7 @@ class RimeEngine:
             是否成功高亮
         """
         self._ensure_deployed()
-        return self._api.highlight_candidate_on_current_page(
-            self._session_id, index)
+        return self._api.highlight_candidate_on_current_page(self._session_id, index)
 
     def highlight_candidate(self, index: int) -> bool:
         """按全局索引高亮候选词。
@@ -442,8 +437,7 @@ class RimeEngine:
         self._ensure_deployed()
         result = InputResult()
 
-        handled = self._api.simulate_key_sequence(
-            self._session_id, key_sequence)
+        handled = self._api.simulate_key_sequence(self._session_id, key_sequence)
         if not handled:
             return result
 
@@ -687,8 +681,7 @@ class RimeEngine:
         """
         return self._api.config_get_string(config, key)
 
-    def config_set_bool(self, config: RimeConfig, key: str,
-                         value: bool) -> bool:
+    def config_set_bool(self, config: RimeConfig, key: str, value: bool) -> bool:
         """写入布尔配置值。
 
         Args:
@@ -701,8 +694,7 @@ class RimeEngine:
         """
         return self._api.config_set_bool(config, key, value)
 
-    def config_set_int(self, config: RimeConfig, key: str,
-                        value: int) -> bool:
+    def config_set_int(self, config: RimeConfig, key: str, value: int) -> bool:
         """写入整数配置值。
 
         Args:
@@ -715,8 +707,7 @@ class RimeEngine:
         """
         return self._api.config_set_int(config, key, value)
 
-    def config_set_double(self, config: RimeConfig, key: str,
-                           value: float) -> bool:
+    def config_set_double(self, config: RimeConfig, key: str, value: float) -> bool:
         """写入浮点配置值。
 
         Args:
@@ -729,8 +720,7 @@ class RimeEngine:
         """
         return self._api.config_set_double(config, key, value)
 
-    def config_set_string(self, config: RimeConfig, key: str,
-                           value: str) -> bool:
+    def config_set_string(self, config: RimeConfig, key: str, value: str) -> bool:
         """写入字符串配置值。
 
         Args:
@@ -854,8 +844,7 @@ class RimeEngine:
             # 读取预编辑文本
             if ctx.composition.length > 0 and ctx.composition.preedit:
                 preedit_raw = ctx.composition.preedit
-                result.preedit = preedit_raw.decode("utf-8",
-                                                     errors="replace") if preedit_raw else ""
+                result.preedit = preedit_raw.decode("utf-8", errors="replace") if preedit_raw else ""
 
             # 读取候选词（直接访问数组，不用迭代器）
             num = ctx.menu.num_candidates

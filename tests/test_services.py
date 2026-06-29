@@ -1,12 +1,13 @@
-import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import numpy as np
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
-from engines.stt.service import STTService
-from engines.tts.service import TTSService
-from engines.stt.base import STTResult
-from engines.tts.base import TTSResult
+import pytest
+
 from config.default import ConfigManager
+from engines.stt.base import STTResult
+from engines.stt.service import STTService
+from engines.tts.base import TTSResult
+from engines.tts.service import TTSService
 
 
 class TestSTTService:
@@ -21,18 +22,23 @@ class TestSTTService:
         enc = tmp_path / "encoder.onnx"
         dec = tmp_path / "decoder.onnx"
         tok = tmp_path / "tokenizer"
-        cf.touch(); enc.touch(); dec.touch(); tok.mkdir()
+        cf.touch()
+        enc.touch()
+        dec.touch()
+        tok.mkdir()
 
         cm = ConfigManager()
         cm.config["stt_provider"] = {
             "provider": "Qwen3",
-            "providers": [{
-                "name": "Qwen3",
-                "conv_frontend": str(cf),
-                "encoder": str(enc),
-                "decoder": str(dec),
-                "tokenizer": str(tok),
-            }],
+            "providers": [
+                {
+                    "name": "Qwen3",
+                    "conv_frontend": str(cf),
+                    "encoder": str(enc),
+                    "decoder": str(dec),
+                    "tokenizer": str(tok),
+                }
+            ],
         }
         return cm
 
@@ -60,9 +66,7 @@ class TestSTTService:
     @pytest.mark.asyncio
     async def test_transcribe_unknown_provider(self, mock_config_with_qwen3):
         service = STTService(mock_config_with_qwen3)
-        result = await service.transcribe(
-            np.zeros(100, dtype=np.float32), provider="UnknownEngine"
-        )
+        result = await service.transcribe(np.zeros(100, dtype=np.float32), provider="UnknownEngine")
         assert result.success is False
         assert "Unknown" in result.error
 
@@ -70,9 +74,7 @@ class TestSTTService:
     async def test_transcribe_auto_select(self, mock_config_with_qwen3):
         service = STTService(mock_config_with_qwen3)
         # Mock the underlying engine's transcribe to avoid actual model loading
-        service._engines["Qwen3"].transcribe = AsyncMock(
-            return_value=STTResult(success=True, text="hello")
-        )
+        service._engines["Qwen3"].transcribe = AsyncMock(return_value=STTResult(success=True, text="hello"))
         result = await service.transcribe(np.zeros(100, dtype=np.float32))
         assert result.success is True
         assert result.text == "hello"
@@ -129,9 +131,7 @@ class TestTTSService:
     @patch("engines.tts.service.EdgeTTS")
     async def test_synthesize_edge_tts(self, mock_edge_cls, mock_config):
         mock_edge = MagicMock()
-        mock_edge.synthesize = AsyncMock(
-            return_value=TTSResult(success=True, text="Hello")
-        )
+        mock_edge.synthesize = AsyncMock(return_value=TTSResult(success=True, text="Hello"))
         mock_edge.is_available.return_value = True
         mock_edge.engine_name = "Edge TTS"
         mock_edge_cls.return_value = mock_edge
@@ -147,9 +147,7 @@ class TestTTSService:
     async def test_synthesize_default_provider(self, mock_config):
         service = TTSService(mock_config)
         mock_edge = MagicMock()
-        mock_edge.synthesize = AsyncMock(
-            return_value=TTSResult(success=True, text="test")
-        )
+        mock_edge.synthesize = AsyncMock(return_value=TTSResult(success=True, text="test"))
         mock_edge.is_available.return_value = True
         service._engines["edge_tts"] = mock_edge
 

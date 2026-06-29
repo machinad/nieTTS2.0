@@ -1,20 +1,24 @@
-from PySide6.QtCore import Qt, Signal, QSize, QByteArray, QPropertyAnimation, QEasingCurve
-from PySide6.QtGui import QPixmap, QPainter
+from PySide6.QtCore import QByteArray, QEasingCurve, QPropertyAnimation, QSize, Qt, Signal
+from PySide6.QtGui import QPainter, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
-    QFrame, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
 )
 
 from gui.widgets.utils import svg_icon
 
 # SVG icon paths (stroke-based, 24x24 viewBox, matching Element Plus style)
-_SVG_HOUSE = b'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+_SVG_HOUSE = b"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M15 21V13a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/>
   <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 0-1 1H4a1 1 0 0 0-1-1Z"/>
-</svg>'''
+</svg>"""
 
-_SVG_GEAR = b'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+_SVG_GEAR = b"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <circle cx="12" cy="12" r="3"/>
   <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33
@@ -24,50 +28,50 @@ _SVG_GEAR = b'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill
     4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l
     .06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0
     4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>
-</svg>'''
+</svg>"""
 
-_SVG_DOCUMENT = b'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+_SVG_DOCUMENT = b"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/>
   <path d="M14 2v6h6"/>
   <path d="M16 13H8"/>
   <path d="M16 17H8"/>
   <path d="M10 9H8"/>
-</svg>'''
+</svg>"""
 
-_SVG_INFO = b'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+_SVG_INFO = b"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <circle cx="12" cy="12" r="10"/>
   <path d="M12 16v-4"/>
   <path d="M12 8h.01"/>
-</svg>'''
+</svg>"""
 
-_SVG_LOGO = b'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+_SVG_LOGO = b"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
   stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M12 3v18"/>
   <path d="M8 7v10"/>
   <path d="M4 10v4"/>
   <path d="M16 5v14"/>
   <path d="M20 8v8"/>
-</svg>'''
+</svg>"""
 
-_SVG_CHEVRON_LEFT = b'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+_SVG_CHEVRON_LEFT = b"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="m15 6-6 6 6 6"/>
-</svg>'''
+</svg>"""
 
-_SVG_CHEVRON_RIGHT = b'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+_SVG_CHEVRON_RIGHT = b"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="m9 6 6 6-6 6"/>
-</svg>'''
+</svg>"""
 
-_SVG_GRID = b'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+_SVG_GRID = b"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <rect width="7" height="7" x="3" y="3" rx="1"/>
   <rect width="7" height="7" x="14" y="3" rx="1"/>
   <rect width="7" height="7" x="14" y="14" rx="1"/>
   <rect width="7" height="7" x="3" y="14" rx="1"/>
-</svg>'''
+</svg>"""
 
 
 class _NavButton(QPushButton):
@@ -141,15 +145,11 @@ class Sidebar(QFrame):
         logo_icon.setFixedSize(32, 32)
         logo_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
         logo_icon.setStyleSheet(
-            "background: qlineargradient(x1:0,y1:0,x2:1,y2:1,"
-            "stop:0 #d6608a, stop:1 #9a6ad6);"
-            "border-radius: 8px;"
+            "background: qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 #d6608a, stop:1 #9a6ad6);border-radius: 8px;"
         )
         logo_row.addWidget(logo_icon)
         self._logo_label = QLabel("nieTTS")
-        self._logo_label.setStyleSheet(
-            "font-size: 16px; font-weight: 700; color: #1a1a1a; background: transparent;"
-        )
+        self._logo_label.setStyleSheet("font-size: 16px; font-weight: 700; color: #1a1a1a; background: transparent;")
         logo_row.addWidget(self._logo_label)
         logo_row.addStretch()
         layout.addLayout(logo_row)
@@ -192,13 +192,13 @@ class Sidebar(QFrame):
             btn.set_active(i == index)
 
     def _toggle_collapse(self):
-        if hasattr(self, '_anim_min'):
+        if hasattr(self, "_anim_min"):
             self._anim_min.stop()
             try:
                 self._anim_min.finished.disconnect(self._update_collapse_state)
             except RuntimeError:
                 pass
-        if hasattr(self, '_anim_max'):
+        if hasattr(self, "_anim_max"):
             self._anim_max.stop()
 
         self._collapsed = not self._collapsed

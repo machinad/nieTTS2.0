@@ -1,20 +1,25 @@
-import logging
 import asyncio
+import logging
+
 from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QStackedWidget,
+    QHBoxLayout,
+    QMainWindow,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
 )
 
-from gui.widgets.sidebar import Sidebar
-from gui.widgets.header import Header
-from gui.pages.home import HomePage
-from gui.pages.keyboard import KeyboardPage
-from gui.pages.settings import SettingsPage
-from gui.pages.logs import LogsPage
-from gui.pages.about import AboutPage
 from gui.audio import GuiAudioInput
+from gui.hotkey import GlobalHotkeyManager
 from gui.log_handler import QtLogHandler
 from gui.overlay import OverlayInput
-from gui.hotkey import GlobalHotkeyManager
+from gui.pages.about import AboutPage
+from gui.pages.home import HomePage
+from gui.pages.keyboard import KeyboardPage
+from gui.pages.logs import LogsPage
+from gui.pages.settings import SettingsPage
+from gui.widgets.header import Header
+from gui.widgets.sidebar import Sidebar
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +57,7 @@ class MainWindow(QMainWindow):
         self._overlay.close()
         self._hotkey_mgr.close()
         for engine in self.bridge.translate.engines.values():
-            if hasattr(engine, '_process') and engine._process is not None:
+            if hasattr(engine, "_process") and engine._process is not None:
                 try:
                     engine._process.kill()
                     engine._process.wait(timeout=3)
@@ -130,6 +135,7 @@ class MainWindow(QMainWindow):
                 logger.info("请求已提交: %s", req_id)
             except Exception as e:
                 logger.error("发送失败: %s", e)
+
         asyncio.create_task(_do())
 
     def _start_recording(self):
@@ -163,4 +169,5 @@ class MainWindow(QMainWindow):
                 logger.info("覆盖层请求已提交: %s", req_id)
             except Exception as e:
                 logger.error("覆盖层发送失败: %s", e)
+
         asyncio.create_task(_do())

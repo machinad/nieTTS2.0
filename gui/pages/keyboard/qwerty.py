@@ -1,35 +1,64 @@
 """26 键 QWERTY 键盘布局"""
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QSizePolicy,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
 )
 
 from .base import (
-    BaseKeyboardLayout, SwipeKey, KEY_W, KEY_H,
-    FN_RATIO, SPACE_RATIO, BASE_SPACING,
+    BASE_SPACING,
+    FN_RATIO,
+    KEY_H,
+    KEY_W,
+    SPACE_RATIO,
+    BaseKeyboardLayout,
+    SwipeKey,
 )
 
 # 长按上滑输入映射
 _SWIPE_MAP = {
-    "q": "1", "w": "2", "e": "3", "r": "4", "t": "5",
-    "y": "6", "u": "7", "i": "8", "o": "9", "p": "0",
-    "a": "~", "s": "!", "d": "@", "f": "#", "g": "%",
-    "h": "“", "j": "”", "k": "*", "l": "?",
-    "z": "(", "x": ")", "c": "-", "v": "_", "b": ":",
-    "n": ";", "m": "/",
+    "q": "1",
+    "w": "2",
+    "e": "3",
+    "r": "4",
+    "t": "5",
+    "y": "6",
+    "u": "7",
+    "i": "8",
+    "o": "9",
+    "p": "0",
+    "a": "~",
+    "s": "!",
+    "d": "@",
+    "f": "#",
+    "g": "%",
+    "h": "“",
+    "j": "”",
+    "k": "*",
+    "l": "?",
+    "z": "(",
+    "x": ")",
+    "c": "-",
+    "v": "_",
+    "b": ":",
+    "n": ";",
+    "m": "/",
 }
 
 # 基准键盘总宽 / 总高
-_BASE_KB_WIDTH = 10 * KEY_W + 9 * BASE_SPACING   # 507
-_BASE_KB_HEIGHT = 4 * KEY_H + 3 * BASE_SPACING   # 177
+_BASE_KB_WIDTH = 10 * KEY_W + 9 * BASE_SPACING  # 507
+_BASE_KB_HEIGHT = 4 * KEY_H + 3 * BASE_SPACING  # 177
 
 
 class QwertyLayout(BaseKeyboardLayout):
     """26 键 QWERTY 键盘：支持上滑输入、双拼提示。"""
 
-    def __init__(self, hint_map: dict[str, str] | None = None,
-                 parent=None):
+    def __init__(self, hint_map: dict[str, str] | None = None, parent=None):
         self._hint_map = hint_map
         self._letter_btns: dict[str, QPushButton] = {}
         self._hint_labels: dict[str, QLabel] = {}
@@ -46,14 +75,10 @@ class QwertyLayout(BaseKeyboardLayout):
         outer.setSpacing(BASE_SPACING)
         outer.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        outer.addWidget(self._mk_row("qwertyuiop"),
-                        alignment=Qt.AlignmentFlag.AlignHCenter)
-        outer.addWidget(self._mk_row("asdfghjkl"),
-                        alignment=Qt.AlignmentFlag.AlignHCenter)
-        outer.addWidget(self._mk_row_zxcv(),
-                        alignment=Qt.AlignmentFlag.AlignHCenter)
-        outer.addWidget(self._mk_row_bottom(),
-                        alignment=Qt.AlignmentFlag.AlignHCenter)
+        outer.addWidget(self._mk_row("qwertyuiop"), alignment=Qt.AlignmentFlag.AlignHCenter)
+        outer.addWidget(self._mk_row("asdfghjkl"), alignment=Qt.AlignmentFlag.AlignHCenter)
+        outer.addWidget(self._mk_row_zxcv(), alignment=Qt.AlignmentFlag.AlignHCenter)
+        outer.addWidget(self._mk_row_bottom(), alignment=Qt.AlignmentFlag.AlignHCenter)
 
     # ── 行构建 ──
 
@@ -195,6 +220,7 @@ class QwertyLayout(BaseKeyboardLayout):
         """设置中英切换按钮图标。"""
         if self._mode_btn:
             from PySide6.QtCore import QSize
+
             self._mode_btn.setIcon(icon)
             self._mode_btn.setIconSize(QSize(32, 24))
 
@@ -239,5 +265,6 @@ class QwertyLayout(BaseKeyboardLayout):
             btn = self._letter_btns.get(ch)
             if btn:
                 lbl.setGeometry(0, btn.height() - tip_h, btn.width(), tip_h - 2)
-                lbl.setStyleSheet(f"font-size: {max(7, round(9 * scale))}px; "
-                                  "color: #9b9a98; background: transparent; border: none;")
+                lbl.setStyleSheet(
+                    f"font-size: {max(7, round(9 * scale))}px; color: #9b9a98; background: transparent; border: none;"
+                )

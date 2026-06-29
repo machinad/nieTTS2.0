@@ -1,5 +1,6 @@
-from dataclasses import dataclass
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+
 import numpy as np
 
 
@@ -19,37 +20,29 @@ class SpeechSegment:
 
 
 class BaseVAD(ABC):
+    @abstractmethod
+    def accept_waveform(self, samples: np.ndarray): ...
 
     @abstractmethod
-    def accept_waveform(self, samples: np.ndarray):
-        ...
-
-    @abstractmethod
-    def empty(self) -> bool:
-        ...
+    def empty(self) -> bool: ...
 
     @property
     @abstractmethod
-    def front(self) -> SpeechSegment:
-        ...
+    def front(self) -> SpeechSegment: ...
 
     @abstractmethod
-    def pop(self):
-        ...
+    def pop(self): ...
 
     @abstractmethod
-    def flush(self):
-        ...
+    def flush(self): ...
 
     @property
     @abstractmethod
-    def is_speech_detected(self) -> bool:
-        ...
+    def is_speech_detected(self) -> bool: ...
 
     @property
     @abstractmethod
-    def engine_name(self) -> str:
-        ...
+    def engine_name(self) -> str: ...
 
     def preload(self):
         """预加载资源（可选覆盖）"""

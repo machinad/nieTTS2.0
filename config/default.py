@@ -1,76 +1,76 @@
-﻿import copy
+import copy
 import json
+import logging
 import threading
 from pathlib import Path
-import logging
+
 logger = logging.getLogger(__name__)
 
 default_config = {
     "tts_provider": {
-        "provider":"edge_tts",
-        "providers":[
+        "provider": "edge_tts",
+        "providers": [
             {
                 "name": "edge_tts",
-                "voice":"汉语女声-晓晓-新闻小说-温柔",
-                "description": "免费微软官方TTS在线服务（在线API）"
+                "voice": "汉语女声-晓晓-新闻小说-温柔",
+                "description": "免费微软官方TTS在线服务（在线API）",
             },
             {
                 "name": "cosyvoice",
                 "voice": "龙婉-普通话-语音助手、导航播报、聊天数字人",
                 "ali_api_key": "",
-                "description": "阿里百炼CosyVoice语音合成服务，支持情感控制、语音克隆等功能（需要API Key）"
+                "description": "阿里百炼CosyVoice语音合成服务，支持情感控制、语音克隆等功能（需要API Key）",
             },
             {
-                "name":"sambert",
-                "voice":"知琪-温柔女声-通用场景",
+                "name": "sambert",
+                "voice": "知琪-温柔女声-通用场景",
                 "ali_api_key": "",
-                "description": "阿里百炼Sambert语音合成服务，适用于通用场景（需要API Key）"
+                "description": "阿里百炼Sambert语音合成服务，适用于通用场景（需要API Key）",
             },
             {
-                "name":"MatchaTTS",
-                "voice":"0",
+                "name": "MatchaTTS",
+                "voice": "0",
                 "matcha_acoustic_model": "models/matcha-icefall-zh-en/model-steps-3.onnx",
                 "matcha_vocoder": "models/vocos-16khz-univ.onnx",
                 "matcha_tokens": "models/matcha-icefall-zh-en/tokens.txt",
                 "matcha_lexicon": "models/matcha-icefall-zh-en/lexicon.txt",
                 "matcha_data_dir": "models/matcha-icefall-zh-en",
                 "matcha_dict_dir": "",
-                "description": "本地离线TTS，完全本地推理无需网络（需要模型文件）本地推理，性能开销小，延迟低，推荐使用"
-            }
-
-        ]
+                "description": "本地离线TTS，完全本地推理无需网络（需要模型文件）本地推理，性能开销小，延迟低，推荐使用",
+            },
+        ],
     },
     "stt_provider": {
-        "provider":"Qwen3",
-        "providers":[
+        "provider": "Qwen3",
+        "providers": [
             {
                 "name": "Qwen3",
                 "conv_frontend": "models/qwen3-asr-0.6B-int8/conv_frontend.onnx",
                 "encoder": "models/qwen3-asr-0.6B-int8/encoder.int8.onnx",
                 "decoder": "models/qwen3-asr-0.6B-int8/decoder.int8.onnx",
                 "tokenizer": "models/qwen3-asr-0.6B-int8/tokenizer",
-                "description": "通义千问Qwen3本地离线语音识别，基于0.6B参数量化模型（需要模型文件）约1GB的内存开销"
+                "description": "通义千问Qwen3本地离线语音识别，基于0.6B参数量化模型（需要模型文件）约1GB的内存开销",
             }
-        ]
+        ],
     },
     "translation_provider": {
-        "provider":"openai",
-        "providers":[
+        "provider": "openai",
+        "providers": [
             {
                 "name": "openai",
                 "model": "",
                 "api_key": "",
                 "url": "",
-                "description": "OpenAI兼容大语言模型翻译，支持任意OpenAI API格式的模型（需要API Key）"
+                "description": "OpenAI兼容大语言模型翻译，支持任意OpenAI API格式的模型（需要API Key）",
             },
             {
                 "name": "hy_mt15",
                 "model_path": "models/HY-mt/Hy-MT2-1.8B-2Bit.gguf",
                 "server_url": "http://127.0.0.1:8081",
                 "llama_cpp_path": "llama-cpp",
-                "description": "HY-MT1.5本地离线翻译模型，基于1.8B参数GGUF量化模型（需要模型文件）约1GB的内存开销"
+                "description": "HY-MT1.5本地离线翻译模型，基于1.8B参数GGUF量化模型（需要模型文件）约1GB的内存开销",
             },
-        ]
+        ],
     },
     "vad": {
         "model_path": "models/silero_vad.onnx",
@@ -92,13 +92,7 @@ default_config = {
     "osc_port": 9000,
     "port": 11451,
     "rime_schema": "rime_ice",
-    "overlay_hotkey": {
-        "ctrl": True,
-        "shift": False,
-        "alt": False,
-        "key": 84,
-        "display": "Ctrl+T"
-    },
+    "overlay_hotkey": {"ctrl": True, "shift": False, "alt": False, "key": 84, "display": "Ctrl+T"},
     "vr_overlay": {
         "enabled": False,
         "width_meters": 2.0,
@@ -111,8 +105,8 @@ default_config = {
         "ray_yaw_offset": -0.402526,
         "position_mode": "controller",
         "distance": 1.2,
-        "auto_start": False
-    }
+        "auto_start": False,
+    },
 }
 
 
@@ -150,7 +144,7 @@ class ConfigManager:
         config = copy.deepcopy(default_config)
         if self.config_file.exists():
             try:
-                with open(self.config_file, 'r', encoding='utf-8') as f:
+                with open(self.config_file, encoding="utf-8") as f:
                     disk = json.load(f)
                 self._deep_update(config, disk)
             except Exception as e:
@@ -175,8 +169,8 @@ class ConfigManager:
         return copy.deepcopy(default_config)
 
     def _save_file(self, config):
-        tmp = self.config_file.with_suffix('.tmp')
-        with open(tmp, 'w', encoding='utf-8') as f:
+        tmp = self.config_file.with_suffix(".tmp")
+        with open(tmp, "w", encoding="utf-8") as f:
             json.dump(config, f, ensure_ascii=False, indent=4)
         tmp.replace(self.config_file)
 
@@ -247,7 +241,7 @@ class ConfigManager:
         fresh = copy.deepcopy(default_config)
         if self.config_file.exists():
             try:
-                with open(self.config_file, 'r', encoding='utf-8') as f:
+                with open(self.config_file, encoding="utf-8") as f:
                     disk = json.load(f)
                 self._deep_update(fresh, disk)
             except Exception:
@@ -267,7 +261,7 @@ class ConfigManager:
         self._save_file(fresh)
         # 验证写入结果
         try:
-            with open(self.config_file, 'r', encoding='utf-8') as f:
+            with open(self.config_file, encoding="utf-8") as f:
                 verify = json.load(f)
             if verify != fresh:
                 logger.error("配置验证失败! 写入内容与内存不一致")

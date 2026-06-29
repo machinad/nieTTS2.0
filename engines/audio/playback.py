@@ -2,7 +2,6 @@ import asyncio
 import logging
 import time
 from pathlib import Path
-from typing import Optional
 
 import miniaudio
 
@@ -11,7 +10,7 @@ logger = logging.getLogger(__name__)
 _SUPPORTED_SUFFIXES = frozenset({".wav", ".mp3", ".ogg", ".flac", ".opus"})
 
 
-def _find_device_id(device_name: str) -> Optional[int]:
+def _find_device_id(device_name: str) -> int | None:
     devices = miniaudio.Devices()
     for pb in devices.get_playbacks():
         if pb["name"] == device_name:

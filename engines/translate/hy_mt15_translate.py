@@ -12,9 +12,14 @@ logger = logging.getLogger(__name__)
 
 
 _ZH_TO_EN = {
-    "中文": "Chinese", "英语": "English", "日语": "Japanese",
-    "韩语": "Korean", "法语": "French", "德语": "German",
-    "西班牙语": "Spanish", "俄语": "Russian",
+    "中文": "Chinese",
+    "英语": "English",
+    "日语": "Japanese",
+    "韩语": "Korean",
+    "法语": "French",
+    "德语": "German",
+    "西班牙语": "Spanish",
+    "俄语": "Russian",
 }
 
 
@@ -41,11 +46,7 @@ class HyMT15Translate(BaseTranslate):
     def _build_prompt(self, text: str, source_lang: str, target_lang: str) -> str:
         is_zh = source_lang == "中文"
         if is_zh:
-            return (
-                f"将以下文本翻译为{target_lang}，"
-                f"注意只需要输出翻译后的结果，不要额外解释：\n\n"
-                f"{text}"
-            )
+            return f"将以下文本翻译为{target_lang}，注意只需要输出翻译后的结果，不要额外解释：\n\n{text}"
         en_name = _ZH_TO_EN.get(target_lang, target_lang)
         return (
             f"Translate the following text into {en_name}. "
@@ -59,11 +60,16 @@ class HyMT15Translate(BaseTranslate):
         server_exe = self.llama_cpp_path / "llama-server.exe"
         cmd = [
             str(server_exe),
-            "-m", str(self.model_path),
-            "--host", "127.0.0.1",
-            "--port", "8081",
-            "-ngl", "99",
-            "-c", "4096",
+            "-m",
+            str(self.model_path),
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "8081",
+            "-ngl",
+            "99",
+            "-c",
+            "4096",
             "--no-warmup",
         ]
         self._process = subprocess.Popen(
@@ -131,7 +137,7 @@ class HyMT15Translate(BaseTranslate):
                 resp.raise_for_status()
                 result = resp.json()
                 translated = result["choices"][0]["message"]["content"]
-                translated = re.sub(r'<[^>]+>', '', translated).strip()
+                translated = re.sub(r"<[^>]+>", "", translated).strip()
 
             logger.info("HY-MT1.5 翻译成功: %s -> %s.译文: %s", source_lang, target_lang, translated)
             return TranslateResult(

@@ -1,9 +1,10 @@
 import asyncio
 import logging
 import time
+
 import numpy as np
 from PySide6.QtCore import QObject, Signal
-from PySide6.QtMultimedia import QAudioSource, QAudioFormat, QMediaDevices
+from PySide6.QtMultimedia import QAudioFormat, QAudioSource, QMediaDevices
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,7 @@ class GuiAudioInput(QObject):
             return
 
         from engines.stt.vad.silero_vad import SileroVAD
+
         vad_cfg = self.bridge.config.config.get("vad", {})
         self._vad = SileroVAD(
             model_path=vad_cfg.get("model_path", "models/silero_vad.onnx"),
@@ -105,6 +107,7 @@ class GuiAudioInput(QObject):
         if not self._io_device or not self._recording:
             return
         from PySide6.QtCore import QByteArray
+
         data: QByteArray = self._io_device.readAll()
         if data.isEmpty():
             return
@@ -119,49 +122,49 @@ class GuiAudioInput(QObject):
         # 当缓冲区达到2000个样本时进行FFT分析
         while len(self._sample_buffer) >= self._fft_frame_size:
             # 取出2000个样本
-            frame = self._sample_buffer[:self._fft_frame_size]
-            self._sample_buffer = self._sample_buffer[self._fft_frame_size:]
+            frame = self._sample_buffer[: self._fft_frame_size]
+            self._sample_buffer = self._sample_buffer[self._fft_frame_size :]
 
             # 限制 level 信号发送频率到 16fps（约62.5ms）
             current_time = time.time() * 1000  # 转换为毫秒
             if current_time - self._last_level_time >= 62.5:  # 62.5ms = 16fps
                 self._last_level_time = current_time
-                
+
                 rms = float(np.sqrt(np.mean(frame**2)))
-                
+
                 # RMS 太小则跳过 FFT，直接输出全零
                 silence_threshold = 0.005
                 if rms < silence_threshold:
                     self.level_changed.emit(0.0, [0.0] * 30)
                     continue
-                
+
                 # FFT 分析
                 fft_data = np.abs(np.fft.rfft(frame))
-                fft_data = fft_data[:len(fft_data)//2]  # 只取前半部分（有效频率）
+                fft_data = fft_data[: len(fft_data) // 2]  # 只取前半部分（有效频率）
                 if np.max(fft_data) > 0:
                     fft_data = fft_data / np.max(fft_data)  # 归一化到 0-1
-                
+
                 # 采样范围：第9-39个bin（72Hz-316Hz）
                 start_bin = 9
                 end_bin = 39
                 fft_data_trimmed = fft_data[start_bin:end_bin]  # 30个bin
-                
+
                 # 只基于关心的bin进行归一化
                 if np.max(fft_data_trimmed) > 0:
                     fft_data_trimmed = fft_data_trimmed / np.max(fft_data_trimmed)
-                
+
                 # 放大系数
                 amplify_factor = 1.5
                 freq_levels = [min(1.0, float(x) * amplify_factor) for x in fft_data_trimmed]
-                
+
                 self.level_changed.emit(min(1.0, rms * 20.0), freq_levels)
 
         if self._vad is None:
             return
         self._vad_buffer = np.concatenate([self._vad_buffer, samples_f32])
         while len(self._vad_buffer) >= self._vad_chunk_size:
-            chunk = self._vad_buffer[:self._vad_chunk_size]
-            self._vad_buffer = self._vad_buffer[self._vad_chunk_size:]
+            chunk = self._vad_buffer[: self._vad_chunk_size]
+            self._vad_buffer = self._vad_buffer[self._vad_chunk_size :]
             self._vad.accept_waveform(chunk)
             self._process_segments()
 
@@ -171,6 +174,7 @@ class GuiAudioInput(QObject):
         cfg = self.bridge.config.config
         while not self._vad.empty():
             seg = self._vad.front
+
             async def _submit(seg=seg):
                 try:
                     await self.bridge.pipeline.submit(
@@ -185,5 +189,6 @@ class GuiAudioInput(QObject):
                     )
                 except Exception as e:
                     logger.error("提交音频请求失败: %s", e)
+
             asyncio.ensure_future(_submit())
             self._vad.pop()

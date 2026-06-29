@@ -1,8 +1,7 @@
 import copy
-import json
+
 import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+
 from config.default import ConfigManager, default_config
 
 
@@ -69,10 +68,13 @@ class TestConfigManager:
 
     def test_deep_update_merges_nested(self):
         cm = ConfigManager()
-        cm._deep_update(cm.config, {
-            "vad": {"threshold": 0.8},
-            "new_key": "new_value",
-        })
+        cm._deep_update(
+            cm.config,
+            {
+                "vad": {"threshold": 0.8},
+                "new_key": "new_value",
+            },
+        )
         assert cm.get("vad.threshold") == 0.8
         # Other VAD keys preserved
         assert cm.get("vad.sample_rate") == 16000

@@ -7,29 +7,28 @@
 - 所属引擎、是否为目录、描述信息
 """
 
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Optional
 import hashlib
 import logging
+from dataclasses import dataclass
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class ModelFile:
-    local_path: str          # 相对于项目根目录的本地路径
-    size: int                # 文件大小（字节），0 表示目录
-    sha256: str              # SHA256 校验值（文件），空字符串表示目录
-    hf_repo: Optional[str]   # HuggingFace 仓库 ID（None = HF 无此文件）
-    hf_remote_path: Optional[str]  # 仓库内文件路径（None = HF 无此文件）
-    ms_repo: str             # ModelScope 仓库 ID
-    ms_remote_path: Optional[str] = None  # 仓库内文件路径（None = ModelScope 无此文件）
-    github_url: Optional[str] = None  # GitHub 直接下载链接（备用源）
-    engine: str = ""         # 所属引擎: silero_vad / matcha_tts / qwen3_asr / hy_mt15
+    local_path: str  # 相对于项目根目录的本地路径
+    size: int  # 文件大小（字节），0 表示目录
+    sha256: str  # SHA256 校验值（文件），空字符串表示目录
+    hf_repo: str | None  # HuggingFace 仓库 ID（None = HF 无此文件）
+    hf_remote_path: str | None  # 仓库内文件路径（None = HF 无此文件）
+    ms_repo: str  # ModelScope 仓库 ID
+    ms_remote_path: str | None = None  # 仓库内文件路径（None = ModelScope 无此文件）
+    github_url: str | None = None  # GitHub 直接下载链接（备用源）
+    engine: str = ""  # 所属引擎: silero_vad / matcha_tts / qwen3_asr / hy_mt15
     is_directory: bool = False  # 是否为目录（如 espeak-ng-data）
-    extract_to: str = ""       # 解压目标目录（相对项目根），非空时需解压
-    description: str = ""      # 文件描述
+    extract_to: str = ""  # 解压目标目录（相对项目根），非空时需解压
+    description: str = ""  # 文件描述
 
 
 # ============================================================
@@ -38,7 +37,6 @@ class ModelFile:
 # ============================================================
 
 MODEL_REGISTRY: list[ModelFile] = [
-
     # --------------------------------------------------------
     # Silero VAD
     # --------------------------------------------------------
@@ -53,7 +51,6 @@ MODEL_REGISTRY: list[ModelFile] = [
         engine="silero_vad",
         description="Silero VAD 语音活动检测模型",
     ),
-
     # --------------------------------------------------------
     # MatchaTTS — 声学模型
     # --------------------------------------------------------
@@ -148,7 +145,6 @@ MODEL_REGISTRY: list[ModelFile] = [
         is_directory=True,
         description="eSpeak NG 语音数据目录（含 355 个文件）",
     ),
-
     # --------------------------------------------------------
     # Qwen3 ASR — 语音识别
     # --------------------------------------------------------
@@ -218,7 +214,6 @@ MODEL_REGISTRY: list[ModelFile] = [
         engine="qwen3_asr",
         description="Qwen3 ASR tokenizer 词表",
     ),
-
     # --------------------------------------------------------
     # HY-MT2 — 翻译模型
     # --------------------------------------------------------
@@ -233,7 +228,6 @@ MODEL_REGISTRY: list[ModelFile] = [
         engine="hy_mt15",
         description="HY-MT2 翻译模型（1.8B 参数，2Bit 量化）",
     ),
-
     # --------------------------------------------------------
     # llama-cpp — 翻译引擎运行时
     # --------------------------------------------------------
@@ -255,7 +249,7 @@ MODEL_REGISTRY: list[ModelFile] = [
 class ModelRegistry:
     """模型资源注册表管理器"""
 
-    def __init__(self, project_root: Optional[str] = None):
+    def __init__(self, project_root: str | None = None):
         self.project_root = Path(project_root) if project_root else Path(__file__).parent.parent.resolve()
 
     def get_all(self) -> list[ModelFile]:
@@ -347,9 +341,9 @@ class ModelRegistry:
 
         for engine in engines:
             files = self.get_by_engine(engine)
-            print(f"\n{'='*60}")
+            print(f"\n{'=' * 60}")
             print(f"  Engine: {engine}")
-            print(f"{'='*60}")
+            print(f"{'=' * 60}")
 
             for mf in files:
                 is_valid, msg = self.verify_file(mf, fast=fast)
@@ -361,7 +355,7 @@ class ModelRegistry:
                 else:
                     total_fail += 1
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"  Total: {total_ok} OK, {total_fail} missing/corrupted")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         return total_fail == 0

@@ -18,14 +18,10 @@ ModelScope 缺失的文件会自动从 HuggingFace 补充。
 
 import argparse
 import logging
-import os
 import shutil
 import socket
 import sys
-import tempfile
-import time
 from pathlib import Path
-from typing import Optional
 
 # 将项目根目录加入 sys.path
 PROJECT_ROOT = Path(__file__).parent.parent.resolve()
@@ -61,7 +57,7 @@ def detect_source() -> str:
         sock.close()
         logger.info("检测到 HuggingFace 网络可达，使用 HuggingFace 源")
         return "huggingface"
-    except (socket.timeout, OSError):
+    except TimeoutError, OSError:
         logger.info("HuggingFace 不可达，使用 ModelScope 源")
         return "modelscope"
 
@@ -69,6 +65,7 @@ def detect_source() -> str:
 # ============================================================
 # 下载器
 # ============================================================
+
 
 class Downloader:
     """模型文件下载器"""
@@ -93,12 +90,14 @@ class Downloader:
         """检查下载库是否可用"""
         try:
             import huggingface_hub  # noqa: F401
+
             self._hf_available = True
         except ImportError:
             logger.warning("huggingface_hub 未安装，HuggingFace 源不可用。请运行: pip install huggingface_hub")
 
         try:
             import modelscope  # noqa: F401
+
             self._ms_available = True
         except ImportError:
             logger.warning("modelscope 未安装，ModelScope 源不可用。请运行: pip install modelscope")
@@ -502,6 +501,7 @@ def get_model_status() -> list[dict]:
 # CLI
 # ============================================================
 
+
 def cmd_check(args):
     """check 子命令"""
     registry = ModelRegistry()
@@ -603,7 +603,9 @@ def main():
 
     # download 子命令
     dl_parser = subparsers.add_parser("download", help="下载缺失的模型文件")
-    dl_parser.add_argument("--source", choices=["huggingface", "huggingface_mirror", "modelscope"], help="强制使用指定下载源")
+    dl_parser.add_argument(
+        "--source", choices=["huggingface", "huggingface_mirror", "modelscope"], help="强制使用指定下载源"
+    )
     dl_parser.add_argument("--engine", type=str, help="只下载指定引擎的模型")
     dl_parser.add_argument("--force", action="store_true", help="强制重新下载（忽略已有文件）")
 

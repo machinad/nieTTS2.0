@@ -1,6 +1,7 @@
 import math
+
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QPainter, QColor, QLinearGradient, QBrush
+from PySide6.QtGui import QBrush, QColor, QLinearGradient, QPainter
 from PySide6.QtWidgets import QWidget
 
 

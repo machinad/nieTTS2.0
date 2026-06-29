@@ -1,18 +1,18 @@
 """键盘布局基类和通用组件"""
 
 import logging
-from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtGui import QColor, QFont
-from PySide6.QtWidgets import QFrame, QPushButton, QLabel, QSizePolicy
+
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtWidgets import QFrame, QLabel, QPushButton
 
 logger = logging.getLogger(__name__)
 
 # ── 键盘基准尺寸（scale=1.0 时的像素值） ──
 KEY_W = 48
 KEY_H = 42
-FN_RATIO = 1.38    # Shift/⌫/↵ 宽度比
+FN_RATIO = 1.38  # Shift/⌫/↵ 宽度比
 SPACE_RATIO = 4.2  # 空格宽度比
-BASE_SPACING = 3   # 基准间距
+BASE_SPACING = 3  # 基准间距
 
 
 class SwipeKey(QPushButton):
@@ -29,14 +29,13 @@ class SwipeKey(QPushButton):
 
         if swipe_char:
             self._tip = QLabel(swipe_char, self)
-            self._tip.setStyleSheet(
-                "font-size: 13px; color: #9b9a98; background: transparent; border: none;")
+            self._tip.setStyleSheet("font-size: 13px; color: #9b9a98; background: transparent; border: none;")
             self._tip.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self._tip.setGeometry(0, 2, self.width(), 16)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        if hasattr(self, '_tip'):
+        if hasattr(self, "_tip"):
             self._tip.setGeometry(0, 2, self.width(), 16)
 
     def mousePressEvent(self, event):
@@ -99,12 +98,12 @@ class BaseKeyboardLayout(QFrame):
     """
 
     # ── 输出信号（→ KeyboardPage）──
-    key_input = Signal(str)    # 字母/数字/符号输入
-    backspace = Signal()       # 退格
-    enter = Signal()           # 回车
-    space = Signal()           # 空格
-    punct = Signal(str)        # 标点
-    command = Signal(str)      # 特殊命令
+    key_input = Signal(str)  # 字母/数字/符号输入
+    backspace = Signal()  # 退格
+    enter = Signal()  # 回车
+    space = Signal()  # 空格
+    punct = Signal(str)  # 标点
+    command = Signal(str)  # 特殊命令
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -136,10 +135,8 @@ class BaseKeyboardLayout(QFrame):
         tip_h = max(10, round(16 * scale))
         for btn, ratio in self._scaleable_buttons:
             btn.setFixedSize(max(32, round(key_w * ratio)), key_h)
-            if isinstance(btn, SwipeKey) and hasattr(btn, '_tip'):
-                btn._tip.setStyleSheet(
-                    f"font-size: {tip_fs}px; color: #9b9a98; "
-                    "background: transparent; border: none;")
+            if isinstance(btn, SwipeKey) and hasattr(btn, "_tip"):
+                btn._tip.setStyleSheet(f"font-size: {tip_fs}px; color: #9b9a98; background: transparent; border: none;")
                 btn._tip.setGeometry(0, round(2 * scale), btn.width(), tip_h)
 
     def refresh_labels(self, upper: bool):
@@ -152,8 +149,7 @@ class BaseKeyboardLayout(QFrame):
 
     # ── 工具方法 ──
 
-    def _make_key(self, text: str, obj_name: str, base_fs: int,
-                  ratio: float = 1.0) -> QPushButton:
+    def _make_key(self, text: str, obj_name: str, base_fs: int, ratio: float = 1.0) -> QPushButton:
         """创建标准按钮并注册到缩放列表。"""
         btn = QPushButton(text)
         btn.setObjectName(obj_name)
@@ -162,8 +158,7 @@ class BaseKeyboardLayout(QFrame):
         self._scaleable_buttons.append((btn, ratio))
         return btn
 
-    def _make_swipe_key(self, ch: str, swipe_char: str | None,
-                        base_fs: int) -> SwipeKey:
+    def _make_swipe_key(self, ch: str, swipe_char: str | None, base_fs: int) -> SwipeKey:
         """创建 SwipeKey 并注册到缩放列表。"""
         btn = SwipeKey(ch, swipe_char)
         btn.setObjectName("k")

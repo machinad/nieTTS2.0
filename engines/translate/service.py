@@ -1,8 +1,9 @@
 import logging
+
 from config.default import ConfigManager
 from engines.translate.base import BaseTranslate, TranslateResult
-from engines.translate.openai_translate import OpenAITranslate
 from engines.translate.hy_mt15_translate import HyMT15Translate
+from engines.translate.openai_translate import OpenAITranslate
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +14,6 @@ _REGISTRY: dict[str, type[BaseTranslate]] = {
 
 
 class TranslateService:
-
     def __init__(self, config: ConfigManager):
         self.config = config
         self._active_provider = self.config.get("translation_provider.provider")
@@ -56,9 +56,9 @@ class TranslateService:
             except Exception:
                 pass
 
-    async def translate(self, text: str, provider: str = None,
-                        source_lang: str = "中文", target_lang: str = "",
-                        **kwargs) -> TranslateResult:
+    async def translate(
+        self, text: str, provider: str = None, source_lang: str = "中文", target_lang: str = "", **kwargs
+    ) -> TranslateResult:
         provider = provider or self.config.get("translation_provider.provider")
         engine = self.engines.get(provider)
         if engine is None:

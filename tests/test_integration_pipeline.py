@@ -4,9 +4,7 @@ Integration test for the complete audio pipeline:
 
 Uses real models (Qwen3 ASR, Silero VAD) and real Edge TTS.
 """
-import asyncio
-import io
-import json
+
 import logging
 from pathlib import Path
 
@@ -14,11 +12,10 @@ import numpy as np
 import pytest
 import soundfile as sf
 
-from engines.stt.vad.silero_vad import SileroVAD
-from engines.stt.qwen3_stt import Qwen3STT
 from engines.stt.base import STTResult
+from engines.stt.qwen3_stt import Qwen3STT
+from engines.stt.vad.silero_vad import SileroVAD
 from engines.tts.edge_tts import EdgeTTS
-from engines.tts.base import TTSResult
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -64,6 +61,7 @@ async def _run_vad_stt_pipeline(
     samples, sr = sf.read(str(audio_path))
     if sr != 16000:
         import scipy.signal
+
         # Quick resample via scipy
         samples = scipy.signal.resample_poly(samples, 16000, sr)
         sr = 16000
@@ -134,7 +132,9 @@ class TestIntegrationPipeline:
 
         assert len(results) > 0, "VAD should detect at least one speech segment"
         success_results = [r for r in results if r.is_success]
-        assert len(success_results) > 0, f"STT should transcribe at least one segment. Errors: {[r.error for r in results]}"
+        assert len(success_results) > 0, (
+            f"STT should transcribe at least one segment. Errors: {[r.error for r in results]}"
+        )
 
         full_text = "".join(r.text for r in success_results if r.text)
         logger.info("ar1.wav VAD+STT result: %s", full_text)
@@ -144,9 +144,7 @@ class TestIntegrationPipeline:
     @pytest.mark.integration
     async def test_vad_stt_pipeline_zh_files(self, stt_engine, vad_engine, test_wav_files):
         """VAD → STT pipeline on all Chinese test WAVs. At least one should succeed."""
-        zh_files = [f for f in test_wav_files if f.name in (
-            "ar1.wav", "fast1.wav", "qiqiu1.wav", "raokouling.wav"
-        )]
+        zh_files = [f for f in test_wav_files if f.name in ("ar1.wav", "fast1.wav", "qiqiu1.wav", "raokouling.wav")]
         if not zh_files:
             pytest.skip("No Chinese test WAVs found")
 
@@ -208,8 +206,7 @@ class TestIntegrationPipeline:
             assert tts_result.path is not None
             if tts_result.path.exists():
                 info = sf.info(str(tts_result.path))
-                logger.info("Generated audio: sr=%d, dur=%.1fs, ch=%d",
-                             info.samplerate, info.duration, info.channels)
+                logger.info("Generated audio: sr=%d, dur=%.1fs, ch=%d", info.samplerate, info.duration, info.channels)
                 assert info.duration > 0
         else:
             logger.warning("TTS step failed (expected for some language/voice combos): %s", tts_result.error)

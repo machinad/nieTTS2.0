@@ -2,7 +2,9 @@ import asyncio
 import gc
 import logging
 from pathlib import Path
+
 import sherpa_onnx
+
 from engines.tts.base import BaseTTS, TTSResult
 
 logger = logging.getLogger(__name__)
@@ -23,9 +25,16 @@ class MatchaTTS(BaseTTS):
             dict_dir=cfg.get("matcha_dict_dir", ""),
         )
 
-    def __init__(self, save_dir: Path, acoustic_model: str = "",
-                 vocoder: str = "", tokens_path: str = "", lexicon_path: str = "",
-                 data_dir: str = "", dict_dir: str = ""):
+    def __init__(
+        self,
+        save_dir: Path,
+        acoustic_model: str = "",
+        vocoder: str = "",
+        tokens_path: str = "",
+        lexicon_path: str = "",
+        data_dir: str = "",
+        dict_dir: str = "",
+    ):
         super().__init__(save_dir)
         self.acoustic_model = acoustic_model
         self.vocoder = vocoder
@@ -39,8 +48,7 @@ class MatchaTTS(BaseTTS):
         am = Path(self.acoustic_model) if self.acoustic_model else None
         vc = Path(self.vocoder) if self.vocoder else None
         tk = Path(self.tokens_path) if self.tokens_path else None
-        return (am is not None and vc is not None and tk is not None
-                and am.exists() and vc.exists() and tk.exists())
+        return am is not None and vc is not None and tk is not None and am.exists() and vc.exists() and tk.exists()
 
     def _lazy_init(self):
         if self._tts is not None:
@@ -71,7 +79,8 @@ class MatchaTTS(BaseTTS):
     async def synthesize(self, text: str, voice: str = "", **kwargs) -> TTSResult:
         if not self.is_available():
             return TTSResult(
-                success=False, text=text,
+                success=False,
+                text=text,
                 error="MatchaTTS 模型文件不存在，请先下载模型",
             )
         try:

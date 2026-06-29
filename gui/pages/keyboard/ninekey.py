@@ -2,17 +2,27 @@
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QSizePolicy,
-    QGridLayout, QScrollArea, QLabel,
+    QGridLayout,
+    QLabel,
+    QPushButton,
+    QScrollArea,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
 )
 
-from .base import BaseKeyboardLayout, KEY_W, KEY_H
+from .base import BaseKeyboardLayout
 
 # T9 字母映射
 _T9_MAP = {
-    "2": "ABC", "3": "DEF",
-    "4": "GHI", "5": "JKL", "6": "MNO",
-    "7": "PQRS", "8": "TUV", "9": "WXYZ",
+    "2": "ABC",
+    "3": "DEF",
+    "4": "GHI",
+    "5": "JKL",
+    "6": "MNO",
+    "7": "PQRS",
+    "8": "TUV",
+    "9": "WXYZ",
 }
 
 # 基准尺寸（与 numpad 一致）
@@ -158,8 +168,7 @@ class NineKeyLayout(BaseKeyboardLayout):
         def _update_ss():
             bg = "#d8d7d4" if container._pressed else ("#eae9e6" if container._hover else "#ffffff")
             border = "#b0afac" if container._pressed else ("#c8c7c4" if container._hover else "#c8c7c4")
-            container.setStyleSheet(
-                f"background: {bg}; border: 1px solid {border}; border-radius: 5px;")
+            container.setStyleSheet(f"background: {bg}; border: 1px solid {border}; border-radius: 5px;")
 
         container._update_ss = _update_ss
         _update_ss()
@@ -167,13 +176,16 @@ class NineKeyLayout(BaseKeyboardLayout):
         def _enter(e):
             container._hover = True
             _update_ss()
+
         def _leave(e):
             container._hover = False
             _update_ss()
+
         def _press(e):
             container._pressed = True
             _update_ss()
             self.key_input.emit(digit)
+
         def _release(e):
             container._pressed = False
             _update_ss()
@@ -245,16 +257,18 @@ class NineKeyLayout(BaseKeyboardLayout):
 
         # T9 容器缩放
         for item in self.findChildren(QWidget):
-            if hasattr(item, '_digit_lbl'):
+            if hasattr(item, "_digit_lbl"):
                 item.setFixedSize(cell_w, cell_h)
                 # 字号跟随缩放
                 digit_fs = max(12, round(22 * scale))
                 letter_fs = max(7, round(10 * scale))
                 item._digit_lbl.setStyleSheet(
-                    f"font-size: {digit_fs}px; font-weight: 600; color: #1a1a1a; background: transparent; border: none;")
+                    f"font-size: {digit_fs}px; font-weight: 600; color: #1a1a1a; background: transparent; border: none;"
+                )
                 if item._letter_lbl:
                     item._letter_lbl.setStyleSheet(
-                        f"font-size: {letter_fs}px; color: #888; background: transparent; border: none;")
+                        f"font-size: {letter_fs}px; color: #888; background: transparent; border: none;"
+                    )
 
         # 更新间距
         grid = self.layout().itemAt(0).layout()

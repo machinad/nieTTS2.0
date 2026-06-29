@@ -33,9 +33,7 @@ def find_dll() -> str:
     for p in candidates:
         if p.exists():
             return str(p.resolve())
-    raise FileNotFoundError(
-        "找不到 librime.dll，请确认包安装正确或手动指定 dll_path"
-    )
+    raise FileNotFoundError("找不到 librime.dll，请确认包安装正确或手动指定 dll_path")
 
 
 def find_data_dir() -> str:
@@ -58,6 +56,4 @@ def find_data_dir() -> str:
     for p in candidates:
         if p.is_dir() and any(p.glob("*.yaml")):
             return str(p.resolve())
-    raise FileNotFoundError(
-        "找不到 RIME 方案数据目录，请确认包安装正确或手动指定 shared_data_dir"
-    )
+    raise FileNotFoundError("找不到 RIME 方案数据目录，请确认包安装正确或手动指定 shared_data_dir")

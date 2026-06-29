@@ -1,6 +1,6 @@
 import pytest
-import numpy as np
-from engines.stt.base import STTResult, BaseSTT
+
+from engines.stt.base import BaseSTT, STTResult
 
 
 class TestSTTResult:
@@ -49,8 +49,10 @@ class TestBaseSTT:
     def test_concrete_can_instantiate(self):
         class Impl(BaseSTT):
             engine_name = "Test"
+
             async def transcribe(self, samples, sample_rate):
                 return STTResult(success=True)
+
             def is_available(self):
                 return True
 
@@ -62,8 +64,10 @@ class TestBaseSTT:
     async def test_close_is_noop_by_default(self):
         class Impl(BaseSTT):
             engine_name = "Test"
+
             async def transcribe(self, samples, sample_rate):
                 return STTResult(success=True)
+
             def is_available(self):
                 return True
 

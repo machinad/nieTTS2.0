@@ -1,7 +1,9 @@
 import logging
 from pathlib import Path
+
 import numpy as np
 import sherpa_onnx
+
 from engines.stt.vad.base import BaseVAD, SpeechSegment
 
 logger = logging.getLogger(__name__)
@@ -10,10 +12,17 @@ logger = logging.getLogger(__name__)
 class SileroVAD(BaseVAD):
     engine_name = "SileroVAD"
 
-    def __init__(self, model_path: str = "", sample_rate: int = 16000,
-                 threshold: float = 0.5, min_silence_duration: float = 0.25,
-                 min_speech_duration: float = 0.25, max_speech_duration: float = 15.0,
-                 window_size: int = 512, num_threads: int = 4):
+    def __init__(
+        self,
+        model_path: str = "",
+        sample_rate: int = 16000,
+        threshold: float = 0.5,
+        min_silence_duration: float = 0.25,
+        min_speech_duration: float = 0.25,
+        max_speech_duration: float = 15.0,
+        window_size: int = 512,
+        num_threads: int = 4,
+    ):
         self._model_path = model_path
         self._sample_rate = sample_rate
         self._threshold = threshold

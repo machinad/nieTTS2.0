@@ -18,7 +18,6 @@
 import asyncio
 import logging
 import time
-from typing import Optional
 
 from PySide6.QtWidgets import QWidget
 
@@ -35,6 +34,7 @@ def _ensure_openvr():
     if not _OPENVR_IMPORTED:
         try:
             import openvr as _openvr
+
             openvr = _openvr
             _OPENVR_IMPORTED = True
         except ImportError:
@@ -82,7 +82,7 @@ class VROverlayManager:
         self._running = False  # 主循环运行标志
 
         # asyncio 任务引用
-        self._loop_task: Optional[asyncio.Task] = None
+        self._loop_task: asyncio.Task | None = None
 
         # 配置（默认值，可从 config.json 覆盖）
         self._config = {
@@ -110,7 +110,7 @@ class VROverlayManager:
 
     # ── 异步生命周期 ──────────────────────────────────────────
 
-    async def run(self, widget: QWidget, config: Optional[dict] = None):
+    async def run(self, widget: QWidget, config: dict | None = None):
         """主入口：异步初始化 + 60Hz 事件循环。
 
         调用方通过 asyncio.create_task() 启动，返回时资源已清理。
@@ -161,7 +161,7 @@ class VROverlayManager:
             self._loop_task.cancel()
             try:
                 await self._loop_task
-            except (asyncio.CancelledError, Exception):
+            except asyncio.CancelledError, Exception:
                 pass
             self._loop_task = None
         else:
@@ -230,8 +230,8 @@ class VROverlayManager:
         # 创建覆盖层
         try:
             self._overlay_handle = self._vr_overlay.createOverlay(
-                "nietts_vr_overlay",           # 唯一键
-                "nieTTS 2.0 VR Overlay"        # 显示名称
+                "nietts_vr_overlay",  # 唯一键
+                "nieTTS 2.0 VR Overlay",  # 显示名称
             )
             logger.info("覆盖层创建成功, handle=%s", self._overlay_handle)
         except Exception as e:
@@ -272,10 +272,7 @@ class VROverlayManager:
             tex_w = self._config.get("texture_width", 1792)
             tex_h = self._config.get("texture_height", 1208)
 
-            self._vr_overlay.setOverlayInputMethod(
-                self._overlay_handle,
-                ov.VROverlayInputMethod_Mouse
-            )
+            self._vr_overlay.setOverlayInputMethod(self._overlay_handle, ov.VROverlayInputMethod_Mouse)
 
             # 设置鼠标缩放（纹理尺寸）
             mouse_scale = ov.HmdVector2_t()
@@ -284,11 +281,7 @@ class VROverlayManager:
             self._vr_overlay.setOverlayMouseScale(self._overlay_handle, mouse_scale)
 
             # 设置交互 Flag（不启用 SteamVR 内置激光，使用自定义射线追踪）
-            self._vr_overlay.setOverlayFlag(
-                self._overlay_handle,
-                ov.VROverlayFlags_SendVRDiscreteScrollEvents,
-                True
-            )
+            self._vr_overlay.setOverlayFlag(self._overlay_handle, ov.VROverlayFlags_SendVRDiscreteScrollEvents, True)
 
             logger.info("输入方法设置完成: mouse_scale=%dx%d", tex_w, tex_h)
         except Exception as e:
@@ -309,6 +302,7 @@ class VROverlayManager:
 
         # 初始化渲染器
         from gui.vr_overlay.renderer import VROverlayRenderer
+
         self._renderer = VROverlayRenderer(tex_w, tex_h)
         if not self._renderer.init_gl():
             logger.error("FBO 渲染器初始化失败")
@@ -317,21 +311,27 @@ class VROverlayManager:
 
         # 初始化准星
         from gui.vr_overlay.crosshair import VRCrosshairOverlay
+
         self._crosshair = VRCrosshairOverlay(self._widget)
         self._crosshair.resize(self._widget.size())
         self._crosshair.show()
 
         # 初始化输入处理器
         from gui.vr_overlay.input_handler import VRInputHandler
+
         tex_w = self._config.get("texture_width", 1792)
         tex_h = self._config.get("texture_height", 1208)
         self._input_handler = VRInputHandler(
-            self._widget, self._crosshair, manager=self,
-            tex_w=tex_w, tex_h=tex_h,
+            self._widget,
+            self._crosshair,
+            manager=self,
+            tex_w=tex_w,
+            tex_h=tex_h,
         )
 
         # 初始化感应式射线追踪器
         from gui.vr_overlay.ray_tracker import VRRayTracker
+
         self._ray_tracker = VRRayTracker(
             overlay=self._vr_overlay,
             overlay_handle=self._overlay_handle,
@@ -445,18 +445,14 @@ class VROverlayManager:
             # 获取当前变换
             transform = ov.HmdMatrix34_t()
             tracking_origin = ov.TrackingUniverseSeated
-            self._vr_overlay.getOverlayTransformAbsolute(
-                self._overlay_handle, tracking_origin, transform
-            )
+            self._vr_overlay.getOverlayTransformAbsolute(self._overlay_handle, tracking_origin, transform)
 
             # 修改平移
             transform.m[0][3] += dx
             transform.m[1][3] += dy
             transform.m[2][3] += dz
 
-            self._vr_overlay.setOverlayTransformAbsolute(
-                self._overlay_handle, tracking_origin, transform
-            )
+            self._vr_overlay.setOverlayTransformAbsolute(self._overlay_handle, tracking_origin, transform)
             logger.info("覆盖层移动: dx=%.2f, dy=%.2f, dz=%.2f", dx, dy, dz)
         except Exception as e:
             logger.error("覆盖层移动失败: %s", e)
@@ -485,14 +481,12 @@ class VROverlayManager:
             transform.m[2][1] = 0.0
             transform.m[2][2] = 1.0
             # 平移部分（-Z 向前，+Y 向上）
-            transform.m[0][3] = 0.0           # X: 居中
-            transform.m[1][3] = v_offset      # Y: 向下偏移
-            transform.m[2][3] = -distance     # Z: 向前
+            transform.m[0][3] = 0.0  # X: 居中
+            transform.m[1][3] = v_offset  # Y: 向下偏移
+            transform.m[2][3] = -distance  # Z: 向前
 
             self._vr_overlay.setOverlayTransformTrackedDeviceRelative(
-                self._overlay_handle,
-                ov.k_unTrackedDeviceIndex_Hmd,
-                transform
+                self._overlay_handle, ov.k_unTrackedDeviceIndex_Hmd, transform
             )
             logger.info("覆盖层位置设置完成: distance=%.1fm, offset=%.1fm", distance, v_offset)
             return True

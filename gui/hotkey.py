@@ -1,20 +1,24 @@
 import ctypes
 import ctypes.wintypes
 import logging
+
 from PySide6.QtCore import (
-    QObject, Signal, QMetaObject, Qt, QTimer, QAbstractNativeEventFilter,
+    QAbstractNativeEventFilter,
+    QMetaObject,
+    QObject,
+    Qt,
+    QTimer,
+    Signal,
 )
-from PySide6.QtWidgets import QApplication, QPushButton
 from PySide6.QtGui import QKeyEvent
+from PySide6.QtWidgets import QApplication, QPushButton
 
 logger = logging.getLogger(__name__)
 
 user32 = ctypes.windll.user32
 kernel32 = ctypes.windll.kernel32
 
-user32.RegisterHotKey.argtypes = [
-    ctypes.wintypes.HWND, ctypes.c_int, ctypes.c_uint, ctypes.c_uint
-]
+user32.RegisterHotKey.argtypes = [ctypes.wintypes.HWND, ctypes.c_int, ctypes.c_uint, ctypes.c_uint]
 user32.RegisterHotKey.restype = ctypes.c_int
 user32.UnregisterHotKey.argtypes = [ctypes.wintypes.HWND, ctypes.c_int]
 user32.UnregisterHotKey.restype = ctypes.c_int
@@ -61,9 +65,9 @@ def _qt_key_to_display(key: int) -> str:
     if key in _QT_KEY_NAMES:
         return _QT_KEY_NAMES[key]
     if Qt.Key.Key_A <= key <= Qt.Key.Key_Z:
-        return chr(key - Qt.Key.Key_A + ord('A'))
+        return chr(key - Qt.Key.Key_A + ord("A"))
     if Qt.Key.Key_0 <= key <= Qt.Key.Key_9:
-        return chr(key - Qt.Key.Key_0 + ord('0'))
+        return chr(key - Qt.Key.Key_0 + ord("0"))
     return f"0x{key:02X}"
 
 
@@ -83,22 +87,21 @@ def build_display(ctrl: bool, shift: bool, alt: bool, qt_key: int) -> str:
 class _NativeHotkeyFilter(QAbstractNativeEventFilter):
     """Intercepts WM_HOTKEY messages in Qt's main-thread message pump."""
 
-    def __init__(self, manager: "GlobalHotkeyManager"):
+    def __init__(self, manager: GlobalHotkeyManager):
         super().__init__()
         self._manager = manager
 
     def nativeEventFilter(self, eventType, message):
-        if eventType == b'windows_generic_MSG':
+        if eventType == b"windows_generic_MSG":
             addr = int(message)
             if addr:
                 try:
-                    msg = ctypes.cast(
-                        addr, ctypes.POINTER(ctypes.wintypes.MSG)
-                    ).contents
+                    msg = ctypes.cast(addr, ctypes.POINTER(ctypes.wintypes.MSG)).contents
                     if msg.message == WM_HOTKEY:
                         logger.debug("nativeEventFilter 捕获 WM_HOTKEY, wParam=%d", msg.wParam)
                         QMetaObject.invokeMethod(
-                            self._manager, "hotkey_pressed",
+                            self._manager,
+                            "hotkey_pressed",
                             Qt.ConnectionType.QueuedConnection,
                         )
                 except Exception:
@@ -138,18 +141,27 @@ class GlobalHotkeyManager(QObject):
         if shift:
             mod_flags |= MOD_SHIFT
 
-        logger.info("正在注册全局热键: ctrl=%s shift=%s alt=%s vk=0x%02X mod=0x%02X",
-                     ctrl, shift, alt, key_vk, mod_flags)
+        logger.info(
+            "正在注册全局热键: ctrl=%s shift=%s alt=%s vk=0x%02X mod=0x%02X", ctrl, shift, alt, key_vk, mod_flags
+        )
         result = user32.RegisterHotKey(None, self._hotkey_id, mod_flags, key_vk)
         if result == 0:
             err = kernel32.GetLastError()
-            logger.error("RegisterHotKey 失败: ctrl=%s shift=%s alt=%s vk=0x%02X, "
-                         "error=%d，热键可能被其他程序占用", ctrl, shift, alt, key_vk, err)
+            logger.error(
+                "RegisterHotKey 失败: ctrl=%s shift=%s alt=%s vk=0x%02X, error=%d，热键可能被其他程序占用",
+                ctrl,
+                shift,
+                alt,
+                key_vk,
+                err,
+            )
             return False, f"RegisterHotKey 失败 (错误码 {err})，热键可能被其他程序占用"
 
         self._registered = True
         self._current_cfg = {
-            "ctrl": ctrl, "shift": shift, "alt": alt,
+            "ctrl": ctrl,
+            "shift": shift,
+            "alt": alt,
             "key": key_vk,
         }
         logger.info("全局热键已注册: ctrl=%s shift=%s alt=%s vk=0x%02X", ctrl, shift, alt, key_vk)
@@ -256,8 +268,7 @@ class HotkeyRecordButton(QPushButton):
             self.cancel_recording()
             return
 
-        if key in (Qt.Key.Key_Control, Qt.Key.Key_Shift, Qt.Key.Key_Alt,
-                   Qt.Key.Key_Meta):
+        if key in (Qt.Key.Key_Control, Qt.Key.Key_Shift, Qt.Key.Key_Alt, Qt.Key.Key_Meta):
             self._ctrl = bool(event.modifiers() & Qt.KeyboardModifier.ControlModifier)
             self._shift = bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
             self._alt = bool(event.modifiers() & Qt.KeyboardModifier.AltModifier)
@@ -281,8 +292,7 @@ class HotkeyRecordButton(QPushButton):
             return
 
         key = event.key()
-        if key in (Qt.Key.Key_Control, Qt.Key.Key_Shift, Qt.Key.Key_Alt,
-                   Qt.Key.Key_Meta):
+        if key in (Qt.Key.Key_Control, Qt.Key.Key_Shift, Qt.Key.Key_Alt, Qt.Key.Key_Meta):
             if self._has_non_modifier and self._key_vk:
                 self._finish_recording()
                 return
@@ -296,13 +306,15 @@ class HotkeyRecordButton(QPushButton):
         if self._key_vk:
             display = build_display(self._ctrl, self._shift, self._alt, self._key_qt)
             self.setText(display)
-            self.hotkey_recorded.emit({
-                "ctrl": self._ctrl,
-                "shift": self._shift,
-                "alt": self._alt,
-                "key": self._key_vk,
-                "display": display,
-            })
+            self.hotkey_recorded.emit(
+                {
+                    "ctrl": self._ctrl,
+                    "shift": self._shift,
+                    "alt": self._alt,
+                    "key": self._key_vk,
+                    "display": display,
+                }
+            )
             logger.info("快捷键录制完成: %s", display)
         else:
             self.cancel_recording()

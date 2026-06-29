@@ -1,52 +1,74 @@
 import html
 import logging
-from PySide6.QtCore import Qt, Signal, QSize, QByteArray, QEvent
-from PySide6.QtGui import QIcon, QPixmap, QPainter
+
+from PySide6.QtCore import QByteArray, QEvent, QSize, Qt, Signal
+from PySide6.QtGui import QIcon, QPainter, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPlainTextEdit,
-    QComboBox, QPushButton, QFrame, QScrollArea,
+    QComboBox,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPlainTextEdit,
+    QPushButton,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
 )
+
 from gui.widgets.waveform import WaveformWidget
 
 logger = logging.getLogger(__name__)
 
 LANGUAGES = [
-    "中文", "英语", "日语", "韩语", "法语", "德语", "西班牙语", "俄语",
-    "葡萄牙语", "意大利语", "阿拉伯语", "印尼语", "泰语", "越南语", "粤语",
+    "中文",
+    "英语",
+    "日语",
+    "韩语",
+    "法语",
+    "德语",
+    "西班牙语",
+    "俄语",
+    "葡萄牙语",
+    "意大利语",
+    "阿拉伯语",
+    "印尼语",
+    "泰语",
+    "越南语",
+    "粤语",
 ]
 
-_SVG_PENCIL = b'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+_SVG_PENCIL = b"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
   stroke="#6b6a68" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
   <path d="m15 5 4 4"/>
-</svg>'''
+</svg>"""
 
-_SVG_SEND = b'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+_SVG_SEND = b"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
   stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="m22 2-7 20-4-9-9-4Z"/>
   <path d="M22 2 11 13"/>
-</svg>'''
+</svg>"""
 
-_SVG_MIC = b'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+_SVG_MIC = b"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
   <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
   <line x1="12" x2="12" y1="19" y2="22"/>
-</svg>'''
+</svg>"""
 
-_SVG_STOP = b'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+_SVG_STOP = b"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
   stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <rect width="14" height="14" x="5" y="5" rx="2"/>
-</svg>'''
+</svg>"""
 
-_SVG_ARROW_RIGHT = b'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+_SVG_ARROW_RIGHT = b"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
   stroke="#9b9a98" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M5 12h14"/>
   <path d="m12 5 7 7-7 7"/>
-</svg>'''
+</svg>"""
 
-_SVG_GEAR = b'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+_SVG_GEAR = b"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <circle cx="12" cy="12" r="3"/>
   <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33
@@ -56,7 +78,7 @@ _SVG_GEAR = b'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill
     4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l
     .06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0
     4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>
-</svg>'''
+</svg>"""
 
 
 def _make_icon(svg_data: bytes, size: int = 16) -> QIcon:
@@ -231,12 +253,8 @@ class HomePage(QWidget):
 
     def _load_config(self):
         self._refresh_from_config()
-        self._src_combo.currentTextChanged.connect(
-            lambda v: self.bridge.update_config({"source_lang": v})
-        )
-        self._tgt_combo.currentTextChanged.connect(
-            lambda v: self.bridge.update_config({"target_lang": v})
-        )
+        self._src_combo.currentTextChanged.connect(lambda v: self.bridge.update_config({"source_lang": v}))
+        self._tgt_combo.currentTextChanged.connect(lambda v: self.bridge.update_config({"target_lang": v}))
 
     def _refresh_from_config(self):
         cfg = self.bridge.get_config()
@@ -272,8 +290,9 @@ class HomePage(QWidget):
     def eventFilter(self, obj, event):
         if obj is self._text_edit and event.type() == QEvent.Type.KeyPress:
             if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
-                if not (event.modifiers() & Qt.KeyboardModifier.ControlModifier) and \
-                   not (event.modifiers() & Qt.KeyboardModifier.ShiftModifier):
+                if not (event.modifiers() & Qt.KeyboardModifier.ControlModifier) and not (
+                    event.modifiers() & Qt.KeyboardModifier.ShiftModifier
+                ):
                     self._on_send()
                     return True
         return super().eventFilter(obj, event)
@@ -336,4 +355,3 @@ class HomePage(QWidget):
         )
         sb = self._log_box.verticalScrollBar()
         sb.setValue(sb.maximum())
-

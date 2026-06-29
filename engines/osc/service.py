@@ -1,4 +1,5 @@
 import logging
+
 from config.default import ConfigManager
 
 logger = logging.getLogger(__name__)
@@ -9,7 +10,6 @@ _DEFAULT_PORT = 9000
 
 
 class OSCService:
-
     def __init__(self, config: ConfigManager):
         self.config = config
         self.client = None
@@ -17,6 +17,7 @@ class OSCService:
 
     def _reload(self):
         from pythonosc import udp_client
+
         host = self.config.get("osc_host", _DEFAULT_HOST)
         port = int(self.config.get("osc_port", _DEFAULT_PORT))
         self.client = udp_client.SimpleUDPClient(host, port)

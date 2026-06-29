@@ -57,6 +57,12 @@ line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B"]
+ignore = [
+    "N802", "N803", "N815",  # Qt 覆写方法的驼峰命名
+    "B008",                     # lambda 中函数调用
+    "E402",                     # 延迟/条件导入
+    "B027",                     # ABC 空方法无需 @abstractmethod
+]
 
 [tool.ruff.lint.per-file-ignores]
 "gui/theme.py" = ["E501"]

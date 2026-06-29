@@ -8,10 +8,9 @@
 """
 
 import logging
-from typing import Optional
 
 from PySide6.QtCore import QSize
-from PySide6.QtGui import QOpenGLContext, QSurfaceFormat, QOffscreenSurface, QPainter
+from PySide6.QtGui import QOffscreenSurface, QOpenGLContext, QPainter, QSurfaceFormat
 from PySide6.QtOpenGL import QOpenGLFramebufferObject, QOpenGLPaintDevice
 from PySide6.QtWidgets import QWidget
 
@@ -29,9 +28,9 @@ class VROverlayRenderer:
     def __init__(self, width: int = 1792, height: int = 1208):
         self._width = width
         self._height = height
-        self._fbo: Optional[QOpenGLFramebufferObject] = None
-        self._context: Optional[QOpenGLContext] = None
-        self._surface: Optional[QOffscreenSurface] = None
+        self._fbo: QOpenGLFramebufferObject | None = None
+        self._context: QOpenGLContext | None = None
+        self._surface: QOffscreenSurface | None = None
 
     @property
     def size(self) -> QSize:
@@ -65,8 +64,7 @@ class VROverlayRenderer:
                 return False
 
             self._context.doneCurrent()
-            logger.info("FBO 渲染器初始化成功: %dx%d, texture=%d",
-                        self._width, self._height, self._fbo.texture())
+            logger.info("FBO 渲染器初始化成功: %dx%d, texture=%d", self._width, self._height, self._fbo.texture())
             return True
 
         except Exception as e:
@@ -85,7 +83,7 @@ class VROverlayRenderer:
             self._context.doneCurrent()
             logger.info("FBO 尺寸变更: %dx%d", width, height)
 
-    def render_widget(self, widget: QWidget) -> Optional[int]:
+    def render_widget(self, widget: QWidget) -> int | None:
         """将 widget 渲染到 FBO，返回纹理 ID。
 
         注意：不释放 GL 上下文！调用方必须在 setOverlayTexture 后调用 finish()。
@@ -118,6 +116,7 @@ class VROverlayRenderer:
         """构造 OpenVR Texture_t 结构体。"""
         try:
             import openvr
+
             texture = openvr.Texture_t()
             texture.handle = texture_id
             texture.eType = openvr.TextureType_OpenGL

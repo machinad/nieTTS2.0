@@ -1,7 +1,9 @@
 import asyncio
 import logging
+
 import dashscope
 from dashscope.audio.tts import SpeechSynthesizer as SpeechSynthesizerV1
+
 from engines.tts.base import BaseTTS, TTSResult
 
 logger = logging.getLogger(__name__)
@@ -28,8 +30,11 @@ class SambertTTS(BaseTTS):
             async with self._lock:
                 dashscope.api_key = self.api_key
                 result = await asyncio.to_thread(
-                    SpeechSynthesizerV1.call, model=voice, text=text,
-                    sample_rate=48000, format="mp3",
+                    SpeechSynthesizerV1.call,
+                    model=voice,
+                    text=text,
+                    sample_rate=48000,
+                    format="mp3",
                 )
             audio_data = result.get_audio_data()
             if audio_data is not None:

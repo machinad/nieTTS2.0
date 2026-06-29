@@ -45,10 +45,14 @@ def build_app():
     """运行 PyInstaller 打包"""
     print("  运行 PyInstaller...")
     cmd = [
-        sys.executable, "-m", "PyInstaller",
+        sys.executable,
+        "-m",
+        "PyInstaller",
         SPEC_FILE,
-        "--distpath", DIST_DIR,
-        "--workpath", BUILD_DIR,
+        "--distpath",
+        DIST_DIR,
+        "--workpath",
+        BUILD_DIR,
         "--noconfirm",
         "--clean",
     ]
@@ -62,7 +66,7 @@ def build_app():
             for f in filenames:
                 size_mb += os.path.getsize(os.path.join(dirpath, f))
         size_mb /= 1024 * 1024
-        print(f"\n  打包完成!")
+        print("\n  打包完成!")
         print(f"  输出目录: {out_dir}")
         print(f"  可执行文件: {exe_path}")
         print(f"  总大小: {size_mb:.1f} MB")

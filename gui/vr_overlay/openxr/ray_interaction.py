@@ -14,6 +14,7 @@ from PySide6.QtCore import QPointF
 
 class RayHit(NamedTuple):
     """射线命中结果。"""
+
     hit: bool
     distance: float  # 射线参数 t（交点到射线原点的距离，米）
     u: float  # 水平归一化坐标 [0, 1]，0=左, 1=右
@@ -72,21 +73,27 @@ def _basis_from_quaternion(
     """
     x, y, z, w = q
     # 旋转矩阵的列
-    right = np.array([
-        1 - 2 * (y * y + z * z),
-        2 * (x * y + w * z),
-        2 * (x * z - w * y),
-    ])
-    up = np.array([
-        2 * (x * y - w * z),
-        1 - 2 * (x * x + z * z),
-        2 * (y * z + w * x),
-    ])
-    forward = np.array([
-        2 * (x * z + w * y),
-        2 * (y * z - w * x),
-        1 - 2 * (x * x + y * y),
-    ])
+    right = np.array(
+        [
+            1 - 2 * (y * y + z * z),
+            2 * (x * y + w * z),
+            2 * (x * z - w * y),
+        ]
+    )
+    up = np.array(
+        [
+            2 * (x * y - w * z),
+            1 - 2 * (x * x + z * z),
+            2 * (y * z + w * x),
+        ]
+    )
+    forward = np.array(
+        [
+            2 * (x * z + w * y),
+            2 * (y * z - w * x),
+            1 - 2 * (x * x + y * y),
+        ]
+    )
     return right, up, -forward  # OpenXR: -Z 是前方
 
 

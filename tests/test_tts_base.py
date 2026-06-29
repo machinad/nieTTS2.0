@@ -1,6 +1,8 @@
-import pytest
 from pathlib import Path
-from engines.tts.base import TTSResult, BaseTTS
+
+import pytest
+
+from engines.tts.base import BaseTTS, TTSResult
 
 
 class TestTTSResult:
@@ -46,8 +48,10 @@ class TestBaseTTS:
     def test_concrete_can_instantiate(self):
         class Impl(BaseTTS):
             engine_name = "Test"
+
             async def synthesize(self, text, voice, **kwargs):
                 return TTSResult(success=True)
+
             def is_available(self):
                 return True
 
@@ -58,8 +62,10 @@ class TestBaseTTS:
     def test_make_path_creates_unique_paths(self, temp_dir):
         class Impl(BaseTTS):
             engine_name = "Test"
+
             async def synthesize(self, text, voice, **kwargs):
                 return TTSResult(success=True)
+
             def is_available(self):
                 return True
 
@@ -75,8 +81,10 @@ class TestBaseTTS:
     def test_make_path_custom_suffix(self, temp_dir):
         class Impl(BaseTTS):
             engine_name = "Test"
+
             async def synthesize(self, text, voice, **kwargs):
                 return TTSResult(success=True)
+
             def is_available(self):
                 return True
 
@@ -89,8 +97,10 @@ class TestBaseTTS:
     async def test_close_is_noop_by_default(self, temp_dir):
         class Impl(BaseTTS):
             engine_name = "Test"
+
             async def synthesize(self, text, voice, **kwargs):
                 return TTSResult(success=True)
+
             def is_available(self):
                 return True
 

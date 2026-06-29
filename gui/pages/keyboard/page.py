@@ -1,25 +1,33 @@
 """键盘页面：协调者（预览栏 + 候选栏 + 方案栏 + 布局切换）"""
 
 import logging
-from PySide6.QtCore import Qt, Signal, QSize, QTimer
-from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QFont
+
+from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QFrame, QLineEdit, QSizePolicy, QStackedWidget,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
 )
 
-from gui.pages.keyboard.base import BaseKeyboardLayout, KEY_W, KEY_H, FN_RATIO
-from gui.pages.keyboard.qwerty import QwertyLayout
-from gui.pages.keyboard.symbol import SymbolLayout
-from gui.pages.keyboard.numpad import NumberPadLayout
+from gui.pages.keyboard.base import BaseKeyboardLayout
 from gui.pages.keyboard.ninekey import NineKeyLayout
+from gui.pages.keyboard.numpad import NumberPadLayout
+from gui.pages.keyboard.qwerty import QwertyLayout
 from gui.pages.keyboard.shuangpin_maps import SHUANGPIN_HINT_MAPS
+from gui.pages.keyboard.symbol import SymbolLayout
 
 logger = logging.getLogger(__name__)
 
 _CN_PUNCT = {",": "，", ".": "。", "?": "？", "!": "！", ";": "；", ":": "："}
 
 # ── 中/英模式图标 ──
+
 
 def _build_mode_icons() -> tuple[QIcon, QIcon]:
     """用 QPainter 绘制中/英层叠图标，返回 (cn_icon, en_icon)"""
@@ -189,12 +197,17 @@ _FONT_ENT = 18
 def _build_qss(scale: float = 1.0) -> str:
     s = lambda base: max(10, round(base * scale))
     return _QSS.format(
-        k_fs=s(_FONT_K), fn_fs=s(_FONT_FN), mode_fs=s(_FONT_MODE),
-        p_fs=s(_FONT_P), sp_fs=s(_FONT_SP), ent_fs=s(_FONT_ENT),
+        k_fs=s(_FONT_K),
+        fn_fs=s(_FONT_FN),
+        mode_fs=s(_FONT_MODE),
+        p_fs=s(_FONT_P),
+        sp_fs=s(_FONT_SP),
+        ent_fs=s(_FONT_ENT),
     )
 
 
 # ══════════════════════════════════════════════════════════════
+
 
 class KeyboardPage(QWidget):
     """虚拟键盘输入页面（协调者）"""
@@ -363,7 +376,7 @@ class KeyboardPage(QWidget):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         # 防抖：动画期间多次 resize 只算最后一次
-        if hasattr(self, '_resize_timer'):
+        if hasattr(self, "_resize_timer"):
             self._resize_timer.stop()
         else:
             self._resize_timer = QTimer(self)
@@ -552,13 +565,12 @@ class KeyboardPage(QWidget):
             self._preedit_lbl.hide()
 
     def _refresh_cands(self):
-        logger.debug("refresh_cands: destroying %d old, creating %d new",
-                     len(self._cand_btns), len(self._candidates))
+        logger.debug("refresh_cands: destroying %d old, creating %d new", len(self._cand_btns), len(self._candidates))
         for b in self._cand_btns:
             b.deleteLater()
         self._cand_btns.clear()
         for i, c in enumerate(self._candidates):
-            b = QPushButton(f"{i+1}.{c}")
+            b = QPushButton(f"{i + 1}.{c}")
             b.setObjectName("cand")
             b.clicked.connect(lambda _, idx=i: self._pick(idx))
             self._cand_box.addWidget(b)
@@ -583,8 +595,13 @@ class KeyboardPage(QWidget):
             self._is_last = r.get("is_last_page", False)
             if r.get("committed"):
                 self._committed += r["committed"]
-            logger.debug("set_input(%r) → preedit=%r, cands=%s, committed=%r",
-                         text, self._preedit, self._candidates, r.get("committed"))
+            logger.debug(
+                "set_input(%r) → preedit=%r, cands=%s, committed=%r",
+                text,
+                self._preedit,
+                self._candidates,
+                r.get("committed"),
+            )
             self._refresh_preview()
             self._refresh_cands()
         except Exception as e:
@@ -651,7 +668,7 @@ class KeyboardPage(QWidget):
     def _bs_start(self):
         self._backspace()
         self._bs_held = True
-        if hasattr(self, '_bs_delay') and self._bs_delay.isActive():
+        if hasattr(self, "_bs_delay") and self._bs_delay.isActive():
             self._bs_delay.stop()
         self._bs_delay = QTimer(self)
         self._bs_delay.setSingleShot(True)
@@ -665,9 +682,9 @@ class KeyboardPage(QWidget):
 
     def _bs_stop(self):
         self._bs_held = False
-        if hasattr(self, '_bs_delay') and self._bs_delay.isActive():
+        if hasattr(self, "_bs_delay") and self._bs_delay.isActive():
             self._bs_delay.stop()
-        if hasattr(self, '_bs_timer') and self._bs_timer.isActive():
+        if hasattr(self, "_bs_timer") and self._bs_timer.isActive():
             self._bs_timer.stop()
 
     def _enter(self):
@@ -709,7 +726,7 @@ class KeyboardPage(QWidget):
         self._bs_held = False
         if self._bs_timer.isActive():
             self._bs_timer.stop()
-        if hasattr(self, '_bs_delay') and self._bs_delay.isActive():
+        if hasattr(self, "_bs_delay") and self._bs_delay.isActive():
             self._bs_delay.stop()
 
     def _clear_rime(self):

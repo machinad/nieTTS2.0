@@ -2,25 +2,49 @@
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QSizePolicy,
-    QGridLayout, QScrollArea,
+    QGridLayout,
+    QPushButton,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
 )
 
-from .base import BaseKeyboardLayout, KEY_W, KEY_H, FN_RATIO, SPACE_RATIO
+from .base import BaseKeyboardLayout
 
 # 符号容器中的符号列表
 _NP_SYMBOLS = [
-    "%", "/", "#", "+", "-", "*", ":", "_",
-    "(", ")", "$", "&", "~", "^", "|", "\\",
-    "<", ">", "{", "}", "[", "]", "¥", "€",
+    "%",
+    "/",
+    "#",
+    "+",
+    "-",
+    "*",
+    ":",
+    "_",
+    "(",
+    ")",
+    "$",
+    "&",
+    "~",
+    "^",
+    "|",
+    "\\",
+    "<",
+    ">",
+    "{",
+    "}",
+    "[",
+    "]",
+    "¥",
+    "€",
 ]
 
 # 基准尺寸
-_NP_COLS = 5       # 总列数
-_NP_ROWS = 4       # 总行数
-_NP_CELL_W = 48    # 单元格基准宽
-_NP_CELL_H = 48    # 单元格基准高
-_NP_SP = 4         # 间距
+_NP_COLS = 5  # 总列数
+_NP_ROWS = 4  # 总行数
+_NP_CELL_W = 48  # 单元格基准宽
+_NP_CELL_H = 48  # 单元格基准高
+_NP_SP = 4  # 间距
 
 
 class NumberPadLayout(BaseKeyboardLayout):
@@ -43,7 +67,7 @@ class NumberPadLayout(BaseKeyboardLayout):
 
         grid = QGridLayout()
         grid.setSpacing(_NP_SP)
-        grid.setColumnStretch(0, 0)   # 符号列不拉伸
+        grid.setColumnStretch(0, 0)  # 符号列不拉伸
         for c in range(1, 5):
             grid.setColumnStretch(c, 1)  # 数字列拉伸
 

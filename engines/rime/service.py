@@ -1,7 +1,7 @@
 import logging
 from dataclasses import asdict
 
-from rime import RimeEngine, InputResult
+from rime import InputResult, RimeEngine
 
 logger = logging.getLogger(__name__)
 
