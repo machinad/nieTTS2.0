@@ -82,7 +82,7 @@ class TestSTTService:
     @pytest.mark.asyncio
     async def test_reload_engines(self, mock_config_with_qwen3):
         service = STTService(mock_config_with_qwen3)
-        orig_len = len(service._engines)
+        len(service._engines)
         await service.reload_engines()
         # Should rebuild without error
         assert len(service._engines) > 0

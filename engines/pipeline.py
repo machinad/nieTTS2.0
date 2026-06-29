@@ -254,7 +254,7 @@ class RequestPipeline:
                     await play_file(path, device_name=device_name)
                 else:
                     logger.warning(f"音频文件不存在，跳过播放: {path}")
-                for i in range(10):
+                for _i in range(10):
                     try:
                         path.unlink(missing_ok=True)
                         break

@@ -277,7 +277,7 @@ class TestWebSocket:
     async def test_connect_and_disconnect(self, app):
         """WebSocket should connect and disconnect cleanly."""
         c = app.test_client()
-        async with c.websocket("/ws", headers=_WS_HEADERS) as ws:
+        async with c.websocket("/ws", headers=_WS_HEADERS):
             pass  # just connect and disconnect
         # No exception = pass
 

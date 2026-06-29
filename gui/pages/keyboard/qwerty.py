@@ -234,7 +234,7 @@ class QwertyLayout(BaseKeyboardLayout):
         self._hint_map = hint_map
         if hint_map is None:
             # 全拼方案：隐藏所有提示
-            for ch, lbl in self._hint_labels.items():
+            for _ch, lbl in self._hint_labels.items():
                 lbl.hide()
             return
         for ch, hint in hint_map.items():

@@ -195,7 +195,9 @@ _FONT_ENT = 18
 
 
 def _build_qss(scale: float = 1.0) -> str:
-    s = lambda base: max(10, round(base * scale))
+    def s(base):
+        return max(10, round(base * scale))
+
     return _QSS.format(
         k_fs=s(_FONT_K),
         fn_fs=s(_FONT_FN),

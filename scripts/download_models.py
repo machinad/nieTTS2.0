@@ -200,8 +200,6 @@ class Downloader:
                 if local_dir.exists():
                     shutil.rmtree(local_dir)
                 shutil.move(str(src_dir), str(local_dir))
-                # 清理临时目录
-                tmp_root = Path(downloaded).parent.parent
                 tmp_hf = self.registry.project_root / "models" / "_hf_tmp"
                 if tmp_hf.exists():
                     shutil.rmtree(tmp_hf)
