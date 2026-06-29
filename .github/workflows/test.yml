@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: astral-sh/setup-ruff@v1
+      - uses: astral-sh/ruff-action@v1
 
       - name: Ruff check
         run: ruff check .

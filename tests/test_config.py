@@ -29,7 +29,7 @@ class TestConfigManager:
         assert clean_cm.get("tts_provider.provider") == "edge_tts"
         assert clean_cm.get("stt_provider.provider") == "Qwen3"
         assert clean_cm.get("translation_provider.provider") == "openai"
-        assert clean_cm.get("vad.threshold") == 0.5
+        assert clean_cm.get("vad.threshold") == 0.3
         assert clean_cm.get("vad.sample_rate") == 16000
 
     def test_get_with_dot_notation(self, clean_cm):

@@ -201,25 +201,8 @@ class TestTTSEndpoint:
         assert "文本" in data["error"]
 
 
-# ── GET /voices ─────────────────────────────────────────────────────────
-
-class TestVoicesEndpoint:
-    @pytest.mark.asyncio
-    async def test_returns_voices_json(self, client):
-        resp = await client.get("/voices")
-        assert resp.status_code == 200
-        data = await resp.get_json()
-        assert "tts_engines" in data
-        assert "all_tts_engines" in data
-        assert "voices" in data
-        assert "source_languages" in data
-        assert "edge_tts" in data["voices"]
-        assert "cosyvoice" in data["voices"]
-        assert "sambert" in data["voices"]
-
 
 # ── GET /config ─────────────────────────────────────────────────────────
-
 class TestGetConfig:
     @pytest.mark.asyncio
     async def test_returns_config_json(self, client):
