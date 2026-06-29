@@ -13,15 +13,17 @@ class RimeService:
     所有操作必须在主线程执行（qasync 环境下不会阻塞 Qt 事件循环）。
     """
 
-    def __init__(self):
+    def __init__(self, config):
+        self._config = config
         self._engine: RimeEngine | None = None
 
     def _ensure_engine(self) -> RimeEngine:
         if self._engine is None:
             logger.info("正在初始化 Rime 引擎...")
+            schema_id = self._config.get("rime_schema", "rime_melt")
             self._engine = RimeEngine(
                 user_data_dir="./rime_user_data",
-                schema_id="luna_pinyin",
+                schema_id=schema_id,
             )
             self._engine.deploy(timeout=60.0)
             logger.info("Rime 引擎初始化完成")

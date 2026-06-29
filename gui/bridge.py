@@ -159,3 +159,7 @@ class GuiBridge(QObject):
     def rime_switch_schema(self, schema_id: str) -> bool:
         """切换输入方案"""
         return self.rime.switch_schema(schema_id)
+
+    def set_rime_schema(self, schema_id: str):
+        """持久化当前输入方案到 config"""
+        self.config.update({"rime_schema": schema_id})

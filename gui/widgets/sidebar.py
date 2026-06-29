@@ -119,8 +119,8 @@ class Sidebar(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("sidebar")
-        self.setFixedWidth(220)
-        self._collapsed = False
+        self.setFixedWidth(64)
+        self._collapsed = True
         self._current = 0
 
         layout = QVBoxLayout(self)
@@ -180,6 +180,7 @@ class Sidebar(QFrame):
 
         layout.addSpacing(8)
         self._set_active(0)
+        self._update_collapse_state()
 
     def _on_nav(self, index: int):
         self._set_active(index)

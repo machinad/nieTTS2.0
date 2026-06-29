@@ -1,4 +1,14 @@
-﻿import asyncio
+﻿"""
+⚠️ 此入口已废弃，不再维护。
+
+main.py 为 nieTTS 的无 GUI（Headless）启动入口，仅作为历史参考保留。
+当前唯一维护的启动入口是 gui_main.py（Qt6 桌面 GUI 模式）。
+Web 前端由 gui_main.py 中内嵌的 Quart 服务器统一提供。
+
+请勿基于此文件进行修改或提交 PR。如有需要，请使用 gui_main.py。
+"""
+
+import asyncio
 import argparse
 import logging
 

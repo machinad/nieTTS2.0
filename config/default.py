@@ -91,6 +91,7 @@ default_config = {
     "osc_host": "127.0.0.1",
     "osc_port": 9000,
     "port": 11451,
+    "rime_schema": "rime_ice",
     "overlay_hotkey": {
         "ctrl": True,
         "shift": False,
@@ -98,6 +99,20 @@ default_config = {
         "key": 84,
         "display": "Ctrl+T"
     },
+    "vr_overlay": {
+        "enabled": False,
+        "width_meters": 2.0,
+        "texture_width": 1792,
+        "texture_height": 1208,
+        "distance_meters": 1.5,
+        "vertical_offset": -0.1,
+        "alpha": 0.9,
+        "ray_pitch_offset": 0.510058,
+        "ray_yaw_offset": -0.402526,
+        "position_mode": "controller",
+        "distance": 1.2,
+        "auto_start": False
+    }
 }
 
 

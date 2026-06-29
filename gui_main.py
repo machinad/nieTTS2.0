@@ -85,7 +85,7 @@ def main():
     translate = TranslateService(config)
     osc = OSCService(config)
     stt = STTService(config)
-    rime = RimeService()
+    rime = RimeService(config)
     pipeline = RequestPipeline(config, tts, translate, osc, stt=stt)
 
     notifier = ConfigNotifier()
